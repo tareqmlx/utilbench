@@ -1,0 +1,657 @@
+@import "./fonts.css";
+@import "tailwindcss";
+
+/* Workbench is a single-theme paper surface. Bind `dark:` utilities to a
+   class that is never applied so any lingering dark variants stay inert
+   and don't activate from system prefers-color-scheme. */
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: "Bricolage Grotesque", "Inter", sans-serif;
+
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Workbench V4 palette as Tailwind utilities */
+  --color-paper: var(--bg);
+  --color-paper-2: var(--bg-2);
+  --color-paper-3: var(--bg-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-pink: var(--pink);
+  --color-lilac: var(--lilac);
+  --color-mint: var(--mint);
+  --color-sky: var(--sky);
+  --color-lemon: var(--lemon);
+  --color-tomato: var(--tomato);
+  --color-grass: var(--grass);
+}
+
+:root {
+  /* ── Workbench V4 tokens ───────────────────── */
+  --bg: #fff7ec;
+  --bg-2: #ffeed5;
+  --bg-3: #ffe2b8;
+  --ink: #1f1a14;
+  --ink-2: #4a4138;
+  --ink-3: #786b5b;
+  --rule: #1f1a14;
+  --pink: #ffc8d8;
+  --lilac: #d8c8ff;
+  --mint: #b9ecd0;
+  --sky: #b8dcff;
+  --lemon: #ffea88;
+  --tomato: #ff6a4a;
+  --grass: #4a8a55;
+
+  --rad-sm: 8px;
+  --rad: 14px;
+  --rad-lg: 18px;
+  --rad-pill: 999px;
+
+  --bw: 2px;
+  --bw-thick: 3px;
+
+  --pop-1: 2px 2px 0 var(--ink);
+  --pop-2: 3px 3px 0 var(--ink);
+  --pop-3: 4px 4px 0 var(--ink);
+  --pop-4: 5px 5px 0 var(--ink);
+  --pop-cta: 5px 5px 0 var(--tomato);
+
+  /* ── shadcn tokens, remapped to workbench palette ── */
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card: var(--bg);
+  --card-foreground: var(--ink);
+  --popover: var(--bg);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--bg);
+  --secondary: var(--bg-2);
+  --secondary-foreground: var(--ink);
+  --muted: var(--bg-2);
+  --muted-foreground: var(--ink-3);
+  --accent: var(--lemon);
+  --accent-foreground: var(--ink);
+  --destructive: var(--tomato);
+  --destructive-foreground: var(--bg);
+  --border: var(--ink);
+  --input: var(--ink);
+  --ring: var(--tomato);
+  --chart-1: var(--tomato);
+  --chart-2: var(--mint);
+  --chart-3: var(--sky);
+  --chart-4: var(--lemon);
+  --chart-5: var(--lilac);
+  --sidebar: var(--bg-2);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--ink);
+  --sidebar-primary-foreground: var(--bg);
+  --sidebar-accent: var(--lemon);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--ink);
+  --sidebar-ring: var(--tomato);
+}
+
+/* Base resets */
+body {
+  @apply bg-background text-foreground antialiased;
+  font-family: "Inter", system-ui, sans-serif;
+  background: radial-gradient(circle at 12% 18%, var(--pink) 0 1px, transparent 1.4px) 0 0 / 22px
+    22px, radial-gradient(circle at 70% 60%, var(--lilac) 0 1px, transparent 1.4px) 11px 11px / 22px
+    22px, var(--bg);
+  min-height: 100vh;
+}
+
+::selection {
+  background: var(--lemon);
+  color: var(--ink);
+}
+
+/* ── Workbench utility classes ──────────────────────────────────── */
+
+.wb-display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.92;
+}
+.wb-h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.96;
+}
+.wb-h2 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.wb-h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.wb-h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+.wb-meta {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-3);
+}
+.wb-mono-sm {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.wb-display em,
+.wb-h1 em,
+.wb-h2 em,
+.wb-h3 em {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.wb-shell {
+  max-width: 1320px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 28px;
+  padding-right: 28px;
+}
+@media (max-width: 640px) {
+  .wb-shell {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
+
+/* Sticker chip */
+.wb-sticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: var(--bw) solid var(--ink);
+  border-radius: var(--rad);
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 12.5px;
+  background: var(--bg);
+  box-shadow: var(--pop-2);
+  color: var(--ink);
+}
+.wb-sticker .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+.wb-sticker--pink {
+  background: var(--pink);
+}
+.wb-sticker--lilac {
+  background: var(--lilac);
+}
+.wb-sticker--mint {
+  background: var(--mint);
+}
+.wb-sticker--sky {
+  background: var(--sky);
+}
+.wb-sticker--lemon {
+  background: var(--lemon);
+}
+
+/* Button */
+.wb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 12px 18px;
+  border-radius: var(--rad);
+  border: var(--bw) solid var(--ink);
+  box-shadow: var(--pop-cta);
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+.wb-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 var(--tomato);
+}
+.wb-btn--ghost {
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: var(--pop-4);
+}
+.wb-btn--ghost:hover {
+  box-shadow: 7px 7px 0 var(--ink);
+}
+.wb-btn--lemon {
+  background: var(--lemon);
+  color: var(--ink);
+  box-shadow: var(--pop-4);
+}
+.wb-btn--lemon:hover {
+  box-shadow: 7px 7px 0 var(--ink);
+}
+.wb-btn--sm {
+  padding: 7px 12px;
+  font-size: 12.5px;
+  box-shadow: var(--pop-2);
+}
+.wb-btn--sm:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+.wb-btn--sm.wb-btn--ghost:hover {
+  box-shadow: 4px 4px 0 var(--ink);
+}
+.wb-btn:disabled,
+.wb-btn[aria-disabled="true"] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Chip */
+.wb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: var(--bw) solid var(--ink);
+  border-radius: var(--rad-pill);
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--bg);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease, transform 160ms
+    cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.wb-chip:hover {
+  background: var(--lemon);
+  transform: translateY(-1px);
+}
+.wb-chip:active {
+  transform: translateY(0);
+}
+.wb-chip.on {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+/* Tile (sticker card) */
+.wb-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: var(--bw) solid var(--ink);
+  border-radius: var(--rad-lg);
+  padding: 22px;
+  background: var(--bg);
+  box-shadow: var(--pop-3);
+  transition: transform 0.15s, box-shadow 0.15s;
+  color: var(--ink);
+  overflow: hidden;
+}
+.wb-tile:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+.wb-tile .pin {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.wb-tile .icn {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--rad);
+  border: var(--bw) solid var(--ink);
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  background: var(--bg);
+}
+.wb-tile h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--ink);
+}
+.wb-tile p {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.wb-tile .arrow {
+  margin-top: auto;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+}
+.wb-tile--pink {
+  background: var(--pink);
+}
+.wb-tile--lilac {
+  background: var(--lilac);
+}
+.wb-tile--mint {
+  background: var(--mint);
+}
+.wb-tile--sky {
+  background: var(--sky);
+}
+.wb-tile--lemon {
+  background: var(--lemon);
+}
+.wb-tile--bg2 {
+  background: var(--bg-2);
+}
+.wb-tile--bg3 {
+  background: var(--bg-3);
+}
+.wb-tile--ink {
+  background: var(--ink);
+  color: var(--bg);
+}
+.wb-tile--ink h3,
+.wb-tile--ink p,
+.wb-tile--ink .arrow {
+  color: var(--bg);
+}
+.wb-tile--ink .icn {
+  border-color: var(--bg);
+  color: var(--bg);
+  background: transparent;
+}
+
+/* Workbench panel (input/output) */
+.wb-panel {
+  position: relative;
+  border: var(--bw) solid var(--ink);
+  border-radius: var(--rad-lg);
+  background: var(--bg);
+  box-shadow: var(--pop-3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.wb-panel--out {
+  background: var(--bg-2);
+}
+.wb-panel--ink {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+/* KBD */
+.wb-kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink);
+  background: var(--bg);
+  border: var(--bw) solid var(--ink);
+  border-radius: 6px;
+  padding: 2px 6px;
+  line-height: 1;
+  font-weight: 500;
+  box-shadow: 1px 1px 0 var(--ink);
+  display: inline-block;
+}
+
+/* ── Animation keyframes (powers shadcn data-[state] classes) ───── */
+@keyframes wb-enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0)
+      scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), 1);
+  }
+}
+@keyframes wb-exit {
+  to {
+    opacity: var(--tw-exit-opacity, 1);
+    transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0)
+      scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), 1);
+  }
+}
+
+@utility animate-in {
+  animation: wb-enter 150ms ease-out;
+  --tw-enter-opacity: initial;
+  --tw-enter-scale: initial;
+  --tw-enter-translate-x: initial;
+  --tw-enter-translate-y: initial;
+}
+@utility animate-out {
+  animation: wb-exit 120ms ease-in forwards;
+  --tw-exit-opacity: initial;
+  --tw-exit-scale: initial;
+  --tw-exit-translate-x: initial;
+  --tw-exit-translate-y: initial;
+}
+
+@utility fade-in-0 {
+  --tw-enter-opacity: 0;
+}
+@utility fade-out-0 {
+  --tw-exit-opacity: 0;
+}
+@utility zoom-in-95 {
+  --tw-enter-scale: 0.96;
+}
+@utility zoom-out-95 {
+  --tw-exit-scale: 0.96;
+}
+@utility slide-in-from-top-2 {
+  --tw-enter-translate-y: -0.5rem;
+}
+@utility slide-in-from-bottom-2 {
+  --tw-enter-translate-y: 0.5rem;
+}
+@utility slide-in-from-left-2 {
+  --tw-enter-translate-x: -0.5rem;
+}
+@utility slide-in-from-right-2 {
+  --tw-enter-translate-x: 0.5rem;
+}
+@utility slide-in-from-top {
+  --tw-enter-translate-y: -100%;
+}
+@utility slide-in-from-bottom {
+  --tw-enter-translate-y: 100%;
+}
+@utility slide-in-from-left {
+  --tw-enter-translate-x: -100%;
+}
+@utility slide-in-from-right {
+  --tw-enter-translate-x: 100%;
+}
+@utility slide-out-to-top {
+  --tw-exit-translate-y: -100%;
+}
+@utility slide-out-to-bottom {
+  --tw-exit-translate-y: 100%;
+}
+@utility slide-out-to-left {
+  --tw-exit-translate-x: -100%;
+}
+@utility slide-out-to-right {
+  --tw-exit-translate-x: 100%;
+}
+
+/* Dialog uses left-1/2 / top-[48%] — preserve centering by skipping translate */
+.data-\[state\=closed\]\:slide-out-to-left-1\/2[data-state="closed"],
+.data-\[state\=closed\]\:slide-out-to-top-\[48\%\][data-state="closed"],
+.data-\[state\=open\]\:slide-in-from-left-1\/2[data-state="open"],
+.data-\[state\=open\]\:slide-in-from-top-\[48\%\][data-state="open"] {
+  --tw-enter-translate-x: 0;
+  --tw-enter-translate-y: 0;
+  --tw-exit-translate-x: 0;
+  --tw-exit-translate-y: 0;
+}
+
+/* ── Page transition ───────────────────────────────────────────── */
+@keyframes wb-page-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes wb-page-out {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0);
+  }
+}
+.wb-page {
+  will-change: opacity, transform;
+}
+.wb-page[data-phase="enter"] {
+  animation: wb-page-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.wb-page[data-phase="exit"] {
+  animation: wb-page-out 200ms cubic-bezier(0.4, 0, 1, 1) both;
+  pointer-events: none;
+}
+
+/* ── Scroll reveal (opacity-only to avoid hover-transform conflict) */
+.wb-reveal {
+  opacity: 0;
+  transition: opacity 320ms ease-out;
+  will-change: opacity;
+}
+.wb-reveal.is-revealed {
+  opacity: 1;
+}
+
+/* ── Item-level enter (filtered grids, tab content swap) ──────── */
+@keyframes wb-item-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+.wb-item-enter {
+  animation: wb-item-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Error alert + tab content fade ───────────────────────────── */
+.wb-fade-in {
+  animation: wb-item-in 200ms ease-out both;
+}
+
+/* ── Breadcrumb / inline link smoothing ───────────────────────── */
+.wb-link-soft {
+  transition: color 160ms ease, opacity 160ms ease;
+}
+
+/* ── Smooth scrolling for in-page anchor jumps ─────────────────── */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── Switch / interactive smoothing ────────────────────────────── */
+button[role="switch"] [data-state] {
+  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .wb-tile,
+  .wb-btn {
+    transition: box-shadow 0.15s;
+  }
+  .wb-tile:hover,
+  .wb-btn:hover {
+    transform: none;
+  }
+  .wb-item-enter,
+  .wb-fade-in,
+  .wb-page,
+  .wb-reveal,
+  .animate-in,
+  .animate-out {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+  }
+}
