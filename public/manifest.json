@@ -1,0 +1,26 @@
+{
+  "name": "Utilbench — Your Online Toolbox",
+  "short_name": "Utilbench",
+  "description": "Fast, private toolbox utilities that run in your browser. No servers, no tracking — just tools that work.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f6f8",
+  "theme_color": "#6765f1",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
