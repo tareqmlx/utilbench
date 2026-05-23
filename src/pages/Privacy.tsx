@@ -27,7 +27,7 @@ const sections = [
   {
     label: "§ 05",
     title: "Third-party services",
-    body: "The site is hosted on Netlify. Netlify may collect standard server access logs (IP address, request URL, timestamp) as part of serving the site. We don't have access to individual visitor data from these logs. No other third-party services are used.",
+    body: "The site is hosted on Cloudflare Workers. Cloudflare may collect standard server access logs (IP address, request URL, timestamp) as part of serving the site and routing requests through its global network. We don't have access to individual visitor data from these logs. No other third-party services are used.",
   },
   {
     label: "§ 06",

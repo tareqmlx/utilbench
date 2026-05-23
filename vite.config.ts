@@ -8,7 +8,7 @@ import type { Plugin } from "vite";
 
 import { cloudflare } from "@cloudflare/vite-plugin";
 
-const SITE_URL = "https://utilbench.example.com";
+const SITE_URL = "https://utilbench.devandstone.com";
 
 function sitemapPlugin(): Plugin {
   return {

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Utilbench Web is a browser-based utility tools SPA. All tools run entirely client-side (no backend) using Web Workers and WASM for compute-heavy tasks. Built with React 19, React Router v7, Vite 6, Tailwind CSS 4, shadcn/ui, and TypeScript in strict mode. Package manager is Bun. Deployed on Netlify.
+Utilbench Web is a browser-based utility tools SPA. All tools run entirely client-side (no backend) using Web Workers and WASM for compute-heavy tasks. Built with React 19, React Router v7, Vite 6, Tailwind CSS 4, shadcn/ui, and TypeScript in strict mode. Package manager is Bun. Deployed on Cloudflare Workers Assets.
 
 ## Commands
 
@@ -79,7 +79,7 @@ Uses `react-helmet-async` with `HelmetProvider` in `main.tsx`. Key modules in `s
 - **`SEOHead`** — reusable component for title, description, OG, and Twitter Card meta tags
 - **`JsonLd`** — injects JSON-LD structured data
 - **`schemas.ts`** — builders for Organization, WebSite, SoftwareApplication, Breadcrumb, and WebPage schemas
-- **`constants.ts`** — `SITE_URL` (currently placeholder `https://utilbench.example.com`), default OG image, default title/description
+- **`constants.ts`** — `SITE_URL` (defaults to `https://utilbench.devandstone.com`, override via `VITE_SITE_URL`), default OG image, default title/description
 
 A custom Vite plugin in `vite.config.ts` auto-generates `sitemap.xml` during build from discovered tool slugs.
 

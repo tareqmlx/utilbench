@@ -226,10 +226,10 @@ A custom Vite plugin in `vite.config.ts` also generates `sitemap.xml` from the d
 
 ## Deployment
 
-Deployed on Netlify. Two config files in `public/`:
+Deployed on Cloudflare Workers Assets. Configuration:
 
-- `_redirects` — SPA fallback: `/* /index.html 200`
-- `_headers` — `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, strict referrer policy, permissions policy, and long-lived cache headers for `/assets/*` and `/fonts/*`.
+- `wrangler.jsonc` — `not_found_handling: "single-page-application"` provides the SPA fallback (no `_redirects` file needed; Cloudflare flags it as an infinite loop).
+- `public/_headers` — `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, strict referrer policy, permissions policy, and long-lived cache headers for `/assets/*` and `/fonts/*`.
 
 ## Project Docs
 
