@@ -10,6 +10,7 @@ describe("YamlToJsonRoute", () => {
   };
 
   beforeEach(() => {
+    localStorage.removeItem("utilbench:prefs:yaml-to-json");
     vi.restoreAllMocks();
     Object.defineProperty(navigator, "clipboard", {
       value: clipboardMock,
@@ -24,21 +25,22 @@ describe("YamlToJsonRoute", () => {
   });
 
   function getTextarea() {
-    return screen.getByRole("textbox") as HTMLTextAreaElement;
+    return screen.getByLabelText(/yaml input/i) as HTMLTextAreaElement;
   }
 
-  function clickConvert() {
-    fireEvent.click(screen.getByRole("button", { name: /convert to json/i }));
+  function getCodeText(): string {
+    const pre = document.querySelector("pre > code");
+    return pre?.textContent ?? "";
   }
 
   it("renders", () => {
     render(<YamlToJsonRoute />);
-    expect(screen.getByLabelText(/yaml input/i)).toBeInTheDocument();
+    expect(getTextarea()).toBeInTheDocument();
   });
 
   it("shows placeholder initially", () => {
     render(<YamlToJsonRoute />);
-    expect(screen.getByText(/waiting for input/i)).toBeInTheDocument();
+    expect(document.body.textContent).toMatch(/waiting for input/i);
   });
 
   it("textarea accepts input", () => {
@@ -53,52 +55,40 @@ describe("YamlToJsonRoute", () => {
     expect(getTextarea().value).toBe(SAMPLE_YAML);
   });
 
-  it("convert produces valid JSON output", () => {
+  it("auto-converts input to JSON output", () => {
     render(<YamlToJsonRoute />);
     fireEvent.change(getTextarea(), { target: { value: "name: test\ncount: 5" } });
-    clickConvert();
-    const code = screen.getByRole("code");
-    const parsed = JSON.parse(code.textContent ?? "");
+    const parsed = JSON.parse(getCodeText());
     expect(parsed).toEqual({ name: "test", count: 5 });
   });
 
   it("pretty print toggle reformats existing output", () => {
     render(<YamlToJsonRoute />);
     fireEvent.change(getTextarea(), { target: { value: "a: 1\nb: 2" } });
-    clickConvert();
 
-    const codeBefore = screen.getByRole("code").textContent ?? "";
+    const codeBefore = getCodeText();
     expect(codeBefore).toContain("\n");
 
     fireEvent.click(screen.getByLabelText(/pretty print/i));
-    const codeAfter = screen.getByRole("code").textContent ?? "";
+    const codeAfter = getCodeText();
     expect(codeAfter).not.toContain("\n");
   });
 
   it("delete clears input, output, and error", () => {
     render(<YamlToJsonRoute />);
     fireEvent.change(getTextarea(), { target: { value: "key: value" } });
-    clickConvert();
 
-    // The clear button is an icon-only button (Trash2 icon) rendered with variant="secondary" size="icon"
-    // It's the only secondary icon button in the input section
-    const allButtons = screen.getAllByRole("button");
-    const clearBtn = allButtons.find(
-      (btn) => btn.className.includes("bg-secondary") && btn.className.includes("w-10"),
-    );
-    expect(clearBtn).toBeTruthy();
-    if (clearBtn) fireEvent.click(clearBtn);
+    fireEvent.click(screen.getByLabelText(/clear input/i));
 
     expect(getTextarea().value).toBe("");
-    expect(screen.getByText(/waiting for input/i)).toBeInTheDocument();
+    expect(document.body.textContent).toMatch(/waiting for input/i);
   });
 
   it("copy triggers clipboard writeText", async () => {
     render(<YamlToJsonRoute />);
     fireEvent.change(getTextarea(), { target: { value: "key: value" } });
-    clickConvert();
 
-    fireEvent.click(screen.getByRole("button", { name: /copy$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^copy$/i }));
     await waitFor(() => {
       expect(clipboardMock.writeText).toHaveBeenCalled();
     });
@@ -107,11 +97,10 @@ describe("YamlToJsonRoute", () => {
   it("copy shows Copied! feedback", async () => {
     render(<YamlToJsonRoute />);
     fireEvent.change(getTextarea(), { target: { value: "key: value" } });
-    clickConvert();
 
-    fireEvent.click(screen.getByRole("button", { name: /copy$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^copy$/i }));
     await waitFor(() => {
-      expect(screen.getByText("Copied!")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /copied!/i })).toBeInTheDocument();
     });
   });
 
@@ -123,7 +112,6 @@ describe("YamlToJsonRoute", () => {
 
     render(<YamlToJsonRoute />);
     fireEvent.change(getTextarea(), { target: { value: "key: value" } });
-    clickConvert();
 
     fireEvent.click(screen.getByRole("button", { name: /download/i }));
     expect(createObjectURL).toHaveBeenCalled();
@@ -133,24 +121,44 @@ describe("YamlToJsonRoute", () => {
   it("malformed YAML shows error banner", () => {
     render(<YamlToJsonRoute />);
     fireEvent.change(getTextarea(), { target: { value: "key: [invalid: {{" } });
-    clickConvert();
     expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 
   it("error clears on next successful convert", () => {
     render(<YamlToJsonRoute />);
     fireEvent.change(getTextarea(), { target: { value: "key: [invalid: {{" } });
-    clickConvert();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
 
     fireEvent.change(getTextarea(), { target: { value: "key: value" } });
-    clickConvert();
-
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("does not auto-convert when typing", () => {
+  it("copy/download disabled until output exists", () => {
     render(<YamlToJsonRoute />);
+    expect(screen.getByRole("button", { name: /^copy$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /download/i })).toBeDisabled();
+
     fireEvent.change(getTextarea(), { target: { value: "key: value" } });
-    expect(screen.getByText(/waiting for input/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^copy$/i })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: /download/i })).not.toBeDisabled();
+  });
+
+  it("multi-doc YAML emits array", () => {
+    render(<YamlToJsonRoute />);
+    fireEvent.change(getTextarea(), {
+      target: { value: "a: 1\n---\nb: 2" },
+    });
+    const parsed = JSON.parse(getCodeText());
+    expect(parsed).toEqual([{ a: 1 }, { b: 2 }]);
+  });
+
+  it("pretty print disabled produces compact JSON", () => {
+    render(<YamlToJsonRoute />);
+    // Toggle off pretty print first (default true)
+    fireEvent.click(screen.getByLabelText(/pretty print/i));
+    fireEvent.change(getTextarea(), { target: { value: "a: 1\nb: 2" } });
+    const code = getCodeText();
+    expect(code).not.toContain("\n");
+    expect(JSON.parse(code)).toEqual({ a: 1, b: 2 });
   });
 });
