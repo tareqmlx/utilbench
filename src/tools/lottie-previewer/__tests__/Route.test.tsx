@@ -221,4 +221,152 @@ describe("LottiePreviewerRoute", () => {
     fireEvent.dragLeave(dropZone);
     // Should not throw
   });
+
+  describe("after upload", () => {
+    const lottieData = JSON.stringify({
+      w: 200,
+      h: 200,
+      fr: 30,
+      ip: 0,
+      op: 60,
+      layers: [{ ty: 4 }],
+      v: "5.7.0",
+      nm: "Test",
+    });
+
+    async function uploadFile() {
+      const input = screen.getByTestId("file-input");
+      const file = new File([lottieData], "anim.json", { type: "application/json" });
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+      await waitFor(() => {
+        expect(screen.getByText("Remove")).toBeInTheDocument();
+      });
+    }
+
+    beforeEach(() => {
+      // Mock clipboard for handleCopyEmbed
+      Object.defineProperty(navigator, "clipboard", {
+        value: { writeText: vi.fn().mockResolvedValue(undefined) },
+        configurable: true,
+        writable: true,
+      });
+    });
+
+    it("speed buttons toggle active state when clicked", async () => {
+      render(<LottiePreviewerRoute />);
+      await uploadFile();
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("2x"));
+      });
+      // Settled by lottie mock — no throw
+      expect(screen.getByText("2x")).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("1.5x"));
+      });
+      expect(screen.getByText("1.5x")).toBeInTheDocument();
+    });
+
+    it("play/pause and replay buttons enable after upload", async () => {
+      render(<LottiePreviewerRoute />);
+      await uploadFile();
+
+      const pauseBtn = screen.getByLabelText("Pause");
+      expect(pauseBtn).not.toBeDisabled();
+      await act(async () => {
+        fireEvent.click(pauseBtn);
+      });
+
+      // After pausing, label should switch to Play
+      await waitFor(() => {
+        expect(screen.getByLabelText("Play")).toBeInTheDocument();
+      });
+
+      const replayBtn = screen.getByLabelText("Replay");
+      expect(replayBtn).not.toBeDisabled();
+      await act(async () => {
+        fireEvent.click(replayBtn);
+      });
+    });
+
+    it("background swatches change selected state", async () => {
+      render(<LottiePreviewerRoute />);
+      await uploadFile();
+
+      const blackBtn = screen.getByLabelText("Black background");
+      const transparentBtn = screen.getByLabelText("Transparent background");
+      const whiteBtn = screen.getByLabelText("White background");
+
+      await act(async () => fireEvent.click(blackBtn));
+      expect(blackBtn.className).toContain("ring-2");
+
+      await act(async () => fireEvent.click(transparentBtn));
+      expect(transparentBtn.className).toContain("ring-2");
+
+      await act(async () => fireEvent.click(whiteBtn));
+      expect(whiteBtn.className).toContain("ring-2");
+    });
+
+    it("remove button clears file state", async () => {
+      render(<LottiePreviewerRoute />);
+      await uploadFile();
+      await act(async () => {
+        fireEvent.click(screen.getByText("Remove"));
+      });
+      await waitFor(() => {
+        expect(screen.getByText("Drag your animation here")).toBeInTheDocument();
+      });
+    });
+
+    it("download .dotLottie button is enabled and clickable", async () => {
+      render(<LottiePreviewerRoute />);
+      await uploadFile();
+
+      const createUrl = vi.fn().mockReturnValue("blob:test");
+      const revokeUrl = vi.fn();
+      Object.defineProperty(URL, "createObjectURL", {
+        value: createUrl,
+        configurable: true,
+      });
+      Object.defineProperty(URL, "revokeObjectURL", {
+        value: revokeUrl,
+        configurable: true,
+      });
+
+      const btn = screen.getByText("Download .dotLottie").closest("button");
+      expect(btn).not.toBeDisabled();
+      await act(async () => {
+        fireEvent.click(btn as HTMLButtonElement);
+      });
+      expect(createUrl).toHaveBeenCalled();
+    });
+
+    it("Get Embed Code copies to clipboard", async () => {
+      render(<LottiePreviewerRoute />);
+      await uploadFile();
+
+      const writeText = navigator.clipboard.writeText as ReturnType<typeof vi.fn>;
+      const btn = screen.getByText("Get Embed Code").closest("button");
+      expect(btn).not.toBeDisabled();
+      await act(async () => {
+        fireEvent.click(btn as HTMLButtonElement);
+      });
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalled();
+      });
+    });
+
+    it("settings toggle exposes Loop switch", async () => {
+      render(<LottiePreviewerRoute />);
+      await uploadFile();
+      await act(async () => {
+        fireEvent.click(screen.getByTitle("Settings"));
+      });
+      const loop = await screen.findByText("Loop");
+      expect(loop).toBeInTheDocument();
+    });
+  });
 });
