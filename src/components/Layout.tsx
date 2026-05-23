@@ -245,7 +245,17 @@ export function Layout() {
               <ul className="flex flex-col gap-2 text-[13.5px]">
                 <li>
                   <a
-                    href="https://github.com/tareqmahmud/utilbench-web/blob/main/LICENSE"
+                    href="https://github.com/tareqmlx/utilbench/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-paper transition-colors hover:text-lemon"
+                  >
+                    GitHub
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/tareqmlx/utilbench/blob/main/LICENSE"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-paper transition-colors hover:text-lemon"
