@@ -34,6 +34,7 @@ describe("JsonSchemaGeneratorRoute", () => {
 
   it("renders empty output placeholder", () => {
     render(<JsonSchemaGeneratorRoute />);
+    fireEvent.click(screen.getByRole("button", { name: /Clear/ }));
     expect(screen.getByText(/will appear here as you type/)).toBeInTheDocument();
   });
 
@@ -101,6 +102,7 @@ describe("JsonSchemaGeneratorRoute", () => {
 
   it("download button is disabled when no output", () => {
     render(<JsonSchemaGeneratorRoute />);
+    fireEvent.click(screen.getByRole("button", { name: /Clear/ }));
     const btn = screen.getByRole("button", { name: /Download/ });
     expect(btn).toBeDisabled();
   });

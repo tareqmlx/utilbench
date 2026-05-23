@@ -259,7 +259,7 @@ describe("QrGeneratorRoute", () => {
     const input = screen.getByPlaceholderText("https://yourlink.com") as HTMLInputElement;
     fireEvent.change(input, { target: { value: "" } });
     await flushDebounce();
-    const downloadBtn = screen.getByRole("button", { name: /Generate & Download/i });
+    const downloadBtn = screen.getByRole("button", { name: /^Download (SVG|PNG)/i });
     expect(downloadBtn).toBeDisabled();
   });
 
@@ -270,7 +270,7 @@ describe("QrGeneratorRoute", () => {
       </MemoryRouter>,
     );
     await flushDebounce();
-    const downloadBtn = screen.getByRole("button", { name: /Generate & Download/i });
+    const downloadBtn = screen.getByRole("button", { name: /^Download (SVG|PNG)/i });
     expect(downloadBtn).not.toBeDisabled();
   });
 
@@ -335,7 +335,7 @@ describe("QrGeneratorRoute", () => {
     );
     await flushDebounce();
 
-    const downloadBtn = screen.getByRole("button", { name: /Generate & Download/i });
+    const downloadBtn = screen.getByRole("button", { name: /^Download (SVG|PNG)/i });
     await act(async () => {
       fireEvent.click(downloadBtn);
     });
@@ -351,7 +351,7 @@ describe("QrGeneratorRoute", () => {
     await clickTab("PNG");
     await flushDebounce();
 
-    const downloadBtn = screen.getByRole("button", { name: /Generate & Download/i });
+    const downloadBtn = screen.getByRole("button", { name: /^Download (SVG|PNG)/i });
     await act(async () => {
       fireEvent.click(downloadBtn);
     });

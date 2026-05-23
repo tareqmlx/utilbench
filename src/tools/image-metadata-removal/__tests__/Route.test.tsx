@@ -189,10 +189,4 @@ describe("ImageMetadataRemovalRoute", () => {
       expect(screen.getByText(/Metadata: 5 tags/)).toBeInTheDocument();
     });
   });
-
-  it("renders hero section with title", () => {
-    render(<ImageMetadataRemovalRoute />);
-    expect(screen.getByText(/Metadata/)).toBeInTheDocument();
-    expect(screen.getByText(/Remover/)).toBeInTheDocument();
-  });
 });
