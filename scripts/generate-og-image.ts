@@ -6,7 +6,7 @@ import satori from "satori";
 const distDir = join(import.meta.dirname, "..", "dist");
 
 const logoSvg =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none"><rect width="128" height="128" rx="24" fill="#6765f1"/><path d="M24 20L24 82Q24 108 64 108Q104 108 104 82L104 20L82 20L82 78L66 52Q64 48 62 52L46 78L46 20Z" fill="white"/></svg>';
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none"><rect width="128" height="128" rx="24" fill="#ffea88"/><path d="M24 20L24 82Q24 108 64 108Q104 108 104 82L104 20L82 20L82 78L66 52Q64 48 62 52L46 78L46 20Z" fill="#1f1a14"/></svg>';
 const logoDataUri = `data:image/svg+xml;base64,${Buffer.from(logoSvg).toString("base64")}`;
 
 async function generateOgImage() {
@@ -96,8 +96,8 @@ async function generateOgImage() {
                   style: {
                     padding: "8px 20px",
                     borderRadius: "24px",
-                    background: "rgba(103, 101, 241, 0.15)",
-                    color: "#6765f1",
+                    background: "rgba(255, 234, 136, 0.15)",
+                    color: "#ffea88",
                     fontSize: "18px",
                     fontWeight: 600,
                   },
