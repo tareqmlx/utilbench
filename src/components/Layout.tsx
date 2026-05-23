@@ -269,7 +269,6 @@ export function Layout() {
             style={{ borderColor: "#3a342b", color: "#a89a85" }}
           >
             <span>© 2026 {APP_NAME} · No cookies, no tracking</span>
-            <span>Set in Bricolage &amp; Geist Mono</span>
           </div>
         </div>
       </footer>
