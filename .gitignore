@@ -64,3 +64,8 @@ auth.json
 # Debug / scratch files
 inspect-jwt-decoder.mjs
 jwt-decoder-page.html
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example

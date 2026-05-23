@@ -4,7 +4,12 @@
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
-  "browserslist": ["> 0.5%", "last 2 versions", "Firefox ESR", "not dead"],
+  "browserslist": [
+    "> 0.5%",
+    "last 2 versions",
+    "Firefox ESR",
+    "not dead"
+  ],
   "scripts": {
     "dev": "bunx --bun vite",
     "build": "bunx --bun vite build && bun run generate:og && bun run generate:icons",
@@ -13,11 +18,12 @@
     "generate:icons": "bun run scripts/generate-icons.ts",
     "generate:font": "bun run scripts/generate-font-subset.ts",
     "prerender": "bun run scripts/prerender.ts",
-    "preview": "bunx --bun vite preview",
+    "preview": "bun run build && wrangler dev",
     "check": "bunx @biomejs/biome check ./src",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "deploy": "bun run build && wrangler deploy"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -60,6 +66,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@cloudflare/vite-plugin": "^1.38.0",
     "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/vite": "^4.1.0",
     "@testing-library/jest-dom": "^6.9.1",
@@ -82,6 +89,7 @@
     "typescript": "^5.7.3",
     "vite": "^6.2.0",
     "vitest": "^4.0.18",
-    "vitest-axe": "^0.1.0"
+    "vitest-axe": "^0.1.0",
+    "wrangler": "^4.94.0"
   }
 }
