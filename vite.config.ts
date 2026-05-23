@@ -6,6 +6,8 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import type { Plugin } from "vite";
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 const SITE_URL = "https://utilbench.example.com";
 
 function sitemapPlugin(): Plugin {
@@ -42,7 +44,7 @@ ${allRoutes.map((route) => `  <url>\n    <loc>${SITE_URL}${route}</loc>\n    <la
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), sitemapPlugin()],
+  plugins: [react(), tailwindcss(), sitemapPlugin(), cloudflare()],
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),
