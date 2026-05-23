@@ -23,6 +23,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
+    "test:coverage": "node node_modules/vitest/vitest.mjs run --coverage",
     "deploy": "bun run build && wrangler deploy"
   },
   "dependencies": {
