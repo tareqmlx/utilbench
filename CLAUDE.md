@@ -142,10 +142,10 @@ Scripts in `scripts/` run as part of the build pipeline:
 - **`generate-font-subset.ts`** — creates optimized font subsets
 - **`prerender.ts`** — prerenders routes using Puppeteer
 
-### Deployment (Netlify)
+### Deployment (Cloudflare Workers Assets)
 
-- `public/_redirects` — SPA fallback: `/* /index.html 200`
-- `public/_headers` — security headers (X-Frame-Options DENY, nosniff, strict referrer, permissions policy) and long-lived cache for assets/fonts
+- SPA fallback handled by Wrangler config: `not_found_handling: "single-page-application"` (auto-generated `wrangler.jsonc`). Do **not** add a `public/_redirects` with `/* /index.html 200` — Cloudflare's parser flags it as an infinite loop because it strips `.html`/`/index` automatically.
+- `public/_headers` — security headers (X-Frame-Options DENY, nosniff, strict referrer, permissions policy) and long-lived cache for assets/fonts. Cloudflare reads `_headers` the same as Netlify.
 
 ## Commit Style
 
