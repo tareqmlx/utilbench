@@ -115,25 +115,22 @@ export function Component() {
       <section className="wb-shell relative overflow-hidden pt-16 pb-12 sm:pt-20 sm:pb-16">
         {/* floating stickers — desktop only; would overlap headings/CTAs on mobile */}
         <div className="pointer-events-none hidden md:block">
-          <span
-            className="wb-sticker wb-sticker--pink absolute"
-            style={{ top: 56, left: "6%", transform: "rotate(-6deg)" }}
-          >
-            <span className="dot" />
-            {totalTools} utilities
+          <span className="wb-hero-sticker" style={{ top: 56, left: "6%" }}>
+            <span className="wb-sticker wb-sticker--pink wb-hero-sway wb-hero-sway--pink">
+              <span className="dot" />
+              {totalTools} utilities
+            </span>
           </span>
-          <span
-            className="wb-sticker wb-sticker--mint absolute"
-            style={{ top: 30, right: "8%", transform: "rotate(5deg)" }}
-          >
-            <span className="dot" style={{ background: "var(--grass)" }} />
-            private by default
+          <span className="wb-hero-sticker" style={{ top: 30, right: "8%" }}>
+            <span className="wb-sticker wb-sticker--mint wb-hero-sway wb-hero-sway--mint">
+              <span className="dot" style={{ background: "var(--grass)" }} />
+              private by default
+            </span>
           </span>
-          <span
-            className="wb-sticker wb-sticker--sky absolute"
-            style={{ bottom: 24, right: "4%", transform: "rotate(-4deg)" }}
-          >
-            ★ all free
+          <span className="wb-hero-sticker" style={{ bottom: 24, right: "4%" }}>
+            <span className="wb-sticker wb-sticker--sky wb-hero-sway wb-hero-sway--sky">
+              ★ all free
+            </span>
           </span>
         </div>
 
@@ -144,18 +141,17 @@ export function Component() {
             overflowWrap: "anywhere",
           }}
         >
-          <span className="block">A workbench</span>
-          <span className="block" style={{ color: "var(--tomato)" }}>
+          <span className="wb-hero-line wb-hero-line--1 block">A workbench</span>
+          <span className="wb-hero-line wb-hero-line--2 block" style={{ color: "var(--tomato)" }}>
             for the <em>browser</em>.
           </span>
           <span className="block">
             <span
-              className="inline-block px-4 pb-1 sm:px-5"
+              className="wb-hero-line wb-hero-line--3 px-4 pb-1 sm:px-5"
               style={{
                 background: "var(--lemon)",
                 border: "2px solid var(--ink)",
                 borderRadius: 18,
-                transform: "rotate(-2deg)",
                 boxShadow: "4px 4px 0 var(--ink)",
               }}
             >
@@ -165,25 +161,20 @@ export function Component() {
         </h1>
 
         <p
-          className="mx-auto mt-7 max-w-[62ch] text-center text-base leading-relaxed sm:text-lg"
+          className="wb-hero-sub mx-auto mt-7 max-w-[62ch] text-center text-base leading-relaxed sm:text-lg"
           style={{ color: "var(--ink-2)" }}
         >
           Utilbench is a friendly little toolbox of{" "}
-          <b
-            className="font-semibold"
-            style={{ background: "var(--mint)", padding: "2px 8px", borderRadius: 6 }}
-          >
-            {totalTools} developer utilities
-          </b>{" "}
-          — formatters, decoders, generators — all running on your device, none of them phoning
-          home. Pick a sticker and get to work.
+          <b className="wb-hl">{totalTools} developer utilities</b> — formatters, decoders,
+          generators — all running on your device, none of them phoning home. Pick a sticker and get
+          to work.
         </p>
 
         <div className="mt-9 flex flex-wrap justify-center gap-3">
-          <Link to="/tools" className="wb-btn">
+          <Link to="/tools" className="wb-btn wb-hero-cta wb-hero-cta--1">
             Browse the workbench →
           </Link>
-          <Link to="/privacy" className="wb-btn wb-btn--ghost">
+          <Link to="/privacy" className="wb-btn wb-btn--ghost wb-hero-cta wb-hero-cta--2">
             Read the privacy bit
           </Link>
         </div>
