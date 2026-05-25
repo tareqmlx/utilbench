@@ -621,6 +621,160 @@ body {
   transition: color 160ms ease, opacity 160ms ease;
 }
 
+/* ── Home hero choreography ───────────────────────────────────── */
+@keyframes wb-hero-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes wb-hero-lemon-drop {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -18px, 0) rotate(-8deg);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(-2deg);
+  }
+}
+.wb-hero-line,
+.wb-hero-sub,
+.wb-hero-cta,
+.wb-hero-sticker {
+  opacity: 0;
+  will-change: opacity, transform;
+}
+.wb-hero-line {
+  animation: wb-hero-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.wb-hero-line--1 {
+  animation-delay: 300ms;
+}
+.wb-hero-line--2 {
+  animation-delay: 440ms;
+}
+.wb-hero-line--3 {
+  animation: wb-hero-lemon-drop 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 580ms;
+  display: inline-block;
+  transform-origin: center;
+}
+.wb-hero-sub {
+  animation: wb-hero-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 780ms;
+}
+.wb-hero-cta {
+  animation: wb-hero-rise 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.wb-hero-cta--1 {
+  animation-delay: 940ms;
+}
+.wb-hero-cta--2 {
+  animation-delay: 1040ms;
+}
+
+/* Floating stickers: fade-in, then continuous gentle sway around each base rotation */
+.wb-hero-sticker {
+  position: absolute;
+  animation: wb-hero-sticker-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 200ms;
+}
+@keyframes wb-hero-sticker-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+/* Inner sticker carries the base rotation + idle sway. Wrapper holds position. */
+.wb-hero-sway {
+  display: inline-block;
+  transform-origin: center;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-fill-mode: backwards;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-delay: 1400ms;
+}
+.wb-hero-sway--pink {
+  animation-name: wb-sway-pink;
+  animation-duration: 5800ms;
+}
+.wb-hero-sway--mint {
+  animation-name: wb-sway-mint;
+  animation-duration: 6400ms;
+  animation-delay: 1600ms;
+}
+.wb-hero-sway--sky {
+  animation-name: wb-sway-sky;
+  animation-duration: 5400ms;
+  animation-delay: 1800ms;
+}
+@keyframes wb-sway-pink {
+  from {
+    transform: translate3d(0, 0, 0) rotate(-7.5deg);
+  }
+  to {
+    transform: translate3d(0, -4px, 0) rotate(-4.5deg);
+  }
+}
+@keyframes wb-sway-mint {
+  from {
+    transform: translate3d(0, 0, 0) rotate(3.5deg);
+  }
+  to {
+    transform: translate3d(0, -5px, 0) rotate(6.5deg);
+  }
+}
+@keyframes wb-sway-sky {
+  from {
+    transform: translate3d(0, 0, 0) rotate(-5.5deg);
+  }
+  to {
+    transform: translate3d(0, -3px, 0) rotate(-2.5deg);
+  }
+}
+
+/* Inline mint highlight: paints under the count as the hero settles */
+.wb-hl {
+  position: relative;
+  display: inline-block;
+  padding: 2px 8px;
+  font-weight: 600;
+  isolation: isolate;
+}
+.wb-hl::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--mint);
+  border-radius: 6px;
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: wb-hl-sweep 540ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 1240ms;
+  z-index: -1;
+}
+@keyframes wb-hl-sweep {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 /* ── Smooth scrolling for in-page anchor jumps ─────────────────── */
 html {
   scroll-behavior: smooth;
@@ -649,9 +803,21 @@ button[role="switch"] [data-state] {
   .wb-page,
   .wb-reveal,
   .animate-in,
-  .animate-out {
+  .animate-out,
+  .wb-hero-line,
+  .wb-hero-sub,
+  .wb-hero-cta,
+  .wb-hero-sticker,
+  .wb-hero-sway,
+  .wb-hl::before {
     animation: none !important;
     transition: none !important;
     opacity: 1 !important;
+  }
+  .wb-hl::before {
+    transform: scaleX(1) !important;
+  }
+  .wb-hero-line--3 {
+    transform: rotate(-2deg) !important;
   }
 }
