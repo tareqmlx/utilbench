@@ -77,7 +77,7 @@ function FeatBlock({
   return (
     <div
       ref={ref}
-      className="wb-reveal border-2 border-ink p-6"
+      className="wb-reveal border-2 border-ink p-7"
       style={{ background: "var(--bg-2)", borderRadius: 18 }}
     >
       <div className="wb-display" style={{ fontSize: 64, color: "var(--tomato)" }}>
@@ -86,7 +86,7 @@ function FeatBlock({
       <h4 className="wb-h3 mt-2" style={{ fontSize: 22 }}>
         {feat.title}
       </h4>
-      <p className="mt-1.5 text-[13.5px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+      <p className="mt-2 text-[13.5px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
         {feat.body}
       </p>
     </div>
@@ -171,7 +171,7 @@ export function Component() {
           Utilbench is a friendly little toolbox of{" "}
           <b
             className="font-semibold"
-            style={{ background: "var(--mint)", padding: "1px 6px", borderRadius: 6 }}
+            style={{ background: "var(--mint)", padding: "2px 8px", borderRadius: 6 }}
           >
             {totalTools} developer utilities
           </b>{" "}
@@ -195,14 +195,14 @@ export function Component() {
           className="flex flex-wrap items-end justify-between gap-4 pt-12 pb-6 wb-reveal"
           ref={workbenchHeaderRef}
         >
-          <div className="flex items-baseline gap-3.5">
+          <div className="flex items-baseline gap-3">
             <span
               className="rounded-full bg-ink px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.1em] text-paper"
               style={{ border: "2px solid var(--ink)" }}
             >
               § The workbench
             </span>
-            <h2 className="wb-h2" style={{ fontSize: "clamp(32px,4.5vw,48px)" }}>
+            <h2 className="wb-h2" style={{ fontSize: "clamp(28px,3.4vw,40px)" }}>
               Pick a tile, <em style={{ color: "var(--ink-3)" }}>start tinkering.</em>
             </h2>
           </div>
