@@ -234,7 +234,8 @@ Deployed on Cloudflare Workers Assets. Configuration:
 ## Project Docs
 
 - [`CLAUDE.md`](CLAUDE.md) — conventions and architecture notes for contributors and Claude Code
-- [`docs/design-system/`](docs/design-system) — design system reference
+- [`PRODUCT.md`](PRODUCT.md) — strategic context: users, purpose, brand personality, anti-references, design principles
+- [`DESIGN.md`](DESIGN.md) — visual design system: tokens, typography, elevation, components, do's and don'ts
 
 ## License
 
