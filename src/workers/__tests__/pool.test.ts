@@ -84,7 +84,7 @@ describe("WorkerPool", () => {
     handles = [];
     uuidCounter = 0;
     vi.stubGlobal("navigator", { hardwareConcurrency: 2 });
-    pool = new WorkerPool(new URL("http://localhost/worker.ts"));
+    pool = new WorkerPool(() => new Worker(new URL("http://localhost/worker.ts")));
   });
 
   afterEach(() => {
@@ -109,7 +109,7 @@ describe("WorkerPool", () => {
       cleanupPool();
 
       vi.stubGlobal("navigator", { hardwareConcurrency: 1 });
-      const smallPool = new WorkerPool(new URL("http://localhost/worker.ts"));
+      const smallPool = new WorkerPool(() => new Worker(new URL("http://localhost/worker.ts")));
       createdWorkers = [];
       const h1 = smallPool.dispatch("ping");
       h1.promise.catch(() => {});
@@ -117,7 +117,7 @@ describe("WorkerPool", () => {
       smallPool.terminate();
 
       vi.stubGlobal("navigator", { hardwareConcurrency: 16 });
-      const bigPool = new WorkerPool(new URL("http://localhost/worker.ts"));
+      const bigPool = new WorkerPool(() => new Worker(new URL("http://localhost/worker.ts")));
       createdWorkers = [];
       const h2 = bigPool.dispatch("ping");
       h2.promise.catch(() => {});
@@ -126,7 +126,7 @@ describe("WorkerPool", () => {
 
       // Re-create main pool for afterEach
       vi.stubGlobal("navigator", { hardwareConcurrency: 2 });
-      pool = new WorkerPool(new URL("http://localhost/worker.ts"));
+      pool = new WorkerPool(() => new Worker(new URL("http://localhost/worker.ts")));
     });
   });
 

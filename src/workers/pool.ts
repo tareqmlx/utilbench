@@ -1,3 +1,5 @@
+import DiffWorker from "./worker.ts?worker";
+
 export interface TaskMessage {
   id: string;
   type: string;
@@ -39,7 +41,7 @@ export interface DispatchHandle<T = unknown> {
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 export class WorkerPool {
-  private readonly workerUrl: URL;
+  private readonly workerFactory: () => Worker;
   private readonly poolSize: number;
   private workers: WorkerEntry[] = [];
   private initialized = false;
@@ -47,8 +49,8 @@ export class WorkerPool {
   private readonly queue: QueuedTask[] = [];
   private readonly pendingTasks = new Map<string, PendingTask>();
 
-  constructor(workerUrl: URL) {
-    this.workerUrl = workerUrl;
+  constructor(workerFactory: () => Worker) {
+    this.workerFactory = workerFactory;
     this.poolSize = Math.max(2, Math.min(4, navigator.hardwareConcurrency || 2));
   }
 
@@ -57,7 +59,7 @@ export class WorkerPool {
     this.initialized = true;
 
     for (let i = 0; i < this.poolSize; i++) {
-      const worker = new Worker(this.workerUrl, { type: "module" });
+      const worker = this.workerFactory();
       const entry: WorkerEntry = {
         worker,
         busy: false,
@@ -232,5 +234,4 @@ export class WorkerPool {
   }
 }
 
-const workerUrl = new URL("./worker.ts", import.meta.url);
-export const workerPool = new WorkerPool(workerUrl);
+export const workerPool = new WorkerPool(() => new DiffWorker());
