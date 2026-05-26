@@ -94,9 +94,7 @@ export function Layout() {
             >
               <Search className="size-3.5" strokeWidth={2.5} />
               <span>Open</span>
-              <kbd className="rounded-sm border border-ink/40 bg-paper/40 px-1 py-0.5 font-mono text-[10px] leading-none">
-                ⌘K
-              </kbd>
+              <kbd className="wb-kbd">⌘K</kbd>
             </button>
 
             <button
@@ -170,7 +168,7 @@ export function Layout() {
         <div className="wb-shell py-12 sm:py-14">
           <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
             <div>
-              <div
+              <h2
                 className="wb-display mb-2 text-paper"
                 style={{
                   fontSize: "clamp(28px,3.4vw,40px)",
@@ -179,7 +177,7 @@ export function Layout() {
                 }}
               >
                 Make something. Locally.
-              </div>
+              </h2>
               <p
                 className="mt-4 max-w-[34ch] text-[13.5px] leading-relaxed"
                 style={{ color: "#a89a85" }}
