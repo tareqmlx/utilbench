@@ -25,6 +25,7 @@ const URL_SCHEMA = {
 
 const SEARCH_INPUT_ID = "tool-search";
 const ANNOUNCE_DEBOUNCE_MS = 350;
+const SESSION_VISITED_KEY = "utilbench:tools-visited";
 
 const flavorCycle = [
   "wb-tile--pink",
@@ -36,8 +37,8 @@ const flavorCycle = [
   "wb-tile--bg3",
 ] as const;
 
-function tileFlavor(stableIndex: number) {
-  return flavorCycle[stableIndex % flavorCycle.length];
+function tileFlavor(index: number): string {
+  return flavorCycle[index % flavorCycle.length] ?? flavorCycle[0];
 }
 
 function ToolTile({
@@ -56,26 +57,25 @@ function ToolTile({
       className={`wb-tile ${flavor}`}
       style={{ ["--i" as string]: Math.min(index, 12) }}
     >
-      {tool.featured && <span className="pin">★ FEATURED</span>}
+      {tool.featured && (
+        <span className="pin">
+          <span aria-hidden="true">★ </span>FEATURED
+        </span>
+      )}
       <span className="icn">
         <Icon className="size-[22px]" strokeWidth={2} aria-hidden="true" />
       </span>
       <h3>{tool.name}</h3>
       <p>{tool.description}</p>
-      <span className="arrow">Open →</span>
+      <span className="arrow">
+        Open <span aria-hidden="true">→</span>
+      </span>
     </Link>
   );
 }
 
 export function Component() {
   const allTools = getAllTools();
-  const flavorBySlug = useMemo(() => {
-    const map = new Map<string, string>();
-    allTools.forEach((tool, i) => {
-      map.set(tool.slug, tileFlavor(i));
-    });
-    return map;
-  }, [allTools]);
   const [urlState, setUrlState] = useUrlState(URL_SCHEMA);
   const activeCategory: CategoryKey = VALID_CATEGORIES.has(urlState.cat as CategoryKey)
     ? (urlState.cat as CategoryKey)
@@ -126,8 +126,19 @@ export function Component() {
     return () => clearTimeout(t);
   }, [filteredTools.length]);
 
+  const [animateEntrance] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      if (sessionStorage.getItem(SESSION_VISITED_KEY)) return false;
+      sessionStorage.setItem(SESSION_VISITED_KEY, "1");
+    } catch {
+      // sessionStorage unavailable (private mode quotas, etc.) — animate anyway
+    }
+    return true;
+  });
+
   return (
-    <div className="wb-shell pt-10 pb-16">
+    <div className={`wb-shell pt-10 pb-16${animateEntrance ? "" : " wb-tools-skipped"}`}>
       <SEOHead
         title="All Tools | Utilbench"
         description={`${allTools.length} local-only developer tools: JSON formatter, JWT decoder, Base64, QR generator, image resizer, and more. No tracking, runs in your browser.`}
@@ -163,9 +174,8 @@ export function Component() {
             All <span className="text-tomato">tools</span>.
           </h1>
           <p className="wb-tools-rise wb-tools-rise--2 max-w-[60ch] text-base leading-relaxed text-ink-2">
-            Every utility on the workbench, in one searchable index.{" "}
-            <strong className="wb-hl">{allTools.length} tools</strong> across three categories, all
-            running on your device.
+            Every utility on the workbench, searchable.{" "}
+            <strong className="wb-hl">{allTools.length} tools</strong>, all running on your device.
           </p>
           <div className="wb-tools-rise wb-tools-rise--3 mt-4 flex flex-wrap gap-2.5">
             <span className="wb-sticker wb-sticker--mint">
@@ -173,8 +183,7 @@ export function Component() {
               all-local
             </span>
             <span className="wb-sticker wb-sticker--sky">
-              <span aria-hidden="true" className="dot" />
-              ⌘K to search
+              <span aria-hidden="true">⌘K</span> to search
             </span>
           </div>
         </div>
@@ -186,7 +195,7 @@ export function Component() {
           htmlFor={SEARCH_INPUT_ID}
           className="flex w-full max-w-md items-center gap-2.5 rounded border-2 border-ink bg-paper px-3 py-2.5 text-sm shadow-pop-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-tomato"
         >
-          <Search className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
+          <Search className="size-5 shrink-0 sm:size-4" strokeWidth={2} aria-hidden="true" />
           <input
             id={SEARCH_INPUT_ID}
             type="search"
@@ -235,12 +244,7 @@ export function Component() {
       {filteredTools.length > 0 ? (
         <div className="wb-tools-grid mt-9 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredTools.map((tool, i) => (
-            <ToolTile
-              key={tool.slug}
-              tool={tool}
-              flavor={flavorBySlug.get(tool.slug) ?? flavorCycle[0]}
-              index={i}
-            />
+            <ToolTile key={tool.slug} tool={tool} flavor={tileFlavor(i)} index={i} />
           ))}
         </div>
       ) : (

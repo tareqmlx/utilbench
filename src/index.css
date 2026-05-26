@@ -983,6 +983,18 @@ button[role="switch"] [data-state] {
   animation-delay: calc(var(--i, 0) * 28ms);
 }
 
+/* Skip /tools entrance on repeat in-session visits. Keeps reduced-motion
+   parity: content fully visible at rest, hero icon at its final -4deg tilt. */
+.wb-tools-skipped .wb-tools-rise,
+.wb-tools-skipped .wb-tools-icon,
+.wb-tools-skipped .wb-tools-grid > .wb-tile {
+  animation: none !important;
+  opacity: 1 !important;
+}
+.wb-tools-skipped .wb-tools-icon {
+  transform: rotate(-4deg);
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   html {
