@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "json-schema-generator",
   description: "Generate JSON Schema from sample JSON data.",
   seoDescription:
-    "Free JSON Schema generator. Automatically create JSON Schema definitions from sample JSON data — supports Draft-07 with type inference and nested object detection.",
+    "Free JSON Schema generator. Automatically create JSON Schema definitions from sample JSON data. Supports Draft-07 with type inference and nested object detection.",
   category: "data",
   tags: [
     "json",

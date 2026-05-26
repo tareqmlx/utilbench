@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "lottie-previewer",
   description: "Preview and inspect Lottie animation files.",
   seoDescription:
-    "Free Lottie animation previewer and inspector. Upload Lottie JSON files to preview animations, inspect layers, and control playback — runs entirely in your toolbox.",
+    "Free Lottie animation previewer and inspector. Upload Lottie JSON files to preview animations, inspect layers, and control playback. Runs entirely in your toolbox.",
   category: "media",
   tags: [
     "lottie",

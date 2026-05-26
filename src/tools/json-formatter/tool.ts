@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "json-formatter",
   description: "Format, validate, and beautify JSON with syntax highlighting.",
   seoDescription:
-    "Free JSON formatter, validator, and beautifier with syntax highlighting. Paste or upload JSON to format, minify, and validate — an essential Utilbench toolbox utility.",
+    "Free JSON formatter, validator, and beautifier with syntax highlighting. Paste or upload JSON to format, minify, and validate. An essential Utilbench toolbox utility.",
   category: "data",
   tags: ["json", "format", "validate", "beautify", "minify", "syntax", "pretty-print", "lint"],
   featured: true,

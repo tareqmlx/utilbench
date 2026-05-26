@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "favicon-generator",
   description: "Generate favicons in all required sizes from a single image.",
   seoDescription:
-    "Free favicon generator that creates all required sizes from a single image. Generate ICO, PNG, and SVG favicons for your website — processed entirely in your toolbox.",
+    "Free favicon generator that creates all required sizes from a single image. Generate ICO, PNG, and SVG favicons for your website. Processed entirely in your toolbox.",
   category: "media",
   tags: ["favicon", "icon", "generate", "image", "ico", "web-design", "branding", "website"],
   featured: false,

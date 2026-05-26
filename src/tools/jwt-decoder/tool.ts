@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "jwt-decoder",
   description: "Decode and inspect JWT tokens without sending data to a server.",
   seoDescription:
-    "Free JWT decoder and inspector. Decode JSON Web Tokens to view header, payload, and expiration — fully private, your tokens never leave your device.",
+    "Free JWT decoder and inspector. Decode JSON Web Tokens to view header, payload, and expiration. Fully private: your tokens never leave your device.",
   category: "data",
   tags: [
     "jwt",

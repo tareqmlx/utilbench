@@ -35,7 +35,7 @@ export function buildSoftwareApplicationSchema(tool: ToolDefinition): Record<str
   return {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: `${tool.name} — ${APP_NAME}`,
+    name: `${tool.name}: ${APP_NAME}`,
     description: tool.seoDescription ?? tool.description,
     url: `${SITE_URL}/tools/${tool.slug}`,
     applicationCategory: "DeveloperApplication",

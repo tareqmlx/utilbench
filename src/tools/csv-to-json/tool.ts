@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "csv-to-json",
   description: "Convert CSV files to JSON format with customizable options.",
   seoDescription:
-    "Free CSV to JSON converter with customizable delimiters and options. Transform spreadsheet and tabular data into structured JSON format — processes locally, no uploads required.",
+    "Free CSV to JSON converter with customizable delimiters and options. Transform spreadsheet and tabular data into structured JSON format. Processes locally, no uploads required.",
   category: "data",
   tags: ["csv", "json", "convert", "table", "spreadsheet", "data-transform", "import", "export"],
   featured: false,

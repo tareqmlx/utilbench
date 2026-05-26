@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "yaml-to-json",
   description: "Convert YAML data to JSON format.",
   seoDescription:
-    "Free YAML to JSON converter. Transform YAML configuration files into JSON format with validation and error highlighting — essential for DevOps and configuration management.",
+    "Free YAML to JSON converter. Transform YAML configuration files into JSON format with validation and error highlighting. Essential for DevOps and configuration management.",
   category: "data",
   tags: [
     "yaml",

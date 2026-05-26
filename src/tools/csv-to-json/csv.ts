@@ -161,6 +161,6 @@ export function parseCsvToJson(csv: string, options: CsvToJsonOptions): CsvToJso
     const data = buildJsonFromRows(rows, options);
     return { result: JSON.stringify(data, null, 2), error: null };
   } catch {
-    return { result: "", error: "Failed to parse CSV — check your input format" };
+    return { result: "", error: "Failed to parse CSV. Check your input format." };
   }
 }

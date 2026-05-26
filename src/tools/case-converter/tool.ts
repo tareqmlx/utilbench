@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "case-converter",
   description: "Convert text between camelCase, snake_case, and more.",
   seoDescription:
-    "Free text case converter tool. Transform between camelCase, snake_case, PascalCase, kebab-case, UPPER CASE, Title Case, and more — fast and works offline.",
+    "Free text case converter tool. Transform between camelCase, snake_case, PascalCase, kebab-case, UPPER CASE, Title Case, and more. Fast, works offline.",
   category: "text",
   tags: [
     "case",

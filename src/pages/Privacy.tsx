@@ -7,7 +7,7 @@ const sections = [
   {
     label: "§ 01",
     title: "The short version",
-    body: `${APP_NAME} is built for privacy. Every tool runs entirely in your browser — your files, text, and data never leave your device. We don't collect personal information, we don't use cookies, and we don't track you.`,
+    body: `${APP_NAME} is built for privacy. Every tool runs entirely in your browser; your files, text, and data never leave your device. We don't collect personal information, we don't use cookies, and we don't track you.`,
   },
   {
     label: "§ 02",
@@ -17,12 +17,12 @@ const sections = [
   {
     label: "§ 03",
     title: "No data collection",
-    body: "We do not collect, store, or transmit any personal data — no files, no input text, no name or email, no IP addresses, no device fingerprints.",
+    body: "We do not collect, store, or transmit any personal data: no files, no input text, no name or email, no IP addresses, no device fingerprints.",
   },
   {
     label: "§ 04",
     title: "Cookies & tracking",
-    body: `${APP_NAME} does not use cookies, analytics scripts, or any third-party tracking. The only local storage used is for tool preferences you set yourself (e.g. last-used mode, formatting options) — these stay on your device and are never sent anywhere.`,
+    body: `${APP_NAME} does not use cookies, analytics scripts, or any third-party tracking. The only local storage used is for tool preferences you set yourself (e.g. last-used mode, formatting options); these stay on your device and are never sent anywhere.`,
   },
   {
     label: "§ 05",
@@ -47,7 +47,7 @@ export function Component() {
       <JsonLd
         data={buildWebPageSchema(
           "Privacy Policy",
-          "Utilbench privacy policy — no data collection, no cookies, no tracking.",
+          "Utilbench privacy policy. No data collection, no cookies, no tracking.",
           "/privacy",
         )}
       />
@@ -73,7 +73,7 @@ export function Component() {
             The privacy <em className="text-tomato">bit</em>.
           </h1>
           <p className="max-w-[60ch] text-[16px] leading-relaxed text-ink-2">
-            Last updated: March 15, 2026. Short version below — even shorter version: nothing leaves
+            Last updated: March 15, 2026. Short version below, even shorter version: nothing leaves
             your browser.
           </p>
           <div className="mt-4 flex flex-wrap gap-2.5">

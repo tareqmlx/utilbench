@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "markdown-preview",
   description: "Preview Markdown with live rendering and syntax highlighting.",
   seoDescription:
-    "Free Markdown previewer with live rendering and syntax highlighting. Write and preview Markdown in real-time with GitHub-flavored Markdown support — great for README editing.",
+    "Free Markdown previewer with live rendering and syntax highlighting. Write and preview Markdown in real-time with GitHub-flavored Markdown support. Great for README editing.",
   category: "text",
   tags: ["markdown", "preview", "render", "document", "readme", "gfm", "editor"],
   featured: false,

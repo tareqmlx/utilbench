@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "diff-checker",
   description: "Compare two texts and highlight the differences.",
   seoDescription:
-    "Free online diff checker and text comparison tool. Compare two blocks of text side-by-side with highlighted differences — ideal for reviewing changes and document comparison.",
+    "Free online diff checker and text comparison tool. Compare two blocks of text side-by-side with highlighted differences. Ideal for reviewing changes and document comparison.",
   category: "text",
   tags: ["diff", "compare", "text", "merge", "review", "side-by-side", "changelog", "patch"],
   featured: false,

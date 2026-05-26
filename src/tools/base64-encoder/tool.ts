@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "base64-encoder",
   description: "Encode and decode Base64 strings.",
   seoDescription:
-    "Free online Base64 encoder and decoder. Convert text to and from Base64 format instantly — runs locally, no data sent to servers.",
+    "Free online Base64 encoder and decoder. Convert text to and from Base64 format instantly. Runs locally, no data sent to servers.",
   category: "data",
   tags: ["base64", "encode", "decode", "converter", "online-tool"],
   featured: false,

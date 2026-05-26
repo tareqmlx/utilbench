@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "lorem-ipsum",
   description: "Generate placeholder text for your designs and mockups.",
   seoDescription:
-    "Free Lorem Ipsum generator. Generate customizable placeholder text by paragraphs, sentences, or words — perfect for mockups, prototypes, and design projects.",
+    "Free Lorem Ipsum generator. Generate customizable placeholder text by paragraphs, sentences, or words. Perfect for mockups, prototypes, and design projects.",
   category: "text",
   tags: ["lorem", "ipsum", "placeholder", "text", "dummy-text", "mockup", "design", "prototype"],
   featured: false,

@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "qr-generator",
   description: "Generate QR codes from text, URLs, or structured data.",
   seoDescription:
-    "Free QR code generator. Create QR codes from text, URLs, WiFi credentials, or vCards — download as PNG or SVG with customizable size and error correction levels.",
+    "Free QR code generator. Create QR codes from text, URLs, WiFi credentials, or vCards. Download as PNG or SVG with customizable size and error correction levels.",
   category: "media",
   tags: [
     "qr",

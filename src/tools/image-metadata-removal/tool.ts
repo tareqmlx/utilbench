@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "image-metadata-removal",
   description: "Remove EXIF, GPS, and camera metadata from images locally.",
   seoDescription:
-    "Free image metadata remover. Strip EXIF, GPS location, camera info, and personal data from photos — protects your privacy with 100% local processing, no uploads.",
+    "Free image metadata remover. Strip EXIF, GPS location, camera info, and personal data from photos. Protects your privacy with 100% local processing, no uploads.",
   category: "media",
   tags: ["image", "metadata", "exif", "privacy", "gps", "strip", "photo", "location", "security"],
   featured: false,

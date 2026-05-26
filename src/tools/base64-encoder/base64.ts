@@ -25,7 +25,7 @@ export function convert(text: string, mode: Mode): { result: string; error: stri
       result: "",
       error:
         mode === "decode"
-          ? "Invalid Base64 string — check for typos or missing padding"
+          ? "Invalid Base64 string. Check for typos or missing padding."
           : "Encoding failed",
     };
   }

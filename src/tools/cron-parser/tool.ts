@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "cron-parser",
   description: "Parse and explain cron expressions in plain English.",
   seoDescription:
-    "Free cron expression parser and explainer. Understand cron schedules in plain English, preview upcoming run times, and validate crontab syntax — all locally in your toolbox.",
+    "Free cron expression parser and explainer. Understand cron schedules in plain English, preview upcoming run times, and validate crontab syntax. All locally in your toolbox.",
   category: "text",
   tags: ["cron", "schedule", "parse", "time", "crontab", "job-scheduler", "unix", "recurring"],
   featured: true,

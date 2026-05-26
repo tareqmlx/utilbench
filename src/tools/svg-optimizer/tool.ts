@@ -5,7 +5,7 @@ export const tool: ToolDefinition = {
   slug: "svg-optimizer",
   description: "Optimize and minify SVG files while preserving visual quality.",
   seoDescription:
-    "Free SVG optimizer and minifier. Reduce SVG file size by removing unnecessary metadata, comments, and redundant attributes — powered by SVGO, runs locally in your toolbox.",
+    "Free SVG optimizer and minifier. Reduce SVG file size by removing unnecessary metadata, comments, and redundant attributes. Powered by SVGO, runs locally in your toolbox.",
   category: "media",
   tags: ["svg", "optimize", "minify", "vector", "svgo", "compress", "clean", "web-performance"],
   featured: false,
