@@ -161,31 +161,74 @@ body {
   color: var(--ink);
 }
 
+/* ── Focus-visible: single tomato ring, every interactive surface ── */
+:where(
+    .wb-btn,
+    .wb-tile,
+    .wb-chip,
+    .wb-sticker,
+    .wb-kbd,
+    a,
+    button,
+    [role="button"],
+    summary
+  ):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.wb-tile:focus-visible,
+.wb-panel:focus-visible {
+  outline-offset: 3px;
+}
+
 /* ── Workbench utility classes ──────────────────────────────────── */
 
 .wb-display {
   font-family: var(--font-display);
   font-weight: 800;
+  font-size: clamp(40px, 9vw, 148px);
   letter-spacing: -0.04em;
   line-height: 0.92;
+  overflow-wrap: anywhere;
 }
 .wb-h1 {
   font-family: var(--font-display);
   font-weight: 800;
+  font-size: clamp(32px, 4.5vw, 48px);
   letter-spacing: -0.035em;
   line-height: 0.96;
 }
 .wb-h2 {
   font-family: var(--font-display);
   font-weight: 800;
+  font-size: clamp(28px, 3.4vw, 40px);
   letter-spacing: -0.03em;
   line-height: 1;
 }
 .wb-h3 {
   font-family: var(--font-display);
   font-weight: 700;
+  font-size: 22px;
   letter-spacing: -0.02em;
   line-height: 1.1;
+}
+/* Display numeral (feature blocks): tomato, 64px Bricolage */
+.wb-feat-num {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 64px;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  color: var(--tomato);
+}
+/* Footer headline: same clamp as .wb-h2 but slightly looser line-height
+   and tracking — the footer voice is calmer than a section opener. */
+.wb-footer-headline {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(28px, 3.4vw, 40px);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
 }
 .wb-h4 {
   font-family: var(--font-display);
@@ -348,6 +391,13 @@ body {
   background: var(--ink);
   color: var(--bg);
 }
+@media (max-width: 640px) {
+  .wb-chip {
+    padding: 11px 16px;
+    min-height: 44px;
+    font-size: 13.5px;
+  }
+}
 
 /* Tile (sticker card) */
 .wb-tile {
@@ -432,6 +482,9 @@ body {
   background: var(--ink);
   color: var(--bg);
 }
+.wb-tile--lg h3 {
+  font-size: 32px;
+}
 .wb-tile--ink h3,
 .wb-tile--ink p,
 .wb-tile--ink .arrow {
@@ -463,6 +516,15 @@ body {
 .wb-panel--ink {
   background: var(--ink);
   color: var(--bg);
+}
+
+/* Hero lemon tag — the third hero line "No servers needed." block.
+   Same vocabulary as .wb-sticker--lemon but sized for display type. */
+.wb-hero-tag {
+  background: var(--lemon);
+  border: var(--bw) solid var(--ink);
+  border-radius: var(--rad-lg);
+  box-shadow: 4px 4px 0 var(--ink);
 }
 
 /* KBD */
@@ -592,7 +654,8 @@ body {
     transform: translate3d(0, -6px, 0);
   }
 }
-.wb-page {
+.wb-page[data-phase="enter"],
+.wb-page[data-phase="exit"] {
   will-change: opacity, transform;
 }
 .wb-page[data-phase="enter"] {
@@ -603,10 +666,15 @@ body {
   pointer-events: none;
 }
 
-/* ── Scroll reveal (opacity-only to avoid hover-transform conflict) */
+/* ── Scroll reveal (opacity-only to avoid hover-transform conflict).
+   Baseline 0.001 instead of 0 keeps tiles paint-visible if JS fails
+   to attach the observer (no-JS, hydration window). Transition
+   from 0.001 to 1 is visually indistinguishable from 0 to 1. */
 .wb-reveal {
-  opacity: 0;
+  opacity: 0.001;
   transition: opacity 320ms ease-out;
+}
+.wb-reveal:not(.is-revealed) {
   will-change: opacity;
 }
 .wb-reveal.is-revealed {
@@ -718,7 +786,7 @@ body {
 .wb-hero-sway {
   display: inline-block;
   transform-origin: center;
-  animation-iteration-count: infinite;
+  animation-iteration-count: 4;
   animation-direction: alternate;
   animation-fill-mode: backwards;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
