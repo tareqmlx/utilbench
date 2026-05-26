@@ -8,6 +8,8 @@ colors:
   ink: "#1f1a14"
   ink-2: "#4a4138"
   ink-3: "#786b5b"
+  ink-muted: "#a89a85"
+  ink-divider: "#3a342b"
   tomato: "#ff6a4a"
   lemon: "#ffea88"
   grass: "#4a8a55"
@@ -177,6 +179,14 @@ A paper-and-pastel palette anchored by warm cream, locked to a single ink, and a
 - **Ink** (`#1f1a14`): The single text, border, and primary-fill color. A warm brown-black, never `#000`.
 - **Ink 2** (`#4a4138`): Body copy on tinted tiles; secondary prose.
 - **Ink 3** (`#786b5b`): Muted captions, pin labels on tiles, italic emphasis in display headlines.
+
+### On-Ink Companions
+A two-step warm-taupe pair reserved for surfaces filled with `ink` (`#1f1a14`) — the global footer, `.wb-panel--ink`, `.wb-tile--ink`, and any future ink-on-ink inversion. These are *not* extensions of the `ink-2` / `ink-3` scale (which is muted ink **on paper**); they are their on-ink mirrors.
+
+- **Ink Muted** (`--ink-muted`, `#a89a85`): Muted text on ink — section labels (`wb-meta` in the footer), captions, low-priority mono chips (`No cookies`, `No tracking`), the copyright line. Plays the role `ink-3` plays on paper, tuned for legibility against the brown-black surface. Apply via `text-ink-muted`.
+- **Ink Divider** (`--ink-divider`, `#3a342b`): The only divider color permitted on ink fills — currently the hairline above the footer copyright. Distinct from `--rule` (`#1f1a14`), which is the divider on paper. Apply via `border-ink-divider`.
+
+**Rule.** Never use `ink-muted` or `ink-divider` on paper surfaces — they go invisible. Never substitute `ink-2` / `ink-3` for text on ink — they go invisible the other way. The companion pair exists precisely so the one-ink discipline survives the inversion.
 
 ### Named Rules
 

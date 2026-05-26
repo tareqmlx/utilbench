@@ -64,6 +64,8 @@
   --color-lemon: var(--lemon);
   --color-tomato: var(--tomato);
   --color-grass: var(--grass);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-divider: var(--ink-divider);
 }
 
 :root {
@@ -74,6 +76,11 @@
   --ink: #1f1a14;
   --ink-2: #4a4138;
   --ink-3: #786b5b;
+  /* On-ink companions: muted text + soft rule for use on ink-fill surfaces
+     (footer, .wb-panel--ink, .wb-tile--ink). Distinct from ink-2/ink-3 which
+     are muted ink ON paper. */
+  --ink-muted: #a89a85;
+  --ink-divider: #3a342b;
   --rule: #1f1a14;
   --pink: #ffc8d8;
   --lilac: #d8c8ff;
