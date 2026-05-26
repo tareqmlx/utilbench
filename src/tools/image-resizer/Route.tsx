@@ -194,7 +194,7 @@ export default function ImageResizerRoute() {
           const toAdd = newItems.length > available ? newItems.slice(0, available) : newItems;
           if (toAdd.length < newItems.length) {
             setWarning(
-              `Only ${toAdd.length} of ${newItems.length} files added — queue limit is ${MAX_QUEUE_SIZE}.`,
+              `Only ${toAdd.length} of ${newItems.length} files added. Queue limit is ${MAX_QUEUE_SIZE}.`,
             );
           }
           // Set defaults from first actually-added item
@@ -281,7 +281,7 @@ export default function ImageResizerRoute() {
   const handleToggleAspectLock = useCallback(() => {
     setAspectRatioLocked((prev) => {
       if (!prev) {
-        // Locking — compute ratio from current dimensions
+        // Locking: compute ratio from current dimensions
         setAspectRatio(width / height);
       }
       return !prev;
@@ -746,7 +746,7 @@ export default function ImageResizerRoute() {
             <CardContent className="flex min-h-[400px] flex-1 items-center justify-center bg-muted p-6">
               {previewUrl ? (
                 <img
-                  className="max-h-[500px] rounded-lg border border-border object-contain shadow-lg"
+                  className="max-h-[500px] rounded-lg border-2 border-ink object-contain shadow-pop-3"
                   src={previewUrl}
                   alt="Resized preview"
                 />

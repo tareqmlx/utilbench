@@ -139,7 +139,7 @@ export default function JsonFormatterRoute() {
               <Textarea
                 value={input}
                 onChange={handleInputChange}
-                className={`h-full min-h-48 resize-none sm:min-h-80 font-mono text-sm shadow-inner transition-all ${inputRingClass}`}
+                className={`h-full min-h-48 resize-none sm:min-h-80 font-mono text-sm transition-all ${inputRingClass}`}
                 placeholder={
                   'Paste your raw JSON here... e.g. {"status":"success","data":{"id":1}}'
                 }
@@ -168,7 +168,7 @@ export default function JsonFormatterRoute() {
               <Textarea
                 readOnly
                 value={output}
-                className="h-full min-h-48 resize-none sm:min-h-80 bg-muted font-mono text-sm text-primary shadow-inner"
+                className="h-full min-h-48 resize-none sm:min-h-80 bg-muted font-mono text-sm text-primary"
                 placeholder="Your beautified JSON will appear here..."
               />
             </div>

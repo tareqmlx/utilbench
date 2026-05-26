@@ -427,7 +427,7 @@ export default function FaviconGeneratorRoute() {
                   <p className="mb-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     iOS Icon (180x180)
                   </p>
-                  <div className="flex aspect-square w-24 items-center justify-center overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
+                  <div className="flex aspect-square w-24 items-center justify-center overflow-hidden rounded-2xl border-2 border-ink bg-card shadow-pop-3">
                     {previewUrls[180] ? (
                       <img
                         src={previewUrls[180]}
@@ -445,7 +445,7 @@ export default function FaviconGeneratorRoute() {
                   <p className="mb-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Android (192x192)
                   </p>
-                  <div className="flex aspect-square w-24 items-center justify-center overflow-hidden rounded-full border border-border bg-card shadow-xl">
+                  <div className="flex aspect-square w-24 items-center justify-center overflow-hidden rounded-full border-2 border-ink bg-card shadow-pop-3">
                     {previewUrls[192] ? (
                       <img
                         src={previewUrls[192]}

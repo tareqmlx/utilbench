@@ -154,7 +154,7 @@ export default function SvgOptimizerRoute() {
     const toAdd = available < svgFiles.length ? svgFiles.slice(0, available) : svgFiles;
     if (toAdd.length < svgFiles.length) {
       setWarning(
-        `Only ${toAdd.length} of ${svgFiles.length} files added — queue limit is ${MAX_QUEUE_SIZE}.`,
+        `Only ${toAdd.length} of ${svgFiles.length} files added. Queue limit is ${MAX_QUEUE_SIZE}.`,
       );
     }
     const newFiles: QueuedFile[] = toAdd.map((f) => ({
@@ -381,7 +381,7 @@ export default function SvgOptimizerRoute() {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <div className="flex max-w-[480px] flex-col items-center gap-3">
+            <div className="flex flex-col items-center gap-3">
               <div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-110">
                 <Upload className="h-8 w-8" />
               </div>

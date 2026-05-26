@@ -47,7 +47,7 @@ export function ToolCard({ tool }: ToolCardProps) {
         flavor.bg,
       )}
     >
-      <span className="absolute right-4 top-4 font-mono text-[10px] uppercase tracking-wider text-ink-3">
+      <span className="absolute right-4 top-4 font-mono text-[10px] uppercase tracking-wider text-ink-2">
         {categoryLabels[tool.category]}
       </span>
 

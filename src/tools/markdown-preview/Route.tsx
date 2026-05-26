@@ -190,7 +190,7 @@ export default function MarkdownPreviewRoute() {
       <ErrorAlert error={error} className="mb-4 mt-0" />
 
       <TwoPane
-        className="gap-0 overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+        className="gap-0 overflow-hidden rounded-lg border-2 border-ink bg-card shadow-pop-3"
         left={
           <div className="flex flex-col border-b border-border lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between border-b border-border bg-muted px-4 py-2">

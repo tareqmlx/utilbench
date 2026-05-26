@@ -94,6 +94,10 @@ function extractTimeClaims(payload: Record<string, unknown>): TimeClaim[] {
   return claims;
 }
 
+const HEADER_STICKER = { tone: "mint", text: "Algorithm & Type" } as const;
+const PAYLOAD_STICKER = { tone: "lilac", text: "Data & Claims" } as const;
+const SIGNATURE_STICKER = { tone: "sky", text: "Integrity Check" } as const;
+
 const ALGORITHM_MAP: Record<string, string> = {
   HS256: "HMACSHA256",
   HS384: "HMACSHA384",
@@ -319,11 +323,11 @@ export default function JwtDecoderRoute() {
         <div className="space-y-7 lg:col-span-7">
           <ResultPanel
             label="Header"
-            sticker={{ tone: "mint", text: "Algorithm & Type" }}
+            sticker={HEADER_STICKER}
             copyHandler={jwt ? handleCopyHeader : undefined}
             copied={copiedHeader}
             empty={!jwt}
-            emptyHint={isIdle ? "Enter a token to see the header" : "—"}
+            emptyHint={isIdle ? "Enter a token to see the header" : "(empty)"}
           >
             {jwt && <JsonBlock data={jwt.header} />}
           </ResultPanel>
@@ -331,11 +335,11 @@ export default function JwtDecoderRoute() {
           <div className="space-y-3">
             <ResultPanel
               label="Payload"
-              sticker={{ tone: "lilac", text: "Data & Claims" }}
+              sticker={PAYLOAD_STICKER}
               copyHandler={jwt ? handleCopyPayload : undefined}
               copied={copiedPayload}
               empty={!jwt}
-              emptyHint={isIdle ? "Enter a token to see the payload" : "—"}
+              emptyHint={isIdle ? "Enter a token to see the payload" : "(empty)"}
             >
               {jwt && <JsonBlock data={jwt.payload} />}
             </ResultPanel>
@@ -362,9 +366,9 @@ export default function JwtDecoderRoute() {
 
           <ResultPanel
             label="Signature"
-            sticker={{ tone: "sky", text: "Integrity Check" }}
+            sticker={SIGNATURE_STICKER}
             empty={!jwt}
-            emptyHint={isIdle ? "Enter a token to see the signature" : "—"}
+            emptyHint={isIdle ? "Enter a token to see the signature" : "(empty)"}
           >
             {jwt && (
               <div className="break-all font-mono text-[13px] leading-relaxed text-ink">

@@ -153,11 +153,11 @@ features:
             />
             <div className="group relative">
               {output ? (
-                <pre className="min-h-[500px] w-full overflow-auto rounded-md border border-border bg-muted p-6 font-mono text-sm leading-relaxed shadow-inner">
+                <pre className="min-h-[500px] w-full overflow-auto rounded-md border-2 border-ink bg-muted p-6 font-mono text-sm leading-relaxed">
                   <code>{output}</code>
                 </pre>
               ) : (
-                <div className="min-h-[500px] w-full overflow-auto rounded-md border border-border bg-muted p-6 font-mono text-sm leading-relaxed text-muted-foreground shadow-inner italic">
+                <div className="min-h-[500px] w-full overflow-auto rounded-md border-2 border-ink bg-muted p-6 font-mono text-sm leading-relaxed text-muted-foreground italic">
                   {"{"}
                   <br />
                   &nbsp;&nbsp;&quot;status&quot;: &quot;Waiting for input...&quot;,

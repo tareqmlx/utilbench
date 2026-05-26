@@ -85,7 +85,7 @@ export default function ImageMetadataRemovalRoute() {
     }
     if (newItems.length > available) {
       setWarning(
-        `Only ${available} of ${newItems.length} files added — queue limit is ${MAX_QUEUE_SIZE}.`,
+        `Only ${available} of ${newItems.length} files added. Queue limit is ${MAX_QUEUE_SIZE}.`,
       );
       newItems.splice(available);
     }
@@ -411,7 +411,7 @@ export default function ImageMetadataRemovalRoute() {
           <div className="flex flex-col items-center gap-6 border-t border-border py-6">
             <Button
               size="lg"
-              className="w-full max-w-md py-4 text-lg font-bold shadow-xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full max-w-md py-4 text-lg font-bold shadow-pop-cta transition-all hover:scale-[1.02] active:scale-[0.98]"
               onClick={handleProcess}
               disabled={isProcessing || readyCount === 0}
             >

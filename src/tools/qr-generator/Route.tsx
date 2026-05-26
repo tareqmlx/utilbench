@@ -529,7 +529,7 @@ export default function QrGeneratorRoute() {
         </div>
 
         <div className="flex flex-col items-center justify-center lg:col-span-5">
-          <Card className="group relative w-full max-w-sm overflow-hidden p-4 shadow-xl sm:p-8">
+          <Card className="group relative w-full max-w-sm overflow-hidden p-4 shadow-pop-3 sm:p-8">
             <div className="absolute inset-0 bg-primary/5 opacity-0 transition-opacity group-hover:opacity-100" />
 
             <div className="relative z-10 flex flex-col items-center">
@@ -541,7 +541,7 @@ export default function QrGeneratorRoute() {
                 ref={previewRef}
                 className="relative flex aspect-square w-full items-center justify-center rounded-lg border-4 border-muted bg-muted p-6"
               >
-                <div className="flex h-full w-full items-center justify-center overflow-hidden rounded bg-white p-2 shadow-inner">
+                <div className="flex h-full w-full items-center justify-center overflow-hidden rounded bg-paper p-2">
                   {qrError ? (
                     <p className="px-4 text-center text-sm text-destructive">{qrError}</p>
                   ) : qrOutput && prefs.format === "SVG" ? (
@@ -564,7 +564,7 @@ export default function QrGeneratorRoute() {
                 </div>
 
                 <div
-                  className={`absolute -bottom-3 rounded-full px-3 py-1 text-[10px] font-bold text-white shadow-lg ${
+                  className={`absolute -bottom-3 rounded-full border-2 border-ink px-3 py-1 text-[10px] font-bold text-paper shadow-pop-1 ${
                     qrError ? "bg-tomato" : "bg-grass"
                   }`}
                 >

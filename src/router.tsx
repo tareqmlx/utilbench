@@ -20,7 +20,7 @@ function RouteErrorFallback() {
   const error = useRouteError();
   const isResponse = isRouteErrorResponse(error);
 
-  const title = isResponse ? `${error.status} — ${error.statusText}` : "Something went wrong";
+  const title = isResponse ? `${error.status}: ${error.statusText}` : "Something went wrong";
   const detail =
     isResponse && error.data ? String(error.data) : error instanceof Error ? error.message : null;
 

@@ -106,7 +106,7 @@ export function Component() {
     <div className="wb-shell pt-10 pb-16">
       <SEOHead
         title="All Tools | Utilbench"
-        description={`Browse ${allTools.length}+ free online toolbox utilities. JSON formatter, Base64 encoder, image resizer, and more — all running locally with zero data collection.`}
+        description={`Browse ${allTools.length}+ free online toolbox utilities. JSON formatter, Base64 encoder, image resizer, and more. All running locally with zero data collection.`}
         canonicalPath="/tools"
       />
       <JsonLd data={buildBreadcrumbSchema([{ name: "Home", url: "/" }, { name: "All Tools" }])} />
@@ -133,7 +133,7 @@ export function Component() {
           </h1>
           <p className="wb-tools-rise wb-tools-rise--2 max-w-[60ch] text-[16px] leading-relaxed text-ink-2">
             Every utility on the workbench, in one searchable index.{" "}
-            <strong className="wb-hl">{allTools.length} tools</strong> across three categories — all
+            <strong className="wb-hl">{allTools.length} tools</strong> across three categories, all
             running on your device.
           </p>
           <div className="wb-tools-rise wb-tools-rise--3 mt-4 flex flex-wrap gap-2.5">

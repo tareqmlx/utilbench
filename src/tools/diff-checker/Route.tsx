@@ -501,7 +501,7 @@ export default function DiffCheckerRoute() {
               <Settings className="size-5" />
             </Button>
             {settingsOpen && (
-              <div className="absolute right-0 z-10 mt-1 w-56 rounded-md border border-border bg-card p-3 shadow-lg">
+              <div className="absolute right-0 z-10 mt-1 w-56 rounded-md border-2 border-ink bg-card p-3 shadow-pop-3">
                 <div className="flex items-center gap-2">
                   <Switch
                     id="diff-ignorewhitespace"

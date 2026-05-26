@@ -149,7 +149,7 @@ export default function JsonSchemaGeneratorRoute() {
                 id="schema-input"
                 value={input}
                 onChange={handleInputChange}
-                className={`h-[500px] resize-none font-mono text-sm shadow-sm transition-all ${inputRingClass}`}
+                className={`h-[500px] resize-none font-mono text-sm transition-all ${inputRingClass}`}
                 placeholder='{ "id": 1, "name": "John Doe", "active": true }'
               />
             </div>
