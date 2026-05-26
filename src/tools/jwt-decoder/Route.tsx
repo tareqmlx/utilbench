@@ -1,22 +1,7 @@
-import {
-  Check,
-  CheckCircle,
-  CircleAlert,
-  ClipboardPaste,
-  Copy,
-  Info,
-  Minus,
-  Trash2,
-} from "lucide-react";
-import type { ReactNode } from "react";
+import { Check, CircleAlert, CircleCheck, ClipboardPaste, Copy, Minus, Trash2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { IconSwap } from "../../components/IconSwap";
-import { ErrorAlert, ToolShell } from "../../components/tool-layout";
-import { Button } from "../../components/ui/button";
-import { Card, CardContent } from "../../components/ui/card";
-import { Label } from "../../components/ui/label";
-import { Switch } from "../../components/ui/switch";
-import { Textarea } from "../../components/ui/textarea";
+import { ErrorAlert, StatusBadge, ToolShell } from "../../components/tool-layout";
 import { useClipboard } from "../../hooks/useClipboard";
 
 const SAMPLE_TOKEN =
@@ -130,33 +115,88 @@ function getAlgorithmDisplay(header: Record<string, unknown>): string {
   return ALGORITHM_MAP[alg] ?? alg;
 }
 
-function renderColoredJson(obj: Record<string, unknown>, colorClass: string): ReactNode {
-  const json = JSON.stringify(obj, null, 2);
+function JsonBlock({ data }: { data: Record<string, unknown> }) {
+  const json = JSON.stringify(data, null, 2);
   const lines = json.split("\n");
-  return lines.map((line, i) => {
-    const match = line.match(/^(\s*)"([^"]+)"(:)/);
-    if (match) {
-      const indent = match[1] ?? "";
-      const key = match[2] ?? "";
-      const rest = line.slice(match[0]?.length);
-      return (
-        // biome-ignore lint/suspicious/noArrayIndexKey: static JSON lines never reorder
-        <span key={i}>
-          {`${indent}"`}
-          <span className={colorClass}>{key}</span>
-          {`":${rest}`}
-          {i < lines.length - 1 ? "\n" : ""}
-        </span>
-      );
-    }
-    return (
-      // biome-ignore lint/suspicious/noArrayIndexKey: static JSON lines never reorder
-      <span key={i}>
-        {line}
-        {i < lines.length - 1 ? "\n" : ""}
-      </span>
-    );
-  });
+  return (
+    <pre className="overflow-x-auto font-mono text-[13px] leading-relaxed text-ink">
+      {lines.map((line, i) => {
+        const match = line.match(/^(\s*)"([^"]+)"(:)/);
+        if (match) {
+          const indent = match[1] ?? "";
+          const key = match[2] ?? "";
+          const rest = line.slice(match[0]?.length);
+          return (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static JSON lines never reorder
+            <span key={i}>
+              {`${indent}"`}
+              <span className="text-ink-2">{key}</span>
+              {`":${rest}`}
+              {i < lines.length - 1 ? "\n" : ""}
+            </span>
+          );
+        }
+        return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: static JSON lines never reorder
+          <span key={i}>
+            {line}
+            {i < lines.length - 1 ? "\n" : ""}
+          </span>
+        );
+      })}
+    </pre>
+  );
+}
+
+interface PanelProps {
+  label: string;
+  sticker: { tone: "mint" | "lilac" | "sky"; text: string };
+  copyHandler?: (() => void) | undefined;
+  copied?: boolean;
+  children: React.ReactNode;
+  empty: boolean;
+  emptyHint: string;
+}
+
+function ResultPanel({
+  label,
+  sticker,
+  copyHandler,
+  copied,
+  children,
+  empty,
+  emptyHint,
+}: PanelProps) {
+  return (
+    <div className="rounded-lg border-2 border-ink bg-paper shadow-pop-3 overflow-hidden">
+      <div className="flex items-center justify-between border-b-2 border-ink bg-paper-2 px-[18px] py-[14px]">
+        <div className="flex items-center gap-2.5">
+          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+            {label}
+          </span>
+          <span className={`wb-sticker wb-sticker--${sticker.tone} !py-1 !px-2 !text-[10.5px]`}>
+            {sticker.text}
+          </span>
+        </div>
+        {copyHandler && !empty && (
+          <button
+            type="button"
+            onClick={copyHandler}
+            aria-label={`Copy ${label.toLowerCase()}`}
+            className="wb-btn wb-btn--sm wb-btn--ghost"
+          >
+            <IconSwap swapKey={copied}>
+              {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+            </IconSwap>
+            <span>{copied ? "Copied" : "Copy"}</span>
+          </button>
+        )}
+      </div>
+      <div className="p-5">
+        {empty ? <p className="font-mono text-[12px] italic text-ink-3">{emptyHint}</p> : children}
+      </div>
+    </div>
+  );
 }
 
 export default function JwtDecoderRoute() {
@@ -204,12 +244,6 @@ export default function JwtDecoderRoute() {
   const { jwt, error } = decodeResult;
   const isIdle = token.trim() === "";
 
-  const inputRingClass = isIdle
-    ? ""
-    : error !== null
-      ? "ring-2 ring-red-500/50 border-transparent"
-      : "ring-2 ring-emerald-500/50 border-transparent";
-
   const timeClaims = jwt ? extractTimeClaims(jwt.payload) : [];
   const isExpired =
     jwt && typeof jwt.payload.exp === "number" && jwt.payload.exp * 1000 < Date.now();
@@ -219,226 +253,135 @@ export default function JwtDecoderRoute() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <div className="space-y-6 lg:col-span-5">
           <div className="space-y-3">
-            <Label
+            <label
               htmlFor="jwt-decoder-token"
-              className="block text-sm font-bold tracking-widest text-muted-foreground uppercase"
+              className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3"
             >
               Encoded Token
-            </Label>
-            <div className="group relative">
-              <Textarea
+            </label>
+            <div className="relative">
+              <textarea
                 id="jwt-decoder-token"
                 value={token}
                 onChange={handleInputChange}
-                className={`h-64 w-full resize-none p-6 font-mono text-sm sm:h-96 lg:h-125 ${inputRingClass}`}
-                placeholder="Paste your JWT here..."
+                className="h-64 w-full resize-none rounded-lg border-2 border-ink bg-paper p-5 pr-20 font-mono text-[13px] leading-relaxed text-ink shadow-pop-3 placeholder:text-ink-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:h-96 lg:h-125"
+                placeholder="Paste your JWT here…"
               />
-              <div className="absolute right-4 bottom-4 flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
+              <div className="absolute right-3 bottom-3 flex gap-2">
+                <button
+                  type="button"
                   onClick={handlePaste}
                   aria-label="Paste"
-                  className="bg-muted shadow-sm"
+                  className="grid size-9 place-items-center rounded-md border-2 border-ink bg-paper text-ink shadow-pop-1 transition-transform hover:-translate-y-0.5"
                 >
                   {pasteFeedback ? (
-                    <Check className="h-4 w-4" />
+                    <Check className="size-4" strokeWidth={2.5} />
                   ) : (
-                    <ClipboardPaste className="h-4 w-4" />
+                    <ClipboardPaste className="size-4" strokeWidth={2} />
                   )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
+                </button>
+                <button
+                  type="button"
                   onClick={handleClear}
                   aria-label="Clear"
-                  className="bg-muted shadow-sm"
+                  className="grid size-9 place-items-center rounded-md border-2 border-ink bg-paper text-ink shadow-pop-1 transition-transform hover:-translate-y-0.5"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                  <Trash2 className="size-4" strokeWidth={2} />
+                </button>
               </div>
             </div>
-            <ErrorAlert error={error} className="mt-3" />
+            <ErrorAlert error={error} />
           </div>
 
-          <Card>
-            <CardContent className="p-5 sm:pt-5">
-              <h4 className="mb-3 flex items-center gap-2 text-sm font-bold">
-                <Info className="h-4.5 w-4.5 text-primary" />
-                Decoding Status
-              </h4>
-              {isIdle ? (
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Minus className="h-4 w-4" />
-                  Waiting for token input
-                </div>
-              ) : error !== null ? (
-                <div className="flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400">
-                  <CircleAlert className="h-4 w-4" />
-                  Invalid Token Format
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-sm font-medium text-green-600 dark:text-green-400">
-                  <CheckCircle className="h-4 w-4" />
-                  Valid Token Format Detected
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border-2 border-ink bg-paper-2 p-5 shadow-pop-3">
+            <span className="mb-3 block font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+              Decoding Status
+            </span>
+            {isIdle ? (
+              <div className="flex items-center gap-2.5 text-[14px] font-medium text-ink-2">
+                <Minus className="size-4" strokeWidth={2.5} />
+                Waiting for token input
+              </div>
+            ) : error !== null ? (
+              <div className="flex items-center gap-2.5 text-[14px] font-medium text-ink">
+                <CircleAlert className="size-4 text-tomato" strokeWidth={2.5} />
+                Invalid Token Format
+              </div>
+            ) : (
+              <div className="flex items-center gap-2.5 text-[14px] font-medium text-ink">
+                <CircleCheck className="size-4 text-grass" strokeWidth={2.5} />
+                Valid Token Format Detected
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="space-y-8 lg:col-span-7">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="block text-sm font-bold tracking-widest text-muted-foreground uppercase">
-                Header
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="rounded bg-red-100 px-2 py-0.5 text-[10px] font-bold tracking-tighter text-red-600 uppercase dark:bg-red-900/30 dark:text-red-400">
-                  Algorithm &amp; Type
-                </span>
-                {jwt && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleCopyHeader}
-                    aria-label="Copy header"
-                    className="h-8 w-8 bg-muted shadow-sm"
-                  >
-                    <IconSwap swapKey={copiedHeader}>
-                      {copiedHeader ? (
-                        <Check className="h-3.5 w-3.5" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
-                    </IconSwap>
-                  </Button>
-                )}
-              </div>
-            </div>
-            <Card>
-              <CardContent className="p-6 sm:pt-6">
-                {jwt ? (
-                  <pre className="overflow-x-auto font-mono text-sm leading-relaxed text-foreground">
-                    {renderColoredJson(jwt.header, "text-red-500")}
-                  </pre>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">
-                    {isIdle ? "Enter a token to see the header" : "\u2014"}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+        <div className="space-y-7 lg:col-span-7">
+          <ResultPanel
+            label="Header"
+            sticker={{ tone: "mint", text: "Algorithm & Type" }}
+            copyHandler={jwt ? handleCopyHeader : undefined}
+            copied={copiedHeader}
+            empty={!jwt}
+            emptyHint={isIdle ? "Enter a token to see the header" : "—"}
+          >
+            {jwt && <JsonBlock data={jwt.header} />}
+          </ResultPanel>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="block text-sm font-bold tracking-widest text-muted-foreground uppercase">
-                Payload
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="rounded bg-purple-100 px-2 py-0.5 text-[10px] font-bold tracking-tighter text-purple-600 uppercase dark:bg-purple-900/30 dark:text-purple-400">
-                  Data &amp; Claims
-                </span>
-                {jwt && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleCopyPayload}
-                    aria-label="Copy payload"
-                    className="h-8 w-8 bg-muted shadow-sm"
-                  >
-                    <IconSwap swapKey={copiedPayload}>
-                      {copiedPayload ? (
-                        <Check className="h-3.5 w-3.5" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
-                    </IconSwap>
-                  </Button>
-                )}
-              </div>
-            </div>
-            <Card>
-              <CardContent className="p-6 sm:pt-6">
-                {jwt ? (
-                  <pre className="overflow-x-auto font-mono text-sm leading-relaxed text-foreground">
-                    {renderColoredJson(jwt.payload, "text-purple-500")}
-                  </pre>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">
-                    {isIdle ? "Enter a token to see the payload" : "\u2014"}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            <ResultPanel
+              label="Payload"
+              sticker={{ tone: "lilac", text: "Data & Claims" }}
+              copyHandler={jwt ? handleCopyPayload : undefined}
+              copied={copiedPayload}
+              empty={!jwt}
+              emptyHint={isIdle ? "Enter a token to see the payload" : "—"}
+            >
+              {jwt && <JsonBlock data={jwt.payload} />}
+            </ResultPanel>
+
             {jwt && timeClaims.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                 {timeClaims.map((claim) => (
                   <div
                     key={claim.key}
-                    className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground"
+                    className="rounded-full border-2 border-ink bg-paper px-3 py-1 font-mono text-[11px] text-ink-2"
                   >
-                    {claim.label}:{" "}
-                    <span className="text-foreground">{claim.date.toLocaleString()}</span>
+                    {claim.label}: <span className="text-ink">{claim.date.toLocaleString()}</span>
                   </div>
                 ))}
                 {typeof jwt.payload.exp === "number" && (
-                  <div
-                    className={`rounded-full px-3 py-1 text-[11px] font-bold ${
-                      isExpired
-                        ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                        : "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
-                    }`}
-                  >
-                    {isExpired ? "Expired" : "Active"}
-                  </div>
+                  <StatusBadge
+                    tone={isExpired ? "invalid" : "valid"}
+                    label={isExpired ? "Expired" : "Active"}
+                  />
                 )}
               </div>
             )}
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="block text-sm font-bold tracking-widest text-muted-foreground uppercase">
-                Signature
-              </span>
-              <span className="rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold tracking-tighter text-blue-600 uppercase dark:bg-blue-900/30 dark:text-blue-400">
-                Integrity Check
-              </span>
-            </div>
-            <Card>
-              <CardContent className="p-6 sm:pt-6">
-                {jwt ? (
-                  <>
-                    <div className="mb-4 break-all font-mono text-sm leading-relaxed text-blue-500">
-                      {getAlgorithmDisplay(jwt.header)}(
-                      <br />
-                      {"\u00A0\u00A0"}base64UrlEncode(header) + "." +
-                      <br />
-                      {"\u00A0\u00A0"}base64UrlEncode(payload),
-                      <br />
-                      {"\u00A0\u00A0"}
-                      <span className="rounded border border-blue-200 bg-blue-50 px-1 py-0.5 italic dark:border-blue-700 dark:bg-blue-900/30">
-                        your-256-bit-secret
-                      </span>
-                      <br />)
-                    </div>
-                    <div className="border-t border-border pt-4">
-                      <div className="flex items-center gap-2">
-                        <Switch checked={false} disabled aria-label="Secret Base64 Encoded" />
-                        <Label>Secret Base64 Encoded</Label>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">
-                    {isIdle ? "Enter a token to see the signature" : "\u2014"}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          <ResultPanel
+            label="Signature"
+            sticker={{ tone: "sky", text: "Integrity Check" }}
+            empty={!jwt}
+            emptyHint={isIdle ? "Enter a token to see the signature" : "—"}
+          >
+            {jwt && (
+              <div className="break-all font-mono text-[13px] leading-relaxed text-ink">
+                {getAlgorithmDisplay(jwt.header)}(
+                <br />
+                {"  "}base64UrlEncode(header) + "." +
+                <br />
+                {"  "}base64UrlEncode(payload),
+                <br />
+                {"  "}
+                <span className="rounded border-2 border-ink bg-lemon px-1.5 py-0.5 italic">
+                  your-256-bit-secret
+                </span>
+                <br />)
+              </div>
+            )}
+          </ResultPanel>
         </div>
       </div>
     </ToolShell>
