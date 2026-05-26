@@ -101,7 +101,7 @@ export function Layout() {
               type="button"
               onClick={openSearch}
               aria-label="Search"
-              className="grid size-9 place-items-center rounded-full border-2 border-ink bg-lemon text-ink sm:hidden"
+              className="grid size-11 place-items-center rounded-full border-2 border-ink bg-lemon text-ink sm:hidden"
             >
               <Search className="size-4" strokeWidth={2.5} />
             </button>
@@ -111,7 +111,7 @@ export function Layout() {
                 <button
                   type="button"
                   aria-label="Menu"
-                  className="grid size-9 place-items-center rounded-full text-paper transition-opacity hover:opacity-100 md:hidden"
+                  className="grid size-11 place-items-center rounded-full text-paper transition-opacity hover:opacity-100 md:hidden"
                   style={{ opacity: 0.7 }}
                 >
                   <Menu className="size-4" />
