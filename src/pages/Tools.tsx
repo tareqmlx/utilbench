@@ -1,7 +1,6 @@
 import { Search, SearchX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { Button } from "../components/ui/button";
 import { useScrollReveal } from "../hooks/useScrollReveal";
 import { useUrlState } from "../hooks/useUrlState";
 import { getIcon } from "../lib/icons";
@@ -41,12 +40,10 @@ function tileFlavor(index: number) {
 function ToolTile({ tool, index }: { tool: ToolDefinition; index: number }) {
   const Icon = getIcon(tool.icon);
   const ref = useScrollReveal<HTMLAnchorElement>({ delay: Math.min(index * 30, 240) });
+  const pin = tool.featured ? "★ FEATURED" : tool.category.toUpperCase();
   return (
     <Link ref={ref} to={`/tools/${tool.slug}`} className={`wb-tile wb-reveal ${tileFlavor(index)}`}>
-      <span className="pin">
-        {tool.featured ? "★ " : ""}
-        {index < 9 ? `0${index + 1}` : index + 1}
-      </span>
+      <span className="pin">{pin}</span>
       <span className="icn">
         <Icon className="size-[22px]" strokeWidth={2} />
       </span>
@@ -117,7 +114,7 @@ export function Component() {
         className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3"
       >
         <Link to="/" className="wb-link-soft hover:text-ink">
-          Utilbench
+          Home
         </Link>
         <span className="opacity-40">/</span>
         <span className="font-medium text-ink">Tools</span>
@@ -129,7 +126,7 @@ export function Component() {
           <Search className="size-11" strokeWidth={2} />
         </div>
         <div>
-          <h1 className="wb-h1 mb-3.5" style={{ fontSize: "clamp(40px,7vw,72px)" }}>
+          <h1 className="wb-h1 wb-h1--page mb-3.5">
             All <em className="text-tomato">tools</em>.
           </h1>
           <p className="max-w-[60ch] text-[16px] leading-relaxed text-ink-2">
@@ -167,28 +164,34 @@ export function Component() {
           <legend className="sr-only">Filter by category</legend>
           {categories.map((cat) => {
             const active = activeCategory === cat.key;
+            const count = categoryCounts[cat.key];
+            const empty = count === 0 && !active;
             return (
               <button
                 type="button"
                 key={cat.key}
                 onClick={() => setActiveCategory(cat.key)}
                 aria-pressed={active}
+                disabled={empty}
+                aria-disabled={empty}
                 className={`wb-chip ${active ? "on" : ""}`}
               >
                 {cat.label}
-                {` · ${categoryCounts[cat.key]}`}
+                {` · ${count}`}
               </button>
             );
           })}
         </fieldset>
       </div>
 
+      <p aria-live="polite" className="sr-only">
+        {filteredTools.length} tool{filteredTools.length === 1 ? "" : "s"} shown
+      </p>
+
       {/* tile wall */}
+      <h2 className="sr-only">Tool index</h2>
       {filteredTools.length > 0 ? (
-        <div
-          key={`${activeCategory}|${trimmedQuery}`}
-          className="mt-9 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-        >
+        <div className="mt-9 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredTools.map((tool, i) => (
             <ToolTile key={tool.slug} tool={tool} index={i} />
           ))}
@@ -196,11 +199,17 @@ export function Component() {
       ) : (
         <div className="mt-9 flex flex-col items-center gap-3 rounded-lg border-2 border-ink bg-paper-2 p-12 text-center shadow-pop-3">
           <SearchX className="size-12" strokeWidth={2} />
-          <h2 className="wb-h3">No tools found</h2>
-          <p className="wb-mono-sm text-ink-2">Try a different search term or category.</p>
-          <Button variant="outline" onClick={handleClearFilters} className="mt-2">
-            Clear search
-          </Button>
+          <h3 className="wb-h3">No tools found</h3>
+          <p className="text-[13.5px] leading-relaxed text-ink-2">
+            Try a different search term or category.
+          </p>
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="wb-btn wb-btn--ghost wb-btn--sm mt-2"
+          >
+            Clear filters
+          </button>
         </div>
       )}
     </div>
