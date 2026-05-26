@@ -97,6 +97,13 @@
   --tomato: #ff6a4a;
   --grass: #4a8a55;
 
+  /* Documented exception: Lottie / image preview canvases need a true white
+     and a near-black neutral so users can validate how artwork renders on
+     real-world surfaces. NEVER use these as UI fills — paper / ink are the
+     UI surface colors. */
+  --canvas-light: #ffffff;
+  --canvas-dark: #0a0905;
+
   --rad-sm: 8px;
   --rad: 14px;
   --rad-lg: 18px;
