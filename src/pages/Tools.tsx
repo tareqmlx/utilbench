@@ -163,19 +163,24 @@ export function Component() {
           />
         </label>
 
-        <div className="flex flex-wrap gap-2">
-          {categories.map((cat) => (
-            <button
-              type="button"
-              key={cat.key}
-              onClick={() => setActiveCategory(cat.key)}
-              className={`wb-chip ${activeCategory === cat.key ? "on" : ""}`}
-            >
-              {cat.label}
-              {` · ${categoryCounts[cat.key]}`}
-            </button>
-          ))}
-        </div>
+        <fieldset className="flex flex-wrap gap-2 border-0 p-0">
+          <legend className="sr-only">Filter by category</legend>
+          {categories.map((cat) => {
+            const active = activeCategory === cat.key;
+            return (
+              <button
+                type="button"
+                key={cat.key}
+                onClick={() => setActiveCategory(cat.key)}
+                aria-pressed={active}
+                className={`wb-chip ${active ? "on" : ""}`}
+              >
+                {cat.label}
+                {` · ${categoryCounts[cat.key]}`}
+              </button>
+            );
+          })}
+        </fieldset>
       </div>
 
       {/* tile wall */}
