@@ -106,7 +106,7 @@ export function Component() {
     <div className="wb-shell pt-10 pb-16">
       <SEOHead
         title="All Tools | Utilbench"
-        description={`Browse ${allTools.length}+ free online toolbox utilities. JSON formatter, Base64 encoder, image resizer, and more. All running locally with zero data collection.`}
+        description={`${allTools.length} local-only developer tools: JSON formatter, JWT decoder, Base64, QR generator, image resizer, and more. No tracking, runs in your browser.`}
         canonicalPath="/tools"
       />
       <JsonLd data={buildBreadcrumbSchema([{ name: "Home", url: "/" }, { name: "All Tools" }])} />
@@ -118,7 +118,9 @@ export function Component() {
         <Link to="/" className="wb-link-soft hover:text-ink">
           Home
         </Link>
-        <span className="opacity-40">/</span>
+        <span aria-hidden="true" className="opacity-40">
+          /
+        </span>
         <span className="font-medium text-ink">Tools</span>
       </nav>
 
@@ -129,7 +131,7 @@ export function Component() {
         </div>
         <div>
           <h1 className="wb-tools-rise wb-tools-rise--1 wb-h1 wb-h1--page mb-3.5">
-            All <em className="text-tomato">tools</em>.
+            All <span className="text-tomato">tools</span>.
           </h1>
           <p className="wb-tools-rise wb-tools-rise--2 max-w-[60ch] text-[16px] leading-relaxed text-ink-2">
             Every utility on the workbench, in one searchable index.{" "}
@@ -142,7 +144,7 @@ export function Component() {
               all-local
             </span>
             <span className="wb-sticker wb-sticker--sky">
-              <span className="dot" />
+              <span aria-hidden="true" className="dot" />
               ⌘K to search
             </span>
           </div>
@@ -155,6 +157,8 @@ export function Component() {
           <Search className="size-4 shrink-0" strokeWidth={2} />
           <input
             type="text"
+            name="tool-search"
+            autoComplete="off"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search tools by name, description, or tag…"
@@ -203,17 +207,17 @@ export function Component() {
           ))}
         </div>
       ) : (
-        <div className="wb-fade-in mt-9 flex flex-col items-center gap-3 rounded-lg border-2 border-ink bg-paper-2 p-12 text-center shadow-pop-3">
-          <SearchX className="size-12" strokeWidth={2} />
-          <h3 className="wb-h3">No tools found</h3>
-          <p className="text-[13.5px] leading-relaxed text-ink-2">
-            Try a different search term or category.
+        <div className="wb-fade-in mt-9 flex flex-col items-center gap-5 rounded-lg border-2 border-ink bg-paper-2 p-10 text-center shadow-pop-3 sm:p-14">
+          <div className="grid size-16 -rotate-[3deg] place-items-center rounded-[14px] border-2 border-ink bg-lemon shadow-pop-2">
+            <SearchX className="size-8" strokeWidth={2} aria-hidden="true" />
+          </div>
+          <h3 className="wb-h2">
+            Nothing on <span className="text-tomato">that</span> shelf.
+          </h3>
+          <p className="max-w-[44ch] text-[14px] leading-relaxed text-ink-2">
+            No tools match your search. Try a different word, or open every drawer at once.
           </p>
-          <button
-            type="button"
-            onClick={handleClearFilters}
-            className="wb-btn wb-btn--ghost wb-btn--sm mt-2"
-          >
+          <button type="button" onClick={handleClearFilters} className="wb-btn wb-btn--ghost mt-1">
             Clear filters
           </button>
         </div>
