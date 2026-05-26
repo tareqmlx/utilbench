@@ -165,9 +165,9 @@ export function Component() {
           style={{ color: "var(--ink-2)" }}
         >
           Utilbench is a friendly little toolbox of{" "}
-          <strong className="wb-hl">{totalTools} developer utilities</strong> — formatters,
-          decoders, generators — all running on your device, none of them phoning home. Pick a
-          sticker and get to work.
+          <strong className="wb-hl">{totalTools} developer utilities</strong>. Formatters, decoders,
+          generators. All running on your device, none of them phoning home. Pick a sticker and get
+          to work.
         </p>
 
         <div className="mt-9 flex flex-wrap justify-center gap-3">
@@ -259,7 +259,7 @@ export function Component() {
             {
               num: "03.",
               title: "Free, MIT",
-              body: "Open source forever. Add a tool, file an issue, or fork it for your team — the code is the manifesto.",
+              body: "Open source forever. Add a tool, file an issue, or fork it for your team. The code is the manifesto.",
             },
           ].map((feat, i) => (
             <FeatBlock key={feat.num} feat={feat} index={i} />
