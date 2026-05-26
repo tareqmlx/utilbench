@@ -70,11 +70,12 @@ export function Layout() {
                   <Link
                     key={link.to}
                     to={link.to}
-                    className="rounded-full px-3.5 py-2 text-[13px] font-medium transition-[background,opacity,transform] duration-200 hover:opacity-100"
-                    style={{
-                      background: active ? "rgba(255,255,255,.12)" : "transparent",
-                      opacity: active ? 1 : 0.7,
-                    }}
+                    aria-current={active ? "page" : undefined}
+                    className={`rounded-full px-3.5 py-2 text-[13px] font-medium transition-[background,color,opacity,transform] duration-200 hover:opacity-100 ${
+                      active
+                        ? "bg-lemon text-ink opacity-100"
+                        : "bg-transparent text-paper opacity-70"
+                    }`}
                   >
                     {link.label}
                   </Link>
@@ -125,7 +126,7 @@ export function Layout() {
                   <button
                     type="button"
                     onClick={openSearchFromMenu}
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                    className="flex min-h-11 items-center gap-2 rounded-md px-3 py-3 text-left text-[15px] font-medium text-foreground transition-colors hover:bg-muted"
                   >
                     <Search className="size-4" />
                     Search tools
@@ -135,7 +136,7 @@ export function Layout() {
                       key={link.to}
                       to={link.to}
                       onClick={() => setMenuOpen(false)}
-                      className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                      className="flex min-h-11 items-center rounded-md px-3 py-3 text-[15px] font-medium text-foreground transition-colors hover:bg-muted"
                     >
                       {link.label}
                     </Link>
@@ -165,23 +166,14 @@ export function Layout() {
         <div className="wb-shell py-12 sm:py-14">
           <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
             <div>
-              <h2
-                className="wb-display mb-2 text-paper"
-                style={{
-                  fontSize: "clamp(28px,3.4vw,40px)",
-                  lineHeight: 1.05,
-                  letterSpacing: "-0.025em",
-                }}
-              >
-                Make something. Locally.
-              </h2>
+              <h2 className="wb-footer-headline mb-2 text-paper">Make something. Locally.</h2>
               <p className="mt-4 max-w-[34ch] text-[13.5px] leading-relaxed text-ink-muted">
                 {APP_DESCRIPTION}
               </p>
             </div>
 
             <nav aria-label="Product links">
-              <h5 className="wb-meta mb-3.5 text-ink-muted">Product</h5>
+              <h3 className="wb-meta mb-3.5 text-ink-muted">Product</h3>
               <ul className="flex flex-col gap-2 text-[13.5px]">
                 <li>
                   <Link to="/tools" className="text-paper transition-colors hover:text-lemon">
@@ -202,13 +194,13 @@ export function Layout() {
             </nav>
 
             <nav aria-label="Workflow links">
-              <h5 className="wb-meta mb-3.5 text-ink-muted">Workflow</h5>
+              <h3 className="wb-meta mb-3.5 text-ink-muted">Workflow</h3>
               <ul className="flex flex-col gap-2 text-[13.5px]">
                 <li>
                   <button
                     type="button"
                     onClick={openSearch}
-                    className="text-left text-paper transition-colors hover:text-lemon"
+                    className="inline-flex min-h-11 items-center text-left text-paper transition-colors hover:text-lemon sm:min-h-0"
                   >
                     ⌘K palette
                   </button>
@@ -227,7 +219,7 @@ export function Layout() {
             </nav>
 
             <div>
-              <h5 className="wb-meta mb-3.5 text-ink-muted">Project</h5>
+              <h3 className="wb-meta mb-3.5 text-ink-muted">Project</h3>
               <ul className="flex flex-col gap-2 text-[13.5px]">
                 <li>
                   <a
