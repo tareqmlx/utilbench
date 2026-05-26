@@ -50,17 +50,18 @@ function HomeTile({
         : size === "q"
           ? "lg:col-span-4"
           : "lg:col-span-3";
+  const sizeMod = size === "l" ? "wb-tile--lg" : "";
 
   const ref = useScrollReveal<HTMLAnchorElement>({ delay: Math.min(index * 40, 240) });
   return (
     <Link
       ref={ref}
       to={`/tools/${tool.slug}`}
-      className={`wb-tile wb-reveal ${flavor} col-span-1 sm:col-span-3 ${colSpan}`}
+      className={`wb-tile wb-reveal ${flavor} ${sizeMod} col-span-1 sm:col-span-3 ${colSpan}`}
     >
       {showStar ? <span className="pin">{index === 0 ? "★ FEATURED" : "★"}</span> : null}
       <TileIcon icon={tool.icon} />
-      <h3 style={size === "l" ? { fontSize: 32 } : undefined}>{tool.name}</h3>
+      <h3>{tool.name}</h3>
       <p>{tool.description}</p>
       <span className="arrow">Open →</span>
     </Link>
@@ -77,12 +78,8 @@ function FeatBlock({
   const ref = useScrollReveal<HTMLDivElement>({ delay: index * 80 });
   return (
     <div ref={ref} className="wb-reveal rounded-lg border-2 border-ink bg-paper-2 p-7">
-      <div className="wb-display text-tomato" style={{ fontSize: 64 }}>
-        {feat.num}
-      </div>
-      <h4 className="wb-h3 mt-2" style={{ fontSize: 22 }}>
-        {feat.title}
-      </h4>
+      <div className="wb-feat-num">{feat.num}</div>
+      <h4 className="wb-h3 mt-2">{feat.title}</h4>
       <p className="mt-2 text-[13.5px] leading-relaxed text-ink-2">{feat.body}</p>
     </div>
   );
@@ -99,15 +96,18 @@ export function Component() {
   return (
     <div>
       <SEOHead
-        title="Utilbench — A workbench for the browser."
-        description="A friendly little toolbox of developer utilities — formatters, decoders, generators — all running on your device, none of them phoning home."
+        title="Utilbench · A workbench for the browser."
+        description="A friendly little toolbox of developer utilities. Formatters, decoders, generators, all running on your device, none of them phoning home."
         canonicalPath="/"
       />
       <JsonLd data={buildOrganizationSchema()} />
       <JsonLd data={buildWebSiteSchema()} />
 
       {/* HERO */}
-      <section className="wb-shell relative overflow-hidden pt-16 pb-12 sm:pt-20 sm:pb-16">
+      <section
+        aria-labelledby="hero-title"
+        className="wb-shell relative overflow-hidden pt-16 pb-12 sm:pt-20 sm:pb-16"
+      >
         {/* floating stickers — desktop only; would overlap headings/CTAs on mobile */}
         <div aria-hidden="true" className="pointer-events-none hidden md:block">
           <span className="wb-hero-sticker" style={{ top: 56, left: "6%" }}>
@@ -129,27 +129,13 @@ export function Component() {
           </span>
         </div>
 
-        <h1
-          className="wb-display relative z-10 text-center"
-          style={{
-            fontSize: "clamp(40px,9vw,148px)",
-            overflowWrap: "anywhere",
-          }}
-        >
+        <h1 id="hero-title" className="wb-display relative z-10 text-center">
           <span className="wb-hero-line wb-hero-line--1 block">A workbench</span>
           <span className="wb-hero-line wb-hero-line--2 block text-tomato">
             for the <em>browser</em>.
           </span>
           <span className="block">
-            <span
-              className="wb-hero-line wb-hero-line--3 px-4 pb-1 sm:px-5"
-              style={{
-                background: "var(--lemon)",
-                border: "2px solid var(--ink)",
-                borderRadius: 18,
-                boxShadow: "4px 4px 0 var(--ink)",
-              }}
-            >
+            <span className="wb-hero-tag wb-hero-line wb-hero-line--3 px-4 pb-1 sm:px-5">
               No servers needed.
             </span>
           </span>
@@ -173,7 +159,7 @@ export function Component() {
       </section>
 
       {/* WORKBENCH WALL */}
-      <section id="tools" className="wb-shell pb-16">
+      <section id="tools" aria-labelledby="tools-title" className="wb-shell pb-16">
         <div
           className="flex flex-wrap items-end justify-between gap-4 pt-12 pb-6 wb-reveal"
           ref={workbenchHeaderRef}
@@ -182,12 +168,12 @@ export function Component() {
             <span className="rounded-full border-2 border-ink bg-ink px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.1em] text-paper">
               § The workbench
             </span>
-            <h2 className="wb-h2" style={{ fontSize: "clamp(28px,3.4vw,40px)" }}>
+            <h2 id="tools-title" className="wb-h2">
               Pick a tile, <em className="text-ink-3">start tinkering.</em>
             </h2>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link to="/tools" className="wb-chip on">
+          <nav aria-label="Filter by category" className="flex flex-wrap gap-2">
+            <Link to="/tools" aria-current="true" className="wb-chip on">
               All · {totalTools}
             </Link>
             <Link to="/tools?cat=media" className="wb-chip">
@@ -199,7 +185,7 @@ export function Component() {
             <Link to="/tools?cat=text" className="wb-chip">
               Text
             </Link>
-          </div>
+          </nav>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-6 sm:gap-[18px] lg:grid-cols-12">
@@ -238,7 +224,7 @@ export function Component() {
             {
               num: "01.",
               title: "Local from byte one",
-              body: "Every transform runs on your device. The bundle is the surface area — no hidden round-trips.",
+              body: "Every transform runs on your device. The bundle is the surface area. No hidden round-trips.",
             },
             {
               num: "02.",
