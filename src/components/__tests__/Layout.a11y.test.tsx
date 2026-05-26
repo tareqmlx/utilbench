@@ -56,6 +56,9 @@ describe("Layout accessibility", () => {
         "landmark-no-duplicate-banner": { enabled: false },
         "landmark-no-duplicate-contentinfo": { enabled: false },
         "landmark-no-duplicate-main": { enabled: false },
+        // Layout is rendered in isolation here; the route-level <h1> that
+        // precedes the footer <h2> in production lives in page components.
+        "heading-order": { enabled: false },
       },
     });
 
