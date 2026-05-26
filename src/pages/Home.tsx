@@ -23,7 +23,7 @@ function tileFlavor(index: number, isFeatured: boolean) {
 function TileIcon({ icon }: { icon: string }) {
   const Icon = getIcon(icon);
   return (
-    <span className="icn">
+    <span aria-hidden="true" className="icn">
       <Icon className="size-[22px]" strokeWidth={2} />
     </span>
   );
@@ -114,7 +114,7 @@ export function Component() {
       {/* HERO */}
       <section className="wb-shell relative overflow-hidden pt-16 pb-12 sm:pt-20 sm:pb-16">
         {/* floating stickers — desktop only; would overlap headings/CTAs on mobile */}
-        <div className="pointer-events-none hidden md:block">
+        <div aria-hidden="true" className="pointer-events-none hidden md:block">
           <span className="wb-hero-sticker" style={{ top: 56, left: "6%" }}>
             <span className="wb-sticker wb-sticker--pink wb-hero-sway wb-hero-sway--pink">
               <span className="dot" />
@@ -165,9 +165,9 @@ export function Component() {
           style={{ color: "var(--ink-2)" }}
         >
           Utilbench is a friendly little toolbox of{" "}
-          <b className="wb-hl">{totalTools} developer utilities</b> — formatters, decoders,
-          generators — all running on your device, none of them phoning home. Pick a sticker and get
-          to work.
+          <strong className="wb-hl">{totalTools} developer utilities</strong> — formatters,
+          decoders, generators — all running on your device, none of them phoning home. Pick a
+          sticker and get to work.
         </p>
 
         <div className="mt-9 flex flex-wrap justify-center gap-3">
