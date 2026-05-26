@@ -251,25 +251,17 @@ function JwtDecoderSkeleton() {
           <SkeletonLine width="w-32" height="h-6" className="rounded-full" />
         </div>
         <div className="space-y-6 lg:col-span-7">
-          <div className="rounded-lg border-l-4 border-red-400 bg-red-50 p-4 dark:bg-red-950/30">
-            <SkeletonLine width="w-20" height="h-5" className="mb-3 !bg-red-200 dark:!bg-red-800" />
-            <SkeletonBlock className="h-24 !bg-red-100 dark:!bg-red-900/30" />
+          <div className="rounded-lg border-2 border-ink bg-paper p-5 shadow-pop-3">
+            <SkeletonLine width="w-20" height="h-4" className="mb-4" />
+            <SkeletonBlock className="h-24" />
           </div>
-          <div className="rounded-lg border-l-4 border-purple-400 bg-purple-50 p-4 dark:bg-purple-950/30">
-            <SkeletonLine
-              width="w-20"
-              height="h-5"
-              className="mb-3 !bg-purple-200 dark:!bg-purple-800"
-            />
-            <SkeletonBlock className="h-40 !bg-purple-100 dark:!bg-purple-900/30" />
+          <div className="rounded-lg border-2 border-ink bg-paper-2 p-5 shadow-pop-3">
+            <SkeletonLine width="w-20" height="h-4" className="mb-4" />
+            <SkeletonBlock className="h-40" />
           </div>
-          <div className="rounded-lg border-l-4 border-cyan-400 bg-cyan-50 p-4 dark:bg-cyan-950/30">
-            <SkeletonLine
-              width="w-24"
-              height="h-5"
-              className="mb-3 !bg-cyan-200 dark:!bg-cyan-800"
-            />
-            <SkeletonBlock className="h-16 !bg-cyan-100 dark:!bg-cyan-900/30" />
+          <div className="rounded-lg border-2 border-ink bg-paper p-5 shadow-pop-3">
+            <SkeletonLine width="w-24" height="h-4" className="mb-4" />
+            <SkeletonBlock className="h-16" />
           </div>
         </div>
       </div>
