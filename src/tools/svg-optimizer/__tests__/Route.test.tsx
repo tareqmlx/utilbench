@@ -4,18 +4,33 @@ import SvgOptimizerRoute from "../Route";
 
 const VALID_SVG = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1"/></svg>';
 
-vi.mock("svgo/browser", () => ({
-  optimize: vi.fn((_content: string) => ({
-    data: '<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1"/></svg>',
-  })),
+vi.mock("../svg-pool", () => ({
+  svgPool: {
+    dispatch: vi.fn(),
+  },
 }));
 
-vi.mock("fflate", () => ({
-  zipSync: vi.fn(() => new Uint8Array([80, 75, 3, 4])),
-}));
+import { svgPool } from "../svg-pool";
+
+const mockDispatch = vi.mocked(svgPool.dispatch);
 
 beforeEach(() => {
   localStorage.removeItem("utilbench:prefs:svg-optimizer");
+  mockDispatch.mockImplementation((type: string) => {
+    if (type === "optimize-svg") {
+      return { promise: Promise.resolve(VALID_SVG) as Promise<never>, cancel: () => {} };
+    }
+    if (type === "zip-svgs") {
+      return {
+        promise: Promise.resolve(new ArrayBuffer(4)) as Promise<never>,
+        cancel: () => {},
+      };
+    }
+    return {
+      promise: Promise.reject(new Error(`Unknown task type: ${type}`)) as Promise<never>,
+      cancel: () => {},
+    };
+  });
 });
 
 afterEach(() => {
@@ -134,8 +149,7 @@ describe("SvgOptimizerRoute", () => {
 
   it("renders all option sections", () => {
     render(<SvgOptimizerRoute />);
-    expect(screen.getByText("Cleanup Options")).toBeInTheDocument();
-    expect(screen.getByText("Attributes")).toBeInTheDocument();
+    expect(screen.getByText("Options")).toBeInTheDocument();
     expect(screen.getByText("Presets")).toBeInTheDocument();
   });
 

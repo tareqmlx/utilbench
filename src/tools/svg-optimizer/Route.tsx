@@ -5,7 +5,6 @@ import {
   Download,
   Eye,
   FileCode2,
-  KeyRound,
   Loader2,
   RefreshCw,
   Settings2,
@@ -35,12 +34,11 @@ import {
   PRESET_CONFIGS,
   calculateReduction,
   createSvgBlob,
-  createZipBlob,
   formatFileSize,
-  optimizeSvg,
   validateSvgContent,
   validateSvgFile,
 } from "./svg-optimizer";
+import { svgPool } from "./svg-pool";
 
 const DEFAULT_PREFS = {
   ...DEFAULT_OPTIONS,
@@ -54,19 +52,13 @@ const PRESET_LABELS: Record<PresetName, string> = {
   legacy: "LEGACY",
 };
 
-const CLEANUP_TOGGLES: Array<{
-  key: "removeComments" | "removeMetadata" | "simplifyPaths";
+const OPTION_TOGGLES: Array<{
+  key: keyof SvgOptimizerOptions;
   label: string;
 }> = [
   { key: "removeComments", label: "Remove Comments" },
   { key: "removeMetadata", label: "Remove Metadata" },
   { key: "simplifyPaths", label: "Simplify Path Data" },
-];
-
-const ATTRIBUTE_TOGGLES: Array<{
-  key: "removeUnusedIds" | "prefixIds" | "convertColorsToHex";
-  label: string;
-}> = [
   { key: "removeUnusedIds", label: "Remove Unused IDs" },
   { key: "prefixIds", label: "Prefix IDs" },
   { key: "convertColorsToHex", label: "Convert Colors to Hex" },
@@ -101,18 +93,6 @@ export default function SvgOptimizerRoute() {
   optionsRef.current = currentOptions;
 
   useEffect(() => {
-    if (!error) return;
-    const timer = setTimeout(() => setError(null), 5000);
-    return () => clearTimeout(timer);
-  }, [error]);
-
-  useEffect(() => {
-    if (!warning) return;
-    const timer = setTimeout(() => setWarning(null), 8000);
-    return () => clearTimeout(timer);
-  }, [warning]);
-
-  useEffect(() => {
     const pendingFiles = files.filter((f) => f.status === "pending");
     if (pendingFiles.length === 0 || isProcessing) return;
 
@@ -126,10 +106,11 @@ export default function SvgOptimizerRoute() {
           prev.map((f) => (f.id === file.id ? { ...f, status: "processing" } : f)),
         );
 
-        await new Promise((r) => setTimeout(r, 0));
-
         try {
-          const result = optimizeSvg(file.originalContent, optionsRef.current);
+          const result = await svgPool.dispatch<string>("optimize-svg", {
+            content: file.originalContent,
+            options: optionsRef.current,
+          }).promise;
           const optimizedSize = new TextEncoder().encode(result).byteLength;
           setFiles((prev) =>
             prev.map((f) =>
@@ -337,9 +318,13 @@ export default function SvgOptimizerRoute() {
 
     setIsZipping(true);
     try {
-      const blob = createZipBlob(
-        completedFiles.map((f) => ({ name: f.name, content: f.optimizedContent as string })),
-      );
+      const buffer = await svgPool.dispatch<ArrayBuffer>("zip-svgs", {
+        files: completedFiles.map((f) => ({
+          name: f.name,
+          content: f.optimizedContent as string,
+        })),
+      }).promise;
+      const blob = new Blob([buffer], { type: "application/zip" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -361,6 +346,16 @@ export default function SvgOptimizerRoute() {
   const previewFile = previewFileId ? files.find((f) => f.id === previewFileId) : null;
   const pendingRemaining = files.filter((f) => f.status === "pending").length;
 
+  const previewUrl = useMemo(() => {
+    if (!previewFile?.optimizedContent) return null;
+    return URL.createObjectURL(createSvgBlob(previewFile.optimizedContent));
+  }, [previewFile?.optimizedContent]);
+
+  useEffect(() => {
+    if (!previewUrl) return;
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
   useKeyboardShortcut(
     useMemo(
       () => [
@@ -381,12 +376,13 @@ export default function SvgOptimizerRoute() {
         {/* Drop Zone */}
         <div className="flex flex-col">
           <div
-            className={`flex flex-col items-center gap-6 rounded-lg border-2 border-dashed px-6 py-10 shadow-pop-3 transition-colors sm:py-14 ${
-              isDragging ? "border-ink bg-mint" : "border-ink/45 bg-paper hover:border-ink"
+            className={`flex flex-col items-center gap-6 rounded-lg border-2 border-ink px-6 py-10 shadow-pop-3 transition-colors sm:py-14 ${
+              isDragging ? "bg-mint" : "bg-paper-2 hover:bg-paper"
             }`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            data-dragging={isDragging}
           >
             <div className="flex flex-col items-center gap-4">
               <div
@@ -400,7 +396,7 @@ export default function SvgOptimizerRoute() {
                   Drop multiple SVGs here
                 </p>
                 <p className="mt-2 text-[13.5px] leading-relaxed text-ink-2">
-                  Drop, browse, or paste — each file is optimised in your browser.
+                  Drop, browse, or paste. Each file is optimized in your browser.
                 </p>
               </div>
             </div>
@@ -430,6 +426,7 @@ export default function SvgOptimizerRoute() {
               multiple
               accept=".svg,image/svg+xml"
               onChange={handleFileInput}
+              aria-label="Upload SVG files"
               data-testid="file-input"
             />
           </div>
@@ -447,7 +444,7 @@ export default function SvgOptimizerRoute() {
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  className="wb-btn wb-btn--sm"
+                  className="wb-btn"
                   onClick={handlePasteSubmit}
                   disabled={!pasteContent.trim()}
                 >
@@ -460,12 +457,20 @@ export default function SvgOptimizerRoute() {
             </div>
           )}
 
-          <ErrorAlert error={error} />
+          <ErrorAlert error={error} onDismiss={() => setError(null)} />
 
           {warning !== null && (
             <output className="wb-fade-in mt-4 flex items-start gap-3 rounded-[14px] border-2 border-ink bg-lemon px-4 py-3 shadow-pop-2">
               <TriangleAlert className="mt-0.5 size-5 shrink-0 text-ink" strokeWidth={2.5} />
-              <p className="font-mono text-[13px] leading-relaxed text-ink">{warning}</p>
+              <p className="flex-1 font-mono text-[13px] leading-relaxed text-ink">{warning}</p>
+              <button
+                type="button"
+                onClick={() => setWarning(null)}
+                aria-label="Dismiss warning"
+                className="-mr-1 -mt-1 grid size-7 shrink-0 place-items-center rounded-md text-ink transition-colors hover:text-tomato focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-lemon"
+              >
+                <X className="size-4" strokeWidth={2.5} />
+              </button>
             </output>
           )}
         </div>
@@ -487,7 +492,7 @@ export default function SvgOptimizerRoute() {
               {completedFiles.length > 0 && (
                 <button
                   type="button"
-                  className={`wb-btn wb-btn--sm ${allDownloaded ? "wb-btn--lemon" : ""}`}
+                  className={`wb-btn ${allDownloaded ? "wb-btn--lemon" : ""}`}
                   onClick={handleDownloadAll}
                   disabled={isZipping || allDownloaded}
                 >
@@ -512,7 +517,7 @@ export default function SvgOptimizerRoute() {
                   file.status === "done"
                     ? "bg-mint"
                     : file.status === "error"
-                      ? "bg-paper-2"
+                      ? "bg-pink"
                       : "bg-paper-2";
                 return (
                   <li
@@ -553,7 +558,7 @@ export default function SvgOptimizerRoute() {
                         )}
                         {file.status === "processing" && (
                           <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
-                            Optimising…
+                            Optimizing…
                           </span>
                         )}
                         {file.status === "pending" && (
@@ -627,37 +632,14 @@ export default function SvgOptimizerRoute() {
         )}
 
         {/* Options & Presets */}
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <section className="rounded-lg border-2 border-ink bg-paper p-5 shadow-pop-3">
             <h3 className="mb-4 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-3">
               <Settings2 className="size-4 text-ink" strokeWidth={2.25} />
-              Cleanup Options
+              Options
             </h3>
-            <div className="flex flex-col gap-3.5">
-              {CLEANUP_TOGGLES.map(({ key, label }) => (
-                <label
-                  key={key}
-                  htmlFor={`opt-${key}`}
-                  className="flex cursor-pointer items-center justify-between gap-3 text-[13.5px] font-medium text-ink"
-                >
-                  <span>{label}</span>
-                  <Switch
-                    id={`opt-${key}`}
-                    checked={prefs[key]}
-                    onCheckedChange={(v) => handleOptionChange(key, v)}
-                  />
-                </label>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-lg border-2 border-ink bg-paper p-5 shadow-pop-3">
-            <h3 className="mb-4 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-3">
-              <KeyRound className="size-4 text-ink" strokeWidth={2.25} />
-              Attributes
-            </h3>
-            <div className="flex flex-col gap-3.5">
-              {ATTRIBUTE_TOGGLES.map(({ key, label }) => (
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+              {OPTION_TOGGLES.map(({ key, label }) => (
                 <label
                   key={key}
                   htmlFor={`opt-${key}`}
@@ -697,7 +679,7 @@ export default function SvgOptimizerRoute() {
               })}
             </div>
             <p className="mt-3 font-mono text-[11px] leading-relaxed text-ink-3">
-              Presets overwrite the toggles to the left.
+              Presets overwrite the toggles above.
             </p>
           </section>
         </div>
@@ -734,9 +716,9 @@ export default function SvgOptimizerRoute() {
             )}
           </DialogHeader>
           <div className="flex items-center justify-center overflow-auto bg-paper p-8">
-            {previewFile?.optimizedContent && (
+            {previewUrl && previewFile && (
               <img
-                src={URL.createObjectURL(createSvgBlob(previewFile.optimizedContent))}
+                src={previewUrl}
                 alt={`Preview of ${previewFile.name}`}
                 className="max-h-[50vh] max-w-full"
               />
