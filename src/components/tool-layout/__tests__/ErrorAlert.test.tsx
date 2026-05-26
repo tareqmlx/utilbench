@@ -19,8 +19,7 @@ describe("ErrorAlert", () => {
   it("applies destructive variant", () => {
     render(<ErrorAlert error="Bad input" />);
     const alert = screen.getByRole("alert");
-    // Workbench error styling: tomato hard-offset shadow signals destructive intent
-    expect(alert.style.boxShadow).toContain("var(--tomato)");
+    expect(alert).toHaveClass("shadow-pop-cta");
   });
 
   it("applies className pass-through", () => {

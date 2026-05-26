@@ -14,8 +14,7 @@ function FeatureCard({ feature, index }: { feature: ToolFeature; index: number }
   return (
     <div
       ref={ref}
-      className={`wb-reveal relative border-2 border-ink p-6 ${flavorCycle[index % flavorCycle.length]}`}
-      style={{ borderRadius: 18, boxShadow: "var(--pop-3)" }}
+      className={`wb-reveal relative rounded-lg border-2 border-ink p-6 shadow-pop-3 ${flavorCycle[index % flavorCycle.length]}`}
     >
       <div className="mb-3 grid size-12 place-items-center rounded-[12px] border-2 border-ink bg-paper text-ink">
         <Icon className="size-6" strokeWidth={2} />

@@ -55,53 +55,36 @@ export function Component() {
 
       <nav
         aria-label="Breadcrumb"
-        className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em]"
-        style={{ color: "var(--ink-3)" }}
+        className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3"
       >
         <Link to="/" className="hover:text-ink">
           Utilbench
         </Link>
-        <span style={{ opacity: 0.4 }}>/</span>
-        <span className="font-medium" style={{ color: "var(--ink)" }}>
-          Privacy
-        </span>
+        <span className="opacity-40">/</span>
+        <span className="font-medium text-ink">Privacy</span>
       </nav>
 
-      <section
-        className="mt-5 grid gap-7 pb-9 lg:grid-cols-[auto_1fr] lg:items-center"
-        style={{ borderBottom: "2px solid var(--ink)" }}
-      >
-        <div
-          className="grid place-items-center border-2 border-ink"
-          style={{
-            width: 96,
-            height: 96,
-            borderRadius: 18,
-            background: "var(--mint)",
-            boxShadow: "var(--pop-3)",
-            transform: "rotate(-4deg)",
-          }}
-        >
+      <section className="mt-5 grid gap-7 border-b-2 border-ink pb-9 lg:grid-cols-[auto_1fr] lg:items-center">
+        <div className="grid size-24 -rotate-[4deg] place-items-center rounded-lg border-2 border-ink bg-mint shadow-pop-3">
           <Shield className="size-11" strokeWidth={2} />
         </div>
         <div>
           <h1 className="wb-h1 mb-3" style={{ fontSize: "clamp(40px,7vw,72px)" }}>
-            The privacy <em style={{ color: "var(--tomato)" }}>bit</em>.
+            The privacy <em className="text-tomato">bit</em>.
           </h1>
-          <p className="max-w-[60ch] text-[16px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+          <p className="max-w-[60ch] text-[16px] leading-relaxed text-ink-2">
             Last updated: March 15, 2026. Short version below — even shorter version: nothing leaves
             your browser.
           </p>
           <div className="mt-4 flex flex-wrap gap-2.5">
             <span className="wb-sticker wb-sticker--mint">
-              <span className="dot" style={{ background: "var(--grass)" }} />0 cookies
+              <span className="dot bg-grass" />0 cookies
             </span>
             <span className="wb-sticker wb-sticker--sky">
-              <span className="dot" style={{ background: "var(--grass)" }} />0 trackers
+              <span className="dot bg-grass" />0 trackers
             </span>
             <span className="wb-sticker wb-sticker--pink">
-              <span className="dot" style={{ background: "var(--grass)" }} />0 servers touch your
-              data
+              <span className="dot bg-grass" />0 servers touch your data
             </span>
           </div>
         </div>
@@ -111,21 +94,15 @@ export function Component() {
         {sections.map((s) => (
           <article
             key={s.label}
-            className="border-2 border-ink p-6"
-            style={{ borderRadius: 18, background: "var(--bg)", boxShadow: "var(--pop-3)" }}
+            className="rounded-lg border-2 border-ink bg-paper p-6 shadow-pop-3"
           >
-            <span
-              className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              style={{ color: "var(--tomato)" }}
-            >
+            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-tomato">
               {s.label}
             </span>
             <h2 className="wb-h3 mt-2 mb-2" style={{ fontSize: 22 }}>
               {s.title}
             </h2>
-            <p className="text-[14px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
-              {s.body}
-            </p>
+            <p className="text-[14px] leading-relaxed text-ink-2">{s.body}</p>
           </article>
         ))}
       </div>

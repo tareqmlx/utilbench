@@ -114,47 +114,31 @@ export function Component() {
 
       <nav
         aria-label="Breadcrumb"
-        className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em]"
-        style={{ color: "var(--ink-3)" }}
+        className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3"
       >
         <Link to="/" className="wb-link-soft hover:text-ink">
           Utilbench
         </Link>
-        <span style={{ opacity: 0.4 }}>/</span>
-        <span className="font-medium" style={{ color: "var(--ink)" }}>
-          Tools
-        </span>
+        <span className="opacity-40">/</span>
+        <span className="font-medium text-ink">Tools</span>
       </nav>
 
       {/* page hero */}
-      <section
-        className="grid gap-7 py-7 lg:grid-cols-[auto_1fr] lg:items-center"
-        style={{ borderBottom: "2px solid var(--ink)" }}
-      >
-        <div
-          className="grid place-items-center border-2 border-ink"
-          style={{
-            width: 96,
-            height: 96,
-            borderRadius: 18,
-            background: "var(--lemon)",
-            boxShadow: "var(--pop-3)",
-            transform: "rotate(-4deg)",
-          }}
-        >
+      <section className="grid gap-7 border-b-2 border-ink py-7 lg:grid-cols-[auto_1fr] lg:items-center">
+        <div className="grid size-24 -rotate-[4deg] place-items-center rounded-lg border-2 border-ink bg-lemon shadow-pop-3">
           <Search className="size-11" strokeWidth={2} />
         </div>
         <div>
           <h1 className="wb-h1 mb-3.5" style={{ fontSize: "clamp(40px,7vw,72px)" }}>
-            All <em style={{ color: "var(--tomato)" }}>tools</em>.
+            All <em className="text-tomato">tools</em>.
           </h1>
-          <p className="max-w-[60ch] text-[16px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
+          <p className="max-w-[60ch] text-[16px] leading-relaxed text-ink-2">
             Every utility on the workbench, in one searchable index. {allTools.length} tools across
             three categories — all running on your device.
           </p>
           <div className="mt-4 flex flex-wrap gap-2.5">
             <span className="wb-sticker wb-sticker--mint">
-              <span className="dot" style={{ background: "var(--grass)" }} />
+              <span className="dot bg-grass" />
               all-local
             </span>
             <span className="wb-sticker wb-sticker--sky">
@@ -167,10 +151,7 @@ export function Component() {
 
       {/* search + filters */}
       <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <label
-          className="flex w-full max-w-md items-center gap-2.5 border-2 border-ink bg-paper px-3 py-2.5 text-[14px]"
-          style={{ borderRadius: 14, boxShadow: "var(--pop-2)" }}
-        >
+        <label className="flex w-full max-w-md items-center gap-2.5 rounded-[14px] border-2 border-ink bg-paper px-3 py-2.5 text-[14px] shadow-pop-2">
           <Search className="size-4 shrink-0" strokeWidth={2} />
           <input
             type="text"
@@ -208,15 +189,10 @@ export function Component() {
           ))}
         </div>
       ) : (
-        <div
-          className="mt-9 flex flex-col items-center gap-3 border-2 border-ink p-12 text-center"
-          style={{ borderRadius: 18, background: "var(--bg-2)", boxShadow: "var(--pop-3)" }}
-        >
+        <div className="mt-9 flex flex-col items-center gap-3 rounded-lg border-2 border-ink bg-paper-2 p-12 text-center shadow-pop-3">
           <SearchX className="size-12" strokeWidth={2} />
           <h2 className="wb-h3">No tools found</h2>
-          <p className="wb-mono-sm" style={{ color: "var(--ink-2)" }}>
-            Try a different search term or category.
-          </p>
+          <p className="wb-mono-sm text-ink-2">Try a different search term or category.</p>
           <Button variant="outline" onClick={handleClearFilters} className="mt-2">
             Clear search
           </Button>

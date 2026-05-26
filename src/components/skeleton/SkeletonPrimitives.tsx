@@ -18,10 +18,7 @@ export function SkeletonLine({
 
 export function SkeletonTextArea({ className = "" }: { className?: string }) {
   return (
-    <div
-      className={cn("rounded-[18px] border-2 border-ink bg-paper p-5", className)}
-      style={{ boxShadow: "var(--pop-2)" }}
-    >
+    <div className={cn("rounded-[18px] border-2 border-ink bg-paper p-5 shadow-pop-2", className)}>
       <div className="space-y-3">
         <div className="h-3 w-full animate-pulse rounded-md bg-paper-3" />
         <div className="h-3 w-11/12 animate-pulse rounded-md bg-paper-3" />

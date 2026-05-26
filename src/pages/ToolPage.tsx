@@ -67,9 +67,9 @@ export function Component() {
       <div className="wb-shell py-24 text-center">
         <SEOHead title={`Tool Not Found | ${APP_NAME}`} noIndex />
         <h1 className="wb-h1" style={{ fontSize: "clamp(36px,5vw,56px)" }}>
-          Tool not <em style={{ color: "var(--tomato)" }}>found</em>.
+          Tool not <em className="text-tomato">found</em>.
         </h1>
-        <p className="mt-4 text-[15px]" style={{ color: "var(--ink-2)" }}>
+        <p className="mt-4 text-[15px] text-ink-2">
           We couldn&apos;t find a tool called <code className="wb-kbd">{toolSlug}</code>.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -103,62 +103,40 @@ export function Component() {
       <div className="wb-shell pt-9">
         <nav
           aria-label="Breadcrumb"
-          className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em]"
-          style={{ color: "var(--ink-3)" }}
+          className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3"
         >
           <Link to="/" className="wb-link-soft hover:text-ink">
             Utilbench
           </Link>
-          <span style={{ opacity: 0.4 }}>/</span>
+          <span className="opacity-40">/</span>
           <Link to="/tools" className="wb-link-soft hover:text-ink">
             Tools
           </Link>
-          <span style={{ opacity: 0.4 }}>/</span>
-          <span style={{ color: "var(--ink-3)" }}>{categoryLabel[tool.category]}</span>
-          <span style={{ opacity: 0.4 }}>/</span>
-          <span className="font-medium" style={{ color: "var(--ink)" }}>
-            {tool.name}
-          </span>
+          <span className="opacity-40">/</span>
+          <span className="text-ink-3">{categoryLabel[tool.category]}</span>
+          <span className="opacity-40">/</span>
+          <span className="font-medium text-ink">{tool.name}</span>
         </nav>
 
         {/* page hero */}
-        <section
-          className="mt-5 grid gap-7 pb-9 lg:grid-cols-[auto_1fr] lg:items-center"
-          style={{ borderBottom: "2px solid var(--ink)" }}
-        >
-          <div
-            className="wb-fade-in grid place-items-center border-2 border-ink"
-            style={{
-              width: 96,
-              height: 96,
-              borderRadius: 18,
-              background: "var(--lemon)",
-              boxShadow: "var(--pop-3)",
-              transform: "rotate(-4deg)",
-            }}
-          >
+        <section className="mt-5 grid gap-7 border-b-2 border-ink pb-9 lg:grid-cols-[auto_1fr] lg:items-center">
+          <div className="wb-fade-in grid size-24 -rotate-[4deg] place-items-center rounded-lg border-2 border-ink bg-lemon shadow-pop-3">
             <ToolIcon className="size-11" strokeWidth={2} />
           </div>
           <div className="wb-fade-in" style={{ animationDelay: "80ms" }}>
             <h1 className="wb-h1 mb-3" style={{ fontSize: "clamp(40px,6.5vw,72px)" }}>
               {tool.name.split(" ")[0]}
               {tool.name.split(" ").length > 1 && (
-                <em style={{ color: "var(--tomato)" }}>
-                  {" "}
-                  {tool.name.split(" ").slice(1).join(" ")}
-                </em>
+                <em className="text-tomato"> {tool.name.split(" ").slice(1).join(" ")}</em>
               )}
-              {tool.name.split(" ").length === 1 && <em style={{ color: "var(--tomato)" }}>.</em>}
+              {tool.name.split(" ").length === 1 && <em className="text-tomato">.</em>}
             </h1>
-            <p
-              className="max-w-[60ch] text-[16px] leading-relaxed"
-              style={{ color: "var(--ink-2)" }}
-            >
+            <p className="max-w-[60ch] text-[16px] leading-relaxed text-ink-2">
               {tool.description}
             </p>
             <div className="mt-4 flex flex-wrap gap-2.5">
               <span className="wb-sticker wb-sticker--mint">
-                <span className="dot" style={{ background: "var(--grass)" }} />
+                <span className="dot bg-grass" />
                 all-local
               </span>
               <span className="wb-sticker wb-sticker--sky">
@@ -177,9 +155,7 @@ export function Component() {
             <ToolSkeleton tool={tool} />
           ) : (
             <div className="wb-shell py-12 text-center">
-              <p className="wb-mono-sm" style={{ color: "var(--ink-2)" }}>
-                Loading {tool.name}…
-              </p>
+              <p className="wb-mono-sm text-ink-2">Loading {tool.name}…</p>
             </div>
           )
         }
@@ -194,16 +170,13 @@ export function Component() {
       )}
 
       {relatedTools.length > 0 && (
-        <section className="wb-shell pt-12 pb-12" style={{ borderTop: "2px solid var(--ink)" }}>
+        <section className="wb-shell border-t-2 border-ink pt-12 pb-12">
           <div className="mb-7 flex flex-wrap items-center gap-3.5">
-            <span
-              className="rounded-full bg-ink px-3 py-1 font-mono text-[11px] uppercase tracking-[0.1em] text-paper"
-              style={{ border: "2px solid var(--ink)" }}
-            >
+            <span className="rounded-full border-2 border-ink bg-ink px-3 py-1 font-mono text-[11px] uppercase tracking-[0.1em] text-paper">
               Sibling tools
             </span>
             <h2 className="wb-h2" style={{ fontSize: "clamp(28px,3.5vw,36px)" }}>
-              You might also <em style={{ color: "var(--ink-3)" }}>need</em>
+              You might also <em className="text-ink-3">need</em>
             </h2>
           </div>
           <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3">

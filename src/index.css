@@ -66,6 +66,13 @@
   --color-grass: var(--grass);
   --color-ink-muted: var(--ink-muted);
   --color-ink-divider: var(--ink-divider);
+
+  /* Hard-offset pop shadows exposed as Tailwind utilities */
+  --shadow-pop-1: var(--pop-1);
+  --shadow-pop-2: var(--pop-2);
+  --shadow-pop-3: var(--pop-3);
+  --shadow-pop-4: var(--pop-4);
+  --shadow-pop-cta: var(--pop-cta);
 }
 
 :root {
@@ -434,6 +441,9 @@ body {
   border-color: var(--bg);
   color: var(--bg);
   background: transparent;
+}
+.wb-tile--ink .pin {
+  color: var(--ink-muted);
 }
 
 /* Workbench panel (input/output) */

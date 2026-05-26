@@ -11,6 +11,7 @@ const flavorCycle = [
   "wb-tile--lilac",
   "wb-tile--mint",
   "wb-tile--sky",
+  "wb-tile--ink",
   "wb-tile--bg2",
   "wb-tile--bg3",
 ] as const;
@@ -75,20 +76,14 @@ function FeatBlock({
 }) {
   const ref = useScrollReveal<HTMLDivElement>({ delay: index * 80 });
   return (
-    <div
-      ref={ref}
-      className="wb-reveal border-2 border-ink p-7"
-      style={{ background: "var(--bg-2)", borderRadius: 18 }}
-    >
-      <div className="wb-display" style={{ fontSize: 64, color: "var(--tomato)" }}>
+    <div ref={ref} className="wb-reveal rounded-lg border-2 border-ink bg-paper-2 p-7">
+      <div className="wb-display text-tomato" style={{ fontSize: 64 }}>
         {feat.num}
       </div>
       <h4 className="wb-h3 mt-2" style={{ fontSize: 22 }}>
         {feat.title}
       </h4>
-      <p className="mt-2 text-[13.5px] leading-relaxed" style={{ color: "var(--ink-2)" }}>
-        {feat.body}
-      </p>
+      <p className="mt-2 text-[13.5px] leading-relaxed text-ink-2">{feat.body}</p>
     </div>
   );
 }
@@ -123,7 +118,7 @@ export function Component() {
           </span>
           <span className="wb-hero-sticker" style={{ top: 30, right: "8%" }}>
             <span className="wb-sticker wb-sticker--mint wb-hero-sway wb-hero-sway--mint">
-              <span className="dot" style={{ background: "var(--grass)" }} />
+              <span className="dot bg-grass" />
               private by default
             </span>
           </span>
@@ -142,7 +137,7 @@ export function Component() {
           }}
         >
           <span className="wb-hero-line wb-hero-line--1 block">A workbench</span>
-          <span className="wb-hero-line wb-hero-line--2 block" style={{ color: "var(--tomato)" }}>
+          <span className="wb-hero-line wb-hero-line--2 block text-tomato">
             for the <em>browser</em>.
           </span>
           <span className="block">
@@ -160,10 +155,7 @@ export function Component() {
           </span>
         </h1>
 
-        <p
-          className="wb-hero-sub mx-auto mt-7 max-w-[62ch] text-center text-base leading-relaxed sm:text-lg"
-          style={{ color: "var(--ink-2)" }}
-        >
+        <p className="wb-hero-sub mx-auto mt-7 max-w-[62ch] text-center text-base leading-relaxed text-ink-2 sm:text-lg">
           Utilbench is a friendly little toolbox of{" "}
           <strong className="wb-hl">{totalTools} developer utilities</strong>. Formatters, decoders,
           generators. All running on your device, none of them phoning home. Pick a sticker and get
@@ -187,14 +179,11 @@ export function Component() {
           ref={workbenchHeaderRef}
         >
           <div className="flex items-baseline gap-3">
-            <span
-              className="rounded-full bg-ink px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.1em] text-paper"
-              style={{ border: "2px solid var(--ink)" }}
-            >
+            <span className="rounded-full border-2 border-ink bg-ink px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.1em] text-paper">
               § The workbench
             </span>
             <h2 className="wb-h2" style={{ fontSize: "clamp(28px,3.4vw,40px)" }}>
-              Pick a tile, <em style={{ color: "var(--ink-3)" }}>start tinkering.</em>
+              Pick a tile, <em className="text-ink-3">start tinkering.</em>
             </h2>
           </div>
           <div className="flex flex-wrap gap-2">

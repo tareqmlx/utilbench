@@ -51,10 +51,7 @@ export function Layout() {
   return (
     <div className="flex min-h-screen flex-col text-foreground">
       <header className="sticky top-3.5 z-50 mx-auto w-full max-w-[1320px] px-4 sm:px-7">
-        <div
-          className="flex items-center justify-between gap-2 rounded-full border-2 border-ink bg-ink py-2 pl-5 pr-2 text-paper"
-          style={{ boxShadow: "var(--pop-cta)" }}
-        >
+        <div className="flex items-center justify-between gap-2 rounded-full border-2 border-ink bg-ink py-2 pl-5 pr-2 text-paper shadow-pop-cta">
           <div className="flex items-center gap-4 sm:gap-5">
             <Link to="/" className="flex shrink-0 items-center gap-2.5">
               <span

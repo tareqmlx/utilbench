@@ -14,23 +14,16 @@ export function Component() {
       <SEOHead title="Page Not Found | Utilbench" noIndex />
       <div
         ref={iconRef}
-        className="wb-reveal mx-auto mb-6 grid size-24 place-items-center border-2 border-ink"
-        style={{
-          borderRadius: 18,
-          background: "var(--lemon)",
-          boxShadow: "var(--pop-3)",
-          transform: "rotate(-4deg)",
-        }}
+        className="wb-reveal mx-auto mb-6 grid size-24 -rotate-[4deg] place-items-center rounded-lg border-2 border-ink bg-lemon shadow-pop-3"
       >
         <Compass className="size-11" strokeWidth={2} />
       </div>
       <h1 ref={headingRef} className="wb-reveal wb-h1" style={{ fontSize: "clamp(40px,6vw,72px)" }}>
-        Page <em style={{ color: "var(--tomato)" }}>missing</em>.
+        Page <em className="text-tomato">missing</em>.
       </h1>
       <p
         ref={bodyRef}
-        className="wb-reveal mx-auto mt-4 max-w-md text-[15px] leading-relaxed"
-        style={{ color: "var(--ink-2)" }}
+        className="wb-reveal mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-ink-2"
       >
         The page you&apos;re looking for isn&apos;t on this workbench. Try the toolbox instead.
       </p>

@@ -43,10 +43,9 @@ export function ToolCard({ tool }: ToolCardProps) {
       ref={ref}
       to={`/tools/${tool.slug}`}
       className={cn(
-        "wb-reveal group relative flex h-full flex-col rounded-[18px] border-2 border-ink p-5 transition-transform duration-150 hover:-translate-x-[2px] hover:-translate-y-[2px]",
+        "wb-reveal group relative flex h-full flex-col rounded-[18px] border-2 border-ink p-5 shadow-pop-3 transition-transform duration-150 hover:-translate-x-[2px] hover:-translate-y-[2px]",
         flavor.bg,
       )}
-      style={{ boxShadow: "var(--pop-3)" }}
     >
       <span className="absolute right-4 top-4 font-mono text-[10px] uppercase tracking-wider text-ink-3">
         {categoryLabels[tool.category]}
