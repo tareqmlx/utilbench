@@ -38,16 +38,15 @@ function tileFlavor(index: number) {
 
 function ToolTile({ tool, index }: { tool: ToolDefinition; index: number }) {
   const Icon = getIcon(tool.icon);
-  const pin = tool.featured ? "★ FEATURED" : tool.category.toUpperCase();
   return (
     <Link
       to={`/tools/${tool.slug}`}
       className={`wb-tile ${tileFlavor(index)}`}
       style={{ ["--i" as string]: Math.min(index, 12) }}
     >
-      <span className="pin">{pin}</span>
+      {tool.featured && <span className="pin">★ FEATURED</span>}
       <span className="icn">
-        <Icon className="size-[22px]" strokeWidth={2} />
+        <Icon className="size-[22px]" strokeWidth={2} aria-hidden="true" />
       </span>
       <h3>{tool.name}</h3>
       <p>{tool.description}</p>
@@ -127,7 +126,7 @@ export function Component() {
       {/* page hero */}
       <section className="grid gap-7 border-b-2 border-ink py-7 lg:grid-cols-[auto_1fr] lg:items-center">
         <div className="wb-tools-icon grid size-24 -rotate-[4deg] place-items-center rounded-lg border-2 border-ink bg-lemon shadow-pop-3">
-          <Search className="size-11" strokeWidth={2} />
+          <Search className="size-11" strokeWidth={2} aria-hidden="true" />
         </div>
         <div>
           <h1 className="wb-tools-rise wb-tools-rise--1 wb-h1 wb-h1--page mb-3.5">
@@ -153,8 +152,8 @@ export function Component() {
 
       {/* search + filters */}
       <div className="wb-tools-rise wb-tools-rise--4 mt-9 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <label className="flex w-full max-w-md items-center gap-2.5 rounded-[14px] border-2 border-ink bg-paper px-3 py-2.5 text-[14px] shadow-pop-2">
-          <Search className="size-4 shrink-0" strokeWidth={2} />
+        <label className="flex w-full max-w-md items-center gap-2.5 rounded-[14px] border-2 border-ink bg-paper px-3 py-2.5 text-[14px] shadow-pop-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-tomato">
+          <Search className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
           <input
             type="text"
             name="tool-search"
@@ -177,9 +176,11 @@ export function Component() {
               <button
                 type="button"
                 key={cat.key}
-                onClick={() => setActiveCategory(cat.key)}
+                onClick={() => {
+                  if (empty) return;
+                  setActiveCategory(cat.key);
+                }}
                 aria-pressed={active}
-                disabled={empty}
                 aria-disabled={empty}
                 className={`wb-chip ${active ? "on" : ""}`}
               >
@@ -198,10 +199,7 @@ export function Component() {
       {/* tile wall */}
       <h2 className="sr-only">Tool index</h2>
       {filteredTools.length > 0 ? (
-        <div
-          key={activeCategory}
-          className="wb-tools-grid mt-9 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-        >
+        <div className="wb-tools-grid mt-9 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredTools.map((tool, i) => (
             <ToolTile key={tool.slug} tool={tool} index={i} />
           ))}
