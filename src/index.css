@@ -198,6 +198,11 @@ body {
   letter-spacing: -0.035em;
   line-height: 0.96;
 }
+/* Inner-page hero: bigger than .wb-h1, smaller than the homepage display.
+   Used on /tools, /privacy and tool routes. */
+.wb-h1--page {
+  font-size: clamp(40px, 7vw, 72px);
+}
 .wb-h2 {
   font-family: var(--font-display);
   font-weight: 800;
@@ -390,6 +395,16 @@ body {
 .wb-chip.on {
   background: var(--ink);
   color: var(--bg);
+}
+.wb-chip:disabled,
+.wb-chip[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.wb-chip:disabled:hover,
+.wb-chip[aria-disabled="true"]:hover {
+  background: var(--bg);
+  transform: none;
 }
 @media (max-width: 640px) {
   .wb-chip {
