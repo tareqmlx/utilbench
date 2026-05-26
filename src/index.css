@@ -742,6 +742,18 @@ body {
   transition: color 160ms ease, opacity 160ms ease;
 }
 
+/* Show only on hover-capable, fine-pointer devices (keyboard shortcuts,
+   right-click affordances, hover tooltips). Hidden on touch where the
+   gesture isn't available. */
+.wb-only-pointer-fine {
+  display: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .wb-only-pointer-fine {
+    display: inline-flex;
+  }
+}
+
 /* ── Home hero choreography ───────────────────────────────────── */
 @keyframes wb-hero-rise {
   from {
@@ -984,7 +996,8 @@ button[role="switch"] [data-state] {
 }
 
 /* Skip /tools entrance on repeat in-session visits. Keeps reduced-motion
-   parity: content fully visible at rest, hero icon at its final -4deg tilt. */
+   parity: content fully visible at rest, hero icon at its final -4deg tilt,
+   mint highlight painted under the count without sweep. */
 .wb-tools-skipped .wb-tools-rise,
 .wb-tools-skipped .wb-tools-icon,
 .wb-tools-skipped .wb-tools-grid > .wb-tile {
@@ -993,6 +1006,10 @@ button[role="switch"] [data-state] {
 }
 .wb-tools-skipped .wb-tools-icon {
   transform: rotate(-4deg);
+}
+.wb-tools-skipped .wb-hl::before {
+  animation: none !important;
+  transform: scaleX(1) !important;
 }
 
 /* Reduced motion */

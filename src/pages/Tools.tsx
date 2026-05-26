@@ -1,5 +1,5 @@
-import { Search, SearchX } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Boxes, Search, SearchX } from "lucide-react";
+import { type KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useUrlState } from "../hooks/useUrlState";
 import { getIcon } from "../lib/icons";
@@ -120,6 +120,50 @@ export function Component() {
     setUrlState({ q: "", cat: "all" });
   };
 
+  const filterLabelId = useId();
+  const chipRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const handleChipKeyDown = (e: KeyboardEvent<HTMLButtonElement>, idx: number) => {
+    const isPrev = e.key === "ArrowLeft" || e.key === "ArrowUp";
+    const isNext = e.key === "ArrowRight" || e.key === "ArrowDown";
+    if (!isPrev && !isNext && e.key !== "Home" && e.key !== "End") return;
+    e.preventDefault();
+    const n = categories.length;
+    const enabled = (i: number) => {
+      const c = categories[i];
+      if (!c) return false;
+      if (c.key === activeCategory) return true;
+      return (categoryCounts[c.key] ?? 0) > 0;
+    };
+    let target = idx;
+    if (e.key === "Home") {
+      for (let i = 0; i < n; i++)
+        if (enabled(i)) {
+          target = i;
+          break;
+        }
+    } else if (e.key === "End") {
+      for (let i = n - 1; i >= 0; i--)
+        if (enabled(i)) {
+          target = i;
+          break;
+        }
+    } else {
+      const step = isNext ? 1 : -1;
+      for (let i = 1; i <= n; i++) {
+        const next = (idx + step * i + n) % n;
+        if (enabled(next)) {
+          target = next;
+          break;
+        }
+      }
+    }
+    const nextCat = categories[target];
+    if (!nextCat) return;
+    setActiveCategory(nextCat.key);
+    chipRefs.current[target]?.focus();
+  };
+
   const [announcedCount, setAnnouncedCount] = useState(filteredTools.length);
   useEffect(() => {
     const t = setTimeout(() => setAnnouncedCount(filteredTools.length), ANNOUNCE_DEBOUNCE_MS);
@@ -167,7 +211,7 @@ export function Component() {
       {/* page hero */}
       <section className="grid gap-7 border-b-2 border-ink py-7 lg:grid-cols-[auto_1fr] lg:items-center">
         <div className="wb-tools-icon grid size-24 -rotate-[4deg] place-items-center rounded-lg border-2 border-ink bg-lemon shadow-pop-3">
-          <Search className="size-11" strokeWidth={2} aria-hidden="true" />
+          <Boxes className="size-11" strokeWidth={2} aria-hidden="true" />
         </div>
         <div>
           <h1 className="wb-tools-rise wb-tools-rise--1 wb-h1 wb-h1--page mb-3.5">
@@ -182,7 +226,7 @@ export function Component() {
               <span className="dot bg-grass" />
               all-local
             </span>
-            <span className="wb-sticker wb-sticker--sky">
+            <span className="wb-sticker wb-sticker--sky wb-only-pointer-fine">
               <span aria-hidden="true">⌘K</span> to search
             </span>
           </div>
@@ -190,49 +234,58 @@ export function Component() {
       </section>
 
       {/* search + filters */}
-      <div className="wb-tools-rise wb-tools-rise--4 mt-9 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <label
-          htmlFor={SEARCH_INPUT_ID}
-          className="flex w-full max-w-md items-center gap-2.5 rounded border-2 border-ink bg-paper px-3 py-2.5 text-sm shadow-pop-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-tomato"
-        >
-          <Search className="size-5 shrink-0 sm:size-4" strokeWidth={2} aria-hidden="true" />
-          <input
-            id={SEARCH_INPUT_ID}
-            type="search"
-            name="tool-search"
-            autoComplete="off"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tools by name, description, or tag…"
-            aria-label="Search tools"
-            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-ink-3"
-          />
-        </label>
+      <div className="wb-tools-rise wb-tools-rise--4 mt-9 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex w-full max-w-md flex-col gap-1.5">
+          <label htmlFor={SEARCH_INPUT_ID} className="wb-meta">
+            Search
+          </label>
+          <div className="flex items-center gap-2.5 rounded border-2 border-ink bg-paper px-3 py-2.5 text-sm shadow-pop-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-tomato">
+            <Search className="size-5 shrink-0 sm:size-4" strokeWidth={2} aria-hidden="true" />
+            <input
+              id={SEARCH_INPUT_ID}
+              type="search"
+              name="tool-search"
+              autoComplete="off"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Name, description, or tag…"
+              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-ink-3"
+            />
+          </div>
+        </div>
 
-        <fieldset className="flex flex-wrap gap-2 border-0 p-0">
-          <legend className="sr-only">Filter by category</legend>
-          {categories.map((cat) => {
-            const active = activeCategory === cat.key;
-            const count = categoryCounts[cat.key];
-            const empty = count === 0 && !active;
-            return (
-              <button
-                type="button"
-                key={cat.key}
-                onClick={() => {
-                  if (empty) return;
-                  setActiveCategory(cat.key);
-                }}
-                aria-pressed={active}
-                aria-disabled={empty}
-                className={`wb-chip ${active ? "on" : ""}`}
-              >
-                {cat.label}
-                {` · ${count}`}
-              </button>
-            );
-          })}
-        </fieldset>
+        <div className="flex flex-col gap-1.5">
+          <span id={filterLabelId} className="wb-meta">
+            Filter
+          </span>
+          <div role="radiogroup" aria-labelledby={filterLabelId} className="flex flex-wrap gap-2">
+            {categories.map((cat, idx) => {
+              const active = activeCategory === cat.key;
+              const count = categoryCounts[cat.key];
+              const empty = count === 0 && !active;
+              return (
+                <button
+                  type="button"
+                  key={cat.key}
+                  ref={(el) => {
+                    chipRefs.current[idx] = el;
+                  }}
+                  onClick={() => setActiveCategory(cat.key)}
+                  onKeyDown={(e) => handleChipKeyDown(e, idx)}
+                  disabled={empty}
+                  // biome-ignore lint/a11y/useSemanticElements: chips need custom styling; native radio can't replicate the pill+border+shadow without losing semantics elsewhere
+                  role="radio"
+                  aria-checked={active}
+                  tabIndex={active ? 0 : -1}
+                  className={`wb-chip ${active ? "on" : ""}`}
+                >
+                  {cat.label}
+                  {` · ${count}`}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <p aria-live="polite" className="sr-only">
