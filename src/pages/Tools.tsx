@@ -1,7 +1,6 @@
 import { Search, SearchX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { useScrollReveal } from "../hooks/useScrollReveal";
 import { useUrlState } from "../hooks/useUrlState";
 import { getIcon } from "../lib/icons";
 import { JsonLd, SEOHead, buildBreadcrumbSchema } from "../seo";
@@ -39,10 +38,13 @@ function tileFlavor(index: number) {
 
 function ToolTile({ tool, index }: { tool: ToolDefinition; index: number }) {
   const Icon = getIcon(tool.icon);
-  const ref = useScrollReveal<HTMLAnchorElement>({ delay: Math.min(index * 30, 240) });
   const pin = tool.featured ? "★ FEATURED" : tool.category.toUpperCase();
   return (
-    <Link ref={ref} to={`/tools/${tool.slug}`} className={`wb-tile wb-reveal ${tileFlavor(index)}`}>
+    <Link
+      to={`/tools/${tool.slug}`}
+      className={`wb-tile ${tileFlavor(index)}`}
+      style={{ ["--i" as string]: Math.min(index, 12) }}
+    >
       <span className="pin">{pin}</span>
       <span className="icn">
         <Icon className="size-[22px]" strokeWidth={2} />
@@ -122,18 +124,19 @@ export function Component() {
 
       {/* page hero */}
       <section className="grid gap-7 border-b-2 border-ink py-7 lg:grid-cols-[auto_1fr] lg:items-center">
-        <div className="grid size-24 -rotate-[4deg] place-items-center rounded-lg border-2 border-ink bg-lemon shadow-pop-3">
+        <div className="wb-tools-icon grid size-24 -rotate-[4deg] place-items-center rounded-lg border-2 border-ink bg-lemon shadow-pop-3">
           <Search className="size-11" strokeWidth={2} />
         </div>
         <div>
-          <h1 className="wb-h1 wb-h1--page mb-3.5">
+          <h1 className="wb-tools-rise wb-tools-rise--1 wb-h1 wb-h1--page mb-3.5">
             All <em className="text-tomato">tools</em>.
           </h1>
-          <p className="max-w-[60ch] text-[16px] leading-relaxed text-ink-2">
-            Every utility on the workbench, in one searchable index. {allTools.length} tools across
-            three categories — all running on your device.
+          <p className="wb-tools-rise wb-tools-rise--2 max-w-[60ch] text-[16px] leading-relaxed text-ink-2">
+            Every utility on the workbench, in one searchable index.{" "}
+            <strong className="wb-hl">{allTools.length} tools</strong> across three categories — all
+            running on your device.
           </p>
-          <div className="mt-4 flex flex-wrap gap-2.5">
+          <div className="wb-tools-rise wb-tools-rise--3 mt-4 flex flex-wrap gap-2.5">
             <span className="wb-sticker wb-sticker--mint">
               <span className="dot bg-grass" />
               all-local
@@ -147,7 +150,7 @@ export function Component() {
       </section>
 
       {/* search + filters */}
-      <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="wb-tools-rise wb-tools-rise--4 mt-9 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <label className="flex w-full max-w-md items-center gap-2.5 rounded-[14px] border-2 border-ink bg-paper px-3 py-2.5 text-[14px] shadow-pop-2">
           <Search className="size-4 shrink-0" strokeWidth={2} />
           <input
@@ -191,13 +194,16 @@ export function Component() {
       {/* tile wall */}
       <h2 className="sr-only">Tool index</h2>
       {filteredTools.length > 0 ? (
-        <div className="mt-9 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div
+          key={activeCategory}
+          className="wb-tools-grid mt-9 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        >
           {filteredTools.map((tool, i) => (
             <ToolTile key={tool.slug} tool={tool} index={i} />
           ))}
         </div>
       ) : (
-        <div className="mt-9 flex flex-col items-center gap-3 rounded-lg border-2 border-ink bg-paper-2 p-12 text-center shadow-pop-3">
+        <div className="wb-fade-in mt-9 flex flex-col items-center gap-3 rounded-lg border-2 border-ink bg-paper-2 p-12 text-center shadow-pop-3">
           <SearchX className="size-12" strokeWidth={2} />
           <h3 className="wb-h3">No tools found</h3>
           <p className="text-[13.5px] leading-relaxed text-ink-2">

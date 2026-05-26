@@ -885,6 +885,82 @@ button[role="switch"] [data-state] {
   transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* ── /tools page entrance ─────────────────────────────────────── */
+@keyframes wb-tools-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes wb-tools-icon-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0) rotate(-12deg);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(-4deg);
+  }
+}
+@keyframes wb-tools-icon-sway {
+  from {
+    transform: translate3d(0, 0, 0) rotate(-4deg);
+  }
+  to {
+    transform: translate3d(0, -3px, 0) rotate(-2deg);
+  }
+}
+.wb-tools-icon {
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: wb-tools-icon-in 520ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both, wb-tools-icon-sway
+    5600ms cubic-bezier(0.22, 1, 0.36, 1) 1200ms 4 alternate;
+  transform-origin: center;
+}
+.wb-tools-rise {
+  opacity: 0;
+  will-change: opacity, transform;
+  animation: wb-tools-rise 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.wb-tools-rise--1 {
+  animation-delay: 180ms;
+}
+.wb-tools-rise--2 {
+  animation-delay: 260ms;
+}
+.wb-tools-rise--3 {
+  animation-delay: 340ms;
+}
+.wb-tools-rise--4 {
+  animation-delay: 420ms;
+}
+
+/* ── Chip activation pulse (filter switch) ─────────────────────── */
+@keyframes wb-chip-pulse {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.wb-chip.on {
+  animation: wb-chip-pulse 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── /tools tile stagger (filter re-flow) ──────────────────────── */
+.wb-tools-grid > .wb-tile {
+  animation: wb-item-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 28ms);
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   html {
@@ -909,7 +985,11 @@ button[role="switch"] [data-state] {
   .wb-hero-cta,
   .wb-hero-sticker,
   .wb-hero-sway,
-  .wb-hl::before {
+  .wb-hl::before,
+  .wb-tools-icon,
+  .wb-tools-rise,
+  .wb-tools-grid > .wb-tile,
+  .wb-chip.on {
     animation: none !important;
     transition: none !important;
     opacity: 1 !important;
@@ -919,5 +999,8 @@ button[role="switch"] [data-state] {
   }
   .wb-hero-line--3 {
     transform: rotate(-2deg) !important;
+  }
+  .wb-tools-icon {
+    transform: rotate(-4deg) !important;
   }
 }
