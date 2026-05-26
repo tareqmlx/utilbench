@@ -406,7 +406,7 @@ body {
 .wb-chip:disabled,
 .wb-chip[aria-disabled="true"] {
   cursor: not-allowed;
-  opacity: 0.4;
+  opacity: 0.55;
 }
 .wb-chip:disabled:hover,
 .wb-chip[aria-disabled="true"]:hover {
