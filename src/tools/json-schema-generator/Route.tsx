@@ -120,8 +120,8 @@ export default function JsonSchemaGeneratorRoute() {
     input.trim() === ""
       ? ""
       : error !== null
-        ? "ring-2 ring-red-500/50 border-transparent"
-        : "ring-2 ring-emerald-500/50 border-transparent";
+        ? "ring-2 ring-tomato/60 border-transparent"
+        : "ring-2 ring-grass/60 border-transparent";
 
   return (
     <ToolShell className="sm:py-10">
@@ -212,8 +212,8 @@ export default function JsonSchemaGeneratorRoute() {
             />
 
             <div className="relative">
-              <div className="h-[500px] w-full overflow-auto rounded-md border border-border bg-card p-4 dark:bg-black">
-                <pre className="font-mono text-sm text-indigo-300">
+              <div className="h-[500px] w-full overflow-auto rounded-lg border-2 border-ink bg-ink p-5 shadow-pop-3">
+                <pre className="font-mono text-sm text-paper">
                   <code>
                     {output || "Your generated JSON Schema will appear here as you type..."}
                   </code>

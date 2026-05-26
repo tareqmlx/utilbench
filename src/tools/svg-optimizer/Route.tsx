@@ -433,10 +433,10 @@ export default function SvgOptimizerRoute() {
           <ErrorAlert error={error} />
 
           {warning !== null && (
-            <Alert className="mt-4 border-amber-500/50 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-              <TriangleAlert className="h-4 w-4 text-amber-500" />
-              <AlertDescription>{warning}</AlertDescription>
-            </Alert>
+            <output className="block mt-4 flex items-start gap-3 rounded-[14px] border-2 border-ink bg-lemon px-4 py-3 shadow-pop-2">
+              <TriangleAlert className="mt-0.5 size-5 shrink-0 text-ink" strokeWidth={2.5} />
+              <p className="font-mono text-[13px] leading-relaxed text-ink">{warning}</p>
+            </output>
           )}
         </div>
 
@@ -453,9 +453,7 @@ export default function SvgOptimizerRoute() {
               {completedFiles.length > 0 && (
                 <Button
                   variant={allDownloaded ? "outline" : "default"}
-                  className={
-                    allDownloaded ? "bg-green-100 text-green-600 dark:bg-green-900/30" : ""
-                  }
+                  className={allDownloaded ? "border-ink bg-mint text-ink" : ""}
                   onClick={handleDownloadAll}
                   disabled={isZipping || allDownloaded}
                 >
@@ -487,7 +485,7 @@ export default function SvgOptimizerRoute() {
                       {file.status === "processing" ? (
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                       ) : file.status === "error" ? (
-                        <CircleAlert className="h-5 w-5 text-red-400" />
+                        <CircleAlert className="h-5 w-5 text-tomato" />
                       ) : (
                         <div className="h-6 w-6 rounded-[2px] bg-primary/20" />
                       )}
@@ -499,10 +497,10 @@ export default function SvgOptimizerRoute() {
                           <span className="text-muted-foreground line-through">
                             {formatFileSize(file.originalSize)}
                           </span>
-                          <span className="font-bold text-green-500">
+                          <span className="font-bold text-grass">
                             {formatFileSize(file.optimizedSize)}
                           </span>
-                          <span className="rounded-[6px] bg-green-100 px-1.5 text-green-600 dark:bg-green-900/30">
+                          <span className="rounded-[6px] border border-ink bg-mint px-1.5 text-ink">
                             -{calculateReduction(file.originalSize, file.optimizedSize)}%
                           </span>
                         </div>
@@ -520,7 +518,7 @@ export default function SvgOptimizerRoute() {
                         </span>
                       )}
                       {file.status === "error" && (
-                        <span className="text-[11px] font-medium text-red-500">{file.error}</span>
+                        <span className="text-[11px] font-medium text-tomato">{file.error}</span>
                       )}
                     </div>
                   </div>
@@ -536,7 +534,7 @@ export default function SvgOptimizerRoute() {
                           <Eye className="h-5 w-5" />
                         </Button>
                         {file.downloaded ? (
-                          <span className="flex items-center gap-2 rounded-[6px] bg-green-100 px-3 py-1.5 text-xs font-bold text-green-600 dark:bg-green-900/30">
+                          <span className="flex items-center gap-2 rounded-[6px] border-2 border-ink bg-mint px-3 py-1.5 text-xs font-bold text-ink">
                             <Check className="h-4 w-4" />
                             Downloaded
                           </span>
@@ -570,7 +568,7 @@ export default function SvgOptimizerRoute() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="text-muted-foreground hover:text-red-500"
+                      className="text-muted-foreground hover:text-tomato"
                       onClick={() => handleRemoveFile(file.id)}
                       aria-label={`Remove ${file.name}`}
                     >
@@ -732,10 +730,10 @@ export default function SvgOptimizerRoute() {
                   {formatFileSize(previewFile.originalSize)}
                 </span>
                 <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                <span className="font-bold text-green-500">
+                <span className="font-bold text-grass">
                   {formatFileSize(previewFile.optimizedSize)}
                 </span>
-                <span className="rounded-[6px] bg-green-100 px-1.5 text-green-600 dark:bg-green-900/30">
+                <span className="rounded-[6px] border border-ink bg-mint px-1.5 text-ink">
                   -{calculateReduction(previewFile.originalSize, previewFile.optimizedSize)}%
                 </span>
               </div>

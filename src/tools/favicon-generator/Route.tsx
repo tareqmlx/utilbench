@@ -18,11 +18,7 @@ import { useToolPreferences } from "../../hooks/useToolPreferences";
 import { generateFaviconPack, getSizesForFormat, renderPreview, validateFile } from "./favicon";
 import type { CornerRounding, ExportFormat } from "./favicon";
 
-const PRESET_COLORS = [
-  { value: "#ffffff", className: "bg-white" },
-  { value: "#000000", className: "bg-black" },
-  { value: "#e2e8f0", className: "bg-slate-200" },
-];
+const PRESET_COLORS = [{ value: "#ffffff" }, { value: "#000000" }, { value: "#e2e8f0" }];
 
 const DEFAULT_PREFS = {
   backgroundColor: "#ffffff",
@@ -268,10 +264,10 @@ export default function FaviconGeneratorRoute() {
             <ErrorAlert error={error} />
 
             {warning !== null && (
-              <Alert className="mt-4 border-amber-500/50 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                <TriangleAlert className="h-4 w-4 text-amber-500" />
-                <AlertDescription>{warning}</AlertDescription>
-              </Alert>
+              <output className="block mt-4 flex items-start gap-3 rounded-[14px] border-2 border-ink bg-lemon px-4 py-3 shadow-pop-2">
+                <TriangleAlert className="mt-0.5 size-5 shrink-0 text-ink" strokeWidth={2.5} />
+                <p className="font-mono text-[13px] leading-relaxed text-ink">{warning}</p>
+              </output>
             )}
           </Card>
 
@@ -287,11 +283,12 @@ export default function FaviconGeneratorRoute() {
                     <button
                       key={color.value}
                       type="button"
-                      className={`h-10 w-10 cursor-pointer rounded border border-input ${color.className} ${
+                      className={`h-10 w-10 cursor-pointer rounded border-2 border-ink ${
                         prefs.backgroundColor === color.value && !showColorPicker
-                          ? "ring-2 ring-primary"
+                          ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper"
                           : ""
                       }`}
+                      style={{ backgroundColor: color.value }}
                       onClick={() => handleColorSelect(color.value)}
                       aria-label={`Background color ${color.value}`}
                     />
@@ -398,10 +395,10 @@ export default function FaviconGeneratorRoute() {
           <div className="sticky top-24 rounded-xl border border-border bg-muted p-4 sm:p-8">
             <div className="mb-8 flex items-center justify-between">
               <h2 className="text-lg font-bold">Real-time Preview</h2>
-              <div className="flex gap-2">
-                <div className="h-3 w-3 rounded-full bg-red-400" />
-                <div className="h-3 w-3 rounded-full bg-yellow-400" />
-                <div className="h-3 w-3 rounded-full bg-green-400" />
+              <div className="flex gap-2" aria-hidden="true">
+                <div className="h-3 w-3 rounded-full border border-ink bg-tomato" />
+                <div className="h-3 w-3 rounded-full border border-ink bg-lemon" />
+                <div className="h-3 w-3 rounded-full border border-ink bg-mint" />
               </div>
             </div>
 

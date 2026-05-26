@@ -48,8 +48,8 @@ const DEFAULT_PREFS = {
   size: 512,
   errorCorrection: "M" as "L" | "M" | "Q" | "H",
   format: "SVG" as "SVG" | "PNG",
-  foregroundColor: "#111122",
-  backgroundColor: "#FFFFFF",
+  foregroundColor: "#1f1a14",
+  backgroundColor: "#fff7ec",
   quietZone: 4,
 };
 
@@ -104,8 +104,8 @@ export default function QrGeneratorRoute() {
     const options: QrOptions = {
       size: prefs.size,
       errorCorrection: prefs.errorCorrection,
-      foregroundColor: isValidHexColor(prefs.foregroundColor) ? prefs.foregroundColor : "#111122",
-      backgroundColor: isValidHexColor(prefs.backgroundColor) ? prefs.backgroundColor : "#FFFFFF",
+      foregroundColor: isValidHexColor(prefs.foregroundColor) ? prefs.foregroundColor : "#1f1a14",
+      backgroundColor: isValidHexColor(prefs.backgroundColor) ? prefs.backgroundColor : "#fff7ec",
       quietZone: prefs.quietZone,
     };
 
@@ -414,7 +414,7 @@ export default function QrGeneratorRoute() {
                       ref={fgPickerRef}
                       type="color"
                       value={
-                        isValidHexColor(prefs.foregroundColor) ? prefs.foregroundColor : "#111122"
+                        isValidHexColor(prefs.foregroundColor) ? prefs.foregroundColor : "#1f1a14"
                       }
                       onChange={(e) => handleForegroundChange(e.target.value.toUpperCase())}
                       className="sr-only"
@@ -428,7 +428,7 @@ export default function QrGeneratorRoute() {
                       style={{
                         backgroundColor: isValidHexColor(prefs.foregroundColor)
                           ? prefs.foregroundColor
-                          : "#111122",
+                          : "#1f1a14",
                       }}
                       aria-label="Pick foreground color"
                     />
@@ -460,7 +460,7 @@ export default function QrGeneratorRoute() {
                       ref={bgPickerRef}
                       type="color"
                       value={
-                        isValidHexColor(prefs.backgroundColor) ? prefs.backgroundColor : "#FFFFFF"
+                        isValidHexColor(prefs.backgroundColor) ? prefs.backgroundColor : "#fff7ec"
                       }
                       onChange={(e) => handleBackgroundChange(e.target.value.toUpperCase())}
                       className="sr-only"
@@ -474,7 +474,7 @@ export default function QrGeneratorRoute() {
                       style={{
                         backgroundColor: isValidHexColor(prefs.backgroundColor)
                           ? prefs.backgroundColor
-                          : "#FFFFFF",
+                          : "#fff7ec",
                       }}
                       aria-label="Pick background color"
                     />
@@ -565,7 +565,7 @@ export default function QrGeneratorRoute() {
 
                 <div
                   className={`absolute -bottom-3 rounded-full px-3 py-1 text-[10px] font-bold text-white shadow-lg ${
-                    qrError ? "bg-destructive" : "bg-emerald-500"
+                    qrError ? "bg-tomato" : "bg-grass"
                   }`}
                 >
                   {qrError ? "ERROR" : "ACTIVE SYNC"}

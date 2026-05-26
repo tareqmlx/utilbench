@@ -103,8 +103,8 @@ export default function JsonFormatterRoute() {
     input.trim() === ""
       ? ""
       : error !== null
-        ? "ring-2 ring-red-500/50 border-transparent"
-        : "ring-2 ring-emerald-500/50 border-transparent";
+        ? "ring-2 ring-tomato/60 border-transparent"
+        : "ring-2 ring-grass/60 border-transparent";
 
   return (
     <ToolShell className="py-6 sm:py-8">

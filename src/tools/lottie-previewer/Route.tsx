@@ -291,10 +291,10 @@ export default function LottiePreviewerRoute() {
 
   const bgClass =
     prefs.background === "white"
-      ? "bg-[#ffffff]"
+      ? "bg-[var(--canvas-light)]"
       : prefs.background === "black"
-        ? "bg-[#0a0905]"
-        : "bg-[length:20px_20px] [background-image:linear-gradient(45deg,#e5dcc7_25%,transparent_25%,transparent_75%,#e5dcc7_75%),linear-gradient(45deg,#e5dcc7_25%,transparent_25%,transparent_75%,#e5dcc7_75%)] [background-position:0_0,10px_10px]";
+        ? "bg-[var(--canvas-dark)]"
+        : "bg-[length:20px_20px] [background-image:linear-gradient(45deg,var(--bg-3)_25%,transparent_25%,transparent_75%,var(--bg-3)_75%),linear-gradient(45deg,var(--bg-3)_25%,transparent_25%,transparent_75%,var(--bg-3)_75%)] [background-position:0_0,10px_10px]";
 
   const progressRatio = totalFrames > 0 ? Math.min(1, currentFrame / totalFrames) : 0;
   const currentTime = metadata ? formatDuration(currentFrame / metadata.frameRate) : "0:00";
@@ -475,14 +475,14 @@ export default function LottiePreviewerRoute() {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        className={`size-6 rounded-full border-2 border-ink bg-[#ffffff] transition-shadow ${prefs.background === "white" ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
+                        className={`size-6 rounded-full border-2 border-ink bg-[var(--canvas-light)] transition-shadow ${prefs.background === "white" ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
                         onClick={() => setPrefs({ background: "white" })}
                         aria-label="White background"
                         aria-pressed={prefs.background === "white"}
                       />
                       <button
                         type="button"
-                        className={`size-6 rounded-full border-2 border-ink bg-[#0a0905] transition-shadow ${prefs.background === "black" ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
+                        className={`size-6 rounded-full border-2 border-ink bg-[var(--canvas-dark)] transition-shadow ${prefs.background === "black" ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
                         onClick={() => setPrefs({ background: "black" })}
                         aria-label="Black background"
                         aria-pressed={prefs.background === "black"}

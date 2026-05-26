@@ -270,11 +270,11 @@ export default function CsvToJsonRoute() {
               }
             />
 
-            <div className="relative h-full min-h-[250px] sm:min-h-[400px] rounded-lg border border-border bg-card p-6 dark:bg-black">
-              <pre className="max-h-[500px] overflow-auto font-mono text-sm text-emerald-400">
+            <div className="relative h-full min-h-[250px] sm:min-h-[400px] rounded-lg border-2 border-ink bg-ink p-6 shadow-pop-3">
+              <pre className="max-h-[500px] overflow-auto font-mono text-sm text-paper">
                 <code>{output}</code>
               </pre>
-              <div className="absolute bottom-4 right-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              <div className="absolute bottom-4 right-4 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
                 UTF-8 JSON
               </div>
             </div>

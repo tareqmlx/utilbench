@@ -179,39 +179,31 @@ function DiffLine({
 }) {
   const rowToneClass =
     tone === "added"
-      ? "bg-green-500/10 hover:bg-green-500/15"
+      ? "bg-mint/40 hover:bg-mint/60"
       : tone === "removed"
-        ? "bg-red-500/10 hover:bg-red-500/15"
-        : "hover:bg-muted/30";
+        ? "bg-tomato/15 hover:bg-tomato/25"
+        : "hover:bg-paper-2/60";
 
   const gutterToneClass =
-    tone === "added"
-      ? "bg-green-500/10 dark:bg-green-500/15"
-      : tone === "removed"
-        ? "bg-red-500/10 dark:bg-red-500/15"
-        : "bg-muted/80";
+    tone === "added" ? "bg-mint/40" : tone === "removed" ? "bg-tomato/15" : "bg-paper-2";
 
   return (
     <div className={`flex ${rowToneClass}`}>
       <div
-        className={`w-10 flex-none border-r border-border pr-2 text-right font-mono text-sm text-muted-foreground select-none ${gutterToneClass}`}
+        className={`w-10 flex-none border-r border-ink/40 pr-2 text-right font-mono text-sm text-ink-3 select-none ${gutterToneClass}`}
       >
         {lineNumber ?? ""}
       </div>
       {prefix !== undefined && (
         <div
-          className={`w-5 flex-none text-center font-mono text-sm select-none ${
-            tone === "added"
-              ? "text-green-600 dark:text-green-400"
-              : tone === "removed"
-                ? "text-red-600 dark:text-red-400"
-                : "text-muted-foreground"
+          className={`w-5 flex-none text-center font-mono text-sm font-bold select-none ${
+            tone === "added" ? "text-grass" : tone === "removed" ? "text-tomato" : "text-ink-3"
           }`}
         >
           {prefix}
         </div>
       )}
-      <div className="px-2 font-mono text-sm whitespace-pre">{content}</div>
+      <div className="px-2 font-mono text-sm text-ink whitespace-pre">{content}</div>
     </div>
   );
 }
@@ -219,8 +211,8 @@ function DiffLine({
 function SideBySideView({ result }: { result: SideBySideResult }) {
   return (
     <div className="flex flex-col lg:flex-row">
-      <div className="flex-1 border-r border-border">
-        <div className="border-b border-border bg-muted px-4 py-2 text-xs font-bold tracking-wider text-muted-foreground uppercase">
+      <div className="flex-1 border-r-2 border-ink">
+        <div className="border-b-2 border-ink bg-paper-2 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
           Original
         </div>
         <div className="overflow-x-auto">
@@ -231,13 +223,14 @@ function SideBySideView({ result }: { result: SideBySideResult }) {
                 lineNumber={line.lineNumber}
                 content={line.content}
                 tone={line.tone}
+                prefix={line.tone === "removed" ? "-" : line.tone === "added" ? "+" : " "}
               />
             ))}
           </div>
         </div>
       </div>
       <div className="flex-1">
-        <div className="border-b border-border bg-muted px-4 py-2 text-xs font-bold tracking-wider text-muted-foreground uppercase">
+        <div className="border-b-2 border-ink bg-paper-2 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
           Modified
         </div>
         <div className="overflow-x-auto">
@@ -248,6 +241,7 @@ function SideBySideView({ result }: { result: SideBySideResult }) {
                 lineNumber={line.lineNumber}
                 content={line.content}
                 tone={line.tone}
+                prefix={line.tone === "added" ? "+" : line.tone === "removed" ? "-" : " "}
               />
             ))}
           </div>
@@ -283,19 +277,18 @@ function UnifiedView({ patch }: { patch: string }) {
       <div className="min-w-max py-0 leading-6">
         {lines.map((line, i) => {
           let tone: DiffTone = "default";
-          let className = "text-foreground";
+          let className = "text-ink";
           if (line.startsWith("+") && !line.startsWith("+++")) {
             tone = "added";
-            className = "text-green-700 dark:text-green-400";
+            className = "text-grass";
           } else if (line.startsWith("-") && !line.startsWith("---")) {
             tone = "removed";
-            className = "text-red-700 dark:text-red-400";
+            className = "text-tomato";
           } else if (line.startsWith("@@")) {
-            className = "text-blue-600 dark:text-blue-400";
+            className = "text-ink-3 font-bold";
           }
 
-          const rowBg =
-            tone === "added" ? "bg-green-500/10" : tone === "removed" ? "bg-red-500/10" : "";
+          const rowBg = tone === "added" ? "bg-mint/40" : tone === "removed" ? "bg-tomato/15" : "";
 
           return (
             // biome-ignore lint/suspicious/noArrayIndexKey: unified patch lines lack stable identity
@@ -539,16 +532,16 @@ export default function DiffCheckerRoute() {
           <h2 className="text-lg font-bold">Comparison Result</h2>
           {diffResult && !hasNoDifferences && (
             <div className="flex items-center gap-4 font-mono text-sm">
-              <span className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
-                <span className="inline-block size-2.5 rounded-sm bg-green-500" />+
+              <span className="flex items-center gap-1.5 text-grass">
+                <span className="inline-block size-2.5 rounded-sm bg-grass" aria-hidden="true" />+
                 {diffResult.stats.added}
               </span>
-              <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400">
-                <span className="inline-block size-2.5 rounded-sm bg-red-500" />-
+              <span className="flex items-center gap-1.5 text-tomato">
+                <span className="inline-block size-2.5 rounded-sm bg-tomato" aria-hidden="true" />-
                 {diffResult.stats.removed}
               </span>
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <span className="inline-block size-2.5 rounded-sm bg-muted-foreground/30" />
+              <span className="flex items-center gap-1.5 text-ink-3">
+                <span className="inline-block size-2.5 rounded-sm bg-ink-3/40" aria-hidden="true" />
                 {diffResult.stats.unchanged}
               </span>
             </div>
@@ -570,8 +563,8 @@ export default function DiffCheckerRoute() {
           )}
 
           {!loading && hasNoDifferences && (
-            <div className="flex flex-col items-center justify-center gap-2 py-16 text-green-600 dark:text-green-400">
-              <CheckCircle className="size-10" />
+            <div className="flex flex-col items-center justify-center gap-2 py-16 text-ink">
+              <CheckCircle className="size-10 text-grass" />
               <p className="text-sm font-medium">No differences found</p>
             </div>
           )}

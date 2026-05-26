@@ -479,10 +479,10 @@ export default function ImageResizerRoute() {
           <ErrorAlert error={error} className="mt-0" />
 
           {warning !== null && (
-            <Alert className="border-amber-500/50 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-              <TriangleAlert className="h-4 w-4 text-amber-500" />
-              <AlertDescription>{warning}</AlertDescription>
-            </Alert>
+            <output className="block flex items-start gap-3 rounded-[14px] border-2 border-ink bg-lemon px-4 py-3 shadow-pop-2">
+              <TriangleAlert className="mt-0.5 size-5 shrink-0 text-ink" strokeWidth={2.5} />
+              <p className="font-mono text-[13px] leading-relaxed text-ink">{warning}</p>
+            </output>
           )}
 
           {/* Configuration */}

@@ -267,10 +267,10 @@ export default function ImageMetadataRemovalRoute() {
         <ErrorAlert error={error} className="mt-0" />
 
         {warning !== null && (
-          <Alert className="border-amber-500/50 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-            <TriangleAlert className="h-4 w-4 text-amber-500" />
-            <AlertDescription>{warning}</AlertDescription>
-          </Alert>
+          <output className="block flex items-start gap-3 rounded-[14px] border-2 border-ink bg-lemon px-4 py-3 shadow-pop-2">
+            <TriangleAlert className="mt-0.5 size-5 shrink-0 text-ink" strokeWidth={2.5} />
+            <p className="font-mono text-[13px] leading-relaxed text-ink">{warning}</p>
+          </output>
         )}
 
         {/* Processing Queue */}
@@ -284,7 +284,7 @@ export default function ImageMetadataRemovalRoute() {
               <div
                 key={item.id}
                 className={`flex items-center gap-4 p-4 ${
-                  item.status === "done" ? "bg-green-50/30 dark:bg-green-500/5" : ""
+                  item.status === "done" ? "bg-mint/30" : ""
                 }`}
               >
                 {/* Thumbnail */}
@@ -297,23 +297,23 @@ export default function ImageMetadataRemovalRoute() {
                     alt={item.file.name}
                   />
                   {item.status === "analyzing" && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-card/60">
+                    <div className="absolute inset-0 flex items-center justify-center bg-paper/70">
                       <Loader2 className="h-5 w-5 animate-spin text-primary" />
                     </div>
                   )}
                   {item.status === "processing" && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-card/60">
+                    <div className="absolute inset-0 flex items-center justify-center bg-paper/70">
                       <Loader2 className="h-5 w-5 animate-spin text-primary" />
                     </div>
                   )}
                   {item.status === "done" && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-green-500/20">
-                      <Check className="h-5 w-5 font-bold text-green-600" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-mint/70">
+                      <Check className="h-5 w-5 font-bold text-grass" />
                     </div>
                   )}
                   {item.status === "error" && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-red-500/20">
-                      <X className="h-5 w-5 font-bold text-red-600" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-tomato/25">
+                      <X className="h-5 w-5 font-bold text-tomato" />
                     </div>
                   )}
                 </div>
@@ -337,7 +337,7 @@ export default function ImageMetadataRemovalRoute() {
                   {item.status === "ready" && item.metadata && (
                     <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
                       {item.metadata.hasGps && (
-                        <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-500 dark:bg-red-500/10">
+                        <span className="rounded border border-ink bg-tomato/15 px-1.5 py-0.5 text-[10px] font-medium text-tomato">
                           GPS Data Detected
                         </span>
                       )}
@@ -357,7 +357,7 @@ export default function ImageMetadataRemovalRoute() {
                         </span>
                       )}
                       {item.metadata.tagCount === 0 && (
-                        <span className="rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-600 dark:bg-green-500/10">
+                        <span className="rounded border border-ink bg-mint px-1.5 py-0.5 text-[10px] font-medium text-ink">
                           No Metadata Found
                         </span>
                       )}
@@ -371,13 +371,13 @@ export default function ImageMetadataRemovalRoute() {
                   )}
 
                   {item.status === "done" && (
-                    <p className="text-[10px] font-bold uppercase tracking-tighter text-green-600">
+                    <p className="text-[10px] font-bold uppercase tracking-tighter text-grass">
                       Cleaned &amp; Ready
                     </p>
                   )}
 
                   {item.status === "error" && (
-                    <p className="text-[10px] font-bold uppercase tracking-tighter text-red-600">
+                    <p className="text-[10px] font-bold uppercase tracking-tighter text-tomato">
                       {item.error ?? "Error"}
                     </p>
                   )}
@@ -385,12 +385,12 @@ export default function ImageMetadataRemovalRoute() {
 
                 {/* Actions */}
                 {item.status === "done" ? (
-                  <ShieldCheck className="h-5 w-5 text-green-500" />
+                  <ShieldCheck className="h-5 w-5 text-grass" />
                 ) : (
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-muted-foreground hover:text-red-500"
+                    className="text-muted-foreground hover:text-tomato"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleRemoveFile(item.id);
@@ -438,21 +438,19 @@ export default function ImageMetadataRemovalRoute() {
 
             {/* Success State Banner */}
             {zipBlob && (
-              <div className="flex w-full max-w-lg items-center gap-4 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-green-500 text-white">
-                  <Download className="h-5 w-5" />
+              <div className="flex w-full max-w-lg items-center gap-4 rounded-lg border-2 border-ink bg-mint p-4 shadow-pop-2">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 border-ink bg-paper text-grass">
+                  <Download className="h-5 w-5" strokeWidth={2.5} />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-green-800 dark:text-green-300">
-                    Processing Complete!
-                  </p>
-                  <p className="text-xs text-green-700/80 dark:text-green-400/80">
+                  <p className="text-sm font-bold text-ink">Processing Complete!</p>
+                  <p className="text-xs text-ink-2">
                     {doneCount} image{doneCount !== 1 ? "s" : ""} stripped of all metadata. Archive
                     ready.
                   </p>
                 </div>
                 <Button
-                  className="bg-green-600 text-white hover:bg-green-700"
+                  className="bg-mint text-ink border-2 border-ink hover:bg-grass hover:text-paper"
                   onClick={handleDownloadZip}
                 >
                   Download ZIP
