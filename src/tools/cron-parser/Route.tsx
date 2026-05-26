@@ -3,11 +3,7 @@ import cronstrue from "cronstrue";
 import { Calendar, Check, Clock, Copy } from "lucide-react";
 import { useState } from "react";
 import { IconSwap } from "../../components/IconSwap";
-import { ToolShell } from "../../components/tool-layout";
-import { Button } from "../../components/ui/button";
-import { Card } from "../../components/ui/card";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
+import { ErrorAlert, ToolShell } from "../../components/tool-layout";
 import { useClipboard } from "../../hooks/useClipboard";
 import { useUrlState } from "../../hooks/useUrlState";
 
@@ -98,8 +94,6 @@ function getTimezoneDisplay(): string {
   return `${tz} (${offset})`;
 }
 
-const OPACITY_CLASSES = ["", "opacity-90", "opacity-80", "opacity-70", "opacity-60"];
-
 const DEFAULT_EXPRESSION = "0 * * * *";
 
 const URL_SCHEMA = {
@@ -141,150 +135,140 @@ export default function CronParserRoute() {
 
   return (
     <ToolShell>
-      <div className="space-y-12">
+      <div className="space-y-10">
         <section className="grid grid-cols-1 gap-8 lg:grid-cols-12">
           <div className="space-y-6 lg:col-span-7">
-            <Card className="p-4 sm:p-8">
-              <div className="mb-6">
-                <Label
-                  htmlFor="cron-expression-input"
-                  className="mb-3 block text-sm font-bold tracking-widest text-muted-foreground uppercase"
+            <div className="rounded-lg border-2 border-ink bg-paper p-5 shadow-pop-3 sm:p-7">
+              <label
+                htmlFor="cron-expression-input"
+                className="mb-3 block font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3"
+              >
+                Cron Expression
+              </label>
+              <div className="relative">
+                <input
+                  id="cron-expression-input"
+                  type="text"
+                  value={expression}
+                  onChange={handleInputChange}
+                  placeholder="e.g. */5 * * * *"
+                  className="h-16 w-full rounded-md border-2 border-ink bg-paper px-5 pr-16 font-mono text-2xl tracking-wider text-ink shadow-pop-1 placeholder:text-ink-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  aria-label="Copy expression"
+                  className="absolute top-1/2 right-3 grid size-10 -translate-y-1/2 place-items-center rounded-md border-2 border-ink bg-paper text-ink shadow-pop-1 transition-transform hover:-translate-y-[calc(50%+2px)]"
                 >
-                  Cron Expression
-                </Label>
-                <div className="group relative">
-                  <Input
-                    id="cron-expression-input"
-                    type="text"
-                    value={expression}
-                    onChange={handleInputChange}
-                    placeholder="e.g. */5 * * * *"
-                    className="h-16 w-full px-6 font-mono text-2xl tracking-wider"
-                  />
-                  <div className="absolute top-1/2 right-4 flex -translate-y-1/2 gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleCopy}
-                      aria-label="Copy expression"
+                  <IconSwap swapKey={copied}>
+                    {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
+                  </IconSwap>
+                </button>
+              </div>
+
+              <div className="mt-6">
+                <span className="mb-3 block font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+                  Interpretation
+                </span>
+                {error ? (
+                  <ErrorAlert error={error} className="!mt-0" testId="cron-error" />
+                ) : description ? (
+                  <div className="rounded-lg border-2 border-ink bg-lemon p-5 shadow-pop-1">
+                    <p
+                      data-testid="cron-description"
+                      className="text-lg font-medium leading-snug text-ink sm:text-xl"
                     >
-                      <IconSwap swapKey={copied}>
-                        {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
-                      </IconSwap>
-                    </Button>
+                      &ldquo;{description}&rdquo;
+                    </p>
                   </div>
-                </div>
+                ) : (
+                  <div className="rounded-lg border-2 border-ink bg-paper-2 p-5 shadow-pop-1">
+                    <p className="font-mono text-[13px] italic text-ink-3">
+                      Enter an expression to see the breakdown.
+                    </p>
+                  </div>
+                )}
               </div>
+            </div>
 
-              <div className="space-y-6">
-                <div>
-                  <span className="mb-3 block text-sm font-bold tracking-widest text-muted-foreground uppercase">
-                    Interpretation
-                  </span>
-                  {error ? (
-                    <div className="rounded-r-lg border-l-4 border-red-500 bg-red-500/5 p-5 dark:bg-red-500/10">
-                      <p
-                        data-testid="cron-error"
-                        className="text-xl font-medium text-red-600 dark:text-red-400"
-                      >
-                        {error}
-                      </p>
-                    </div>
-                  ) : description ? (
-                    <div className="rounded-r-lg border-l-4 border-primary bg-primary/5 p-5 dark:bg-primary/10">
-                      <p
-                        data-testid="cron-description"
-                        className="text-xl font-medium text-foreground"
-                      >
-                        &ldquo;{description}&rdquo;
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="rounded-r-lg border-l-4 border-border bg-muted p-5">
-                      <p className="text-xl font-medium text-muted-foreground">
-                        Enter an expression to see the breakdown.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-4 sm:p-8">
-              <span className="mb-4 block text-sm font-bold tracking-widest text-muted-foreground uppercase">
+            <div className="rounded-lg border-2 border-ink bg-paper-2 p-5 shadow-pop-3 sm:p-7">
+              <span className="mb-4 block font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
                 Common Presets
               </span>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-2.5">
                 {PRESET_ENTRIES.map(([label, expr]) => {
                   const isActive = label === activePreset;
-
                   return (
-                    <Button
+                    <button
+                      type="button"
                       key={label}
-                      variant={isActive ? "default" : "outline"}
-                      className={
-                        isActive
-                          ? ""
-                          : "bg-muted text-foreground hover:border-border hover:bg-muted/80"
-                      }
                       onClick={() => handlePresetClick(expr)}
+                      aria-pressed={isActive}
+                      className={`wb-chip ${isActive ? "on" : ""}`}
                     >
                       {label}
-                    </Button>
+                    </button>
                   );
                 })}
               </div>
-            </Card>
+            </div>
           </div>
 
           <div className="lg:col-span-5">
-            <div className="group relative h-full overflow-hidden rounded-lg border border-border bg-card p-4 sm:p-8">
-              <div className="absolute top-0 right-0 -mt-20 -mr-20 h-64 w-64 rounded-full bg-primary/10 blur-3xl transition-all duration-700 group-hover:bg-primary/20" />
+            <div className="h-full rounded-lg border-2 border-ink bg-paper p-5 shadow-pop-3 sm:p-7">
+              <div className="mb-6 flex items-center justify-between">
+                <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+                  Next 5 Executions
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="grid size-9 place-items-center rounded-md border-2 border-ink bg-mint text-ink shadow-pop-1"
+                >
+                  <Calendar className="size-4" strokeWidth={2.5} />
+                </span>
+              </div>
 
-              <div className="relative z-10">
-                <div className="mb-8 flex items-center justify-between">
-                  <span className="text-sm font-bold tracking-widest text-muted-foreground uppercase">
-                    Next 5 Executions
-                  </span>
-                  <Calendar className="h-5 w-5 text-primary" />
-                </div>
-
-                <div className="space-y-4">
-                  {nextRuns.length > 0 ? (
-                    nextRuns.map((run, i) => {
-                      const fmt = formatExecution(run);
-                      return (
-                        <div
-                          key={run.toISOString()}
-                          className={`flex items-center justify-between rounded border border-border bg-muted/50 p-4 transition-colors hover:border-primary/50 ${OPACITY_CLASSES[i] ?? ""}`}
-                        >
-                          <div className="flex flex-col">
-                            <span
-                              className={`text-xs font-bold tracking-tighter uppercase ${i === 0 ? "text-primary" : "text-muted-foreground"}`}
-                            >
-                              {fmt.dayLabel}
-                            </span>
-                            <span className="text-lg font-medium text-foreground">{fmt.date}</span>
-                          </div>
-                          <span className="font-mono text-2xl text-foreground">{fmt.time}</span>
+              <div className="space-y-2.5">
+                {nextRuns.length > 0 ? (
+                  nextRuns.map((run, i) => {
+                    const fmt = formatExecution(run);
+                    const first = i === 0;
+                    return (
+                      <div
+                        key={run.toISOString()}
+                        className={`flex items-center justify-between rounded-md border-2 border-ink px-4 py-3 ${
+                          first ? "bg-lemon shadow-pop-1" : "bg-paper-2"
+                        }`}
+                      >
+                        <div className="flex flex-col">
+                          <span
+                            className={`font-mono text-[10.5px] uppercase tracking-[0.12em] ${
+                              first ? "text-ink" : "text-ink-3"
+                            }`}
+                          >
+                            {fmt.dayLabel}
+                          </span>
+                          <span className="text-[15px] font-medium text-ink">{fmt.date}</span>
                         </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-muted-foreground" data-testid="no-executions">
-                      No upcoming executions
-                    </p>
-                  )}
-                </div>
+                        <span className="font-mono text-xl text-ink">{fmt.time}</span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p
+                    data-testid="no-executions"
+                    className="font-mono text-[13px] italic text-ink-3"
+                  >
+                    No upcoming executions
+                  </p>
+                )}
+              </div>
 
-                <div className="mt-8 border-t border-border pt-8">
-                  <div className="flex items-center gap-3 text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span className="text-xs font-bold tracking-widest uppercase">
-                      Local Time Zone: {getTimezoneDisplay()}
-                    </span>
-                  </div>
-                </div>
+              <div className="mt-6 flex items-center gap-2 border-t-2 border-ink pt-5 text-ink-3">
+                <Clock className="size-3.5" strokeWidth={2.5} />
+                <span className="font-mono text-[10.5px] uppercase tracking-[0.12em]">
+                  Local Time Zone: {getTimezoneDisplay()}
+                </span>
               </div>
             </div>
           </div>

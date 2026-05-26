@@ -125,12 +125,13 @@ describe("CronParserRoute", () => {
     );
     // Default is "0 * * * *" which matches "Every hour"
     const everyHourBtn = screen.getByRole("button", { name: "Every hour" });
-    expect(everyHourBtn.className).toContain("bg-primary");
-    expect(everyHourBtn.className).toContain("text-primary-foreground");
+    expect(everyHourBtn).toHaveAttribute("aria-pressed", "true");
+    expect(everyHourBtn.className).toContain("on");
 
-    // Other presets should not be active (they use outline variant)
+    // Other presets should not be active
     const everySundayBtn = screen.getByRole("button", { name: "Every Sunday" });
-    expect(everySundayBtn.className).not.toContain("text-primary-foreground");
+    expect(everySundayBtn).toHaveAttribute("aria-pressed", "false");
+    expect(everySundayBtn.className).not.toContain("on");
   });
 
   it("copy button calls clipboard.writeText", () => {
