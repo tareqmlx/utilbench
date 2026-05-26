@@ -173,7 +173,7 @@ export function Component() {
             </h2>
           </div>
           <nav aria-label="Filter by category" className="flex flex-wrap gap-2">
-            <Link to="/tools" aria-current="true" className="wb-chip on">
+            <Link to="/tools" className="wb-chip on">
               All · {totalTools}
             </Link>
             <Link to="/tools?cat=media" className="wb-chip">

@@ -109,8 +109,7 @@ export function Layout() {
                 <button
                   type="button"
                   aria-label="Menu"
-                  className="grid size-11 place-items-center rounded-full text-paper transition-opacity hover:opacity-100 md:hidden"
-                  style={{ opacity: 0.7 }}
+                  className="grid size-11 place-items-center rounded-full text-paper opacity-70 transition-opacity hover:opacity-100 focus-visible:opacity-100 md:hidden"
                 >
                   <Menu className="size-4" />
                 </button>
