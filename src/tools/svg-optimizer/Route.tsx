@@ -389,7 +389,10 @@ export default function SvgOptimizerRoute() {
             onDrop={handleDrop}
           >
             <div className="flex flex-col items-center gap-4">
-              <div className="grid size-16 place-items-center rounded-[14px] border-2 border-ink bg-pink shadow-pop-2">
+              <div
+                className="wb-svg-drop-icon grid size-16 place-items-center rounded-[14px] border-2 border-ink bg-pink shadow-pop-2"
+                data-dragging={isDragging}
+              >
                 <Upload className="size-7 text-ink" strokeWidth={2.25} />
               </div>
               <div className="text-center">
@@ -460,7 +463,7 @@ export default function SvgOptimizerRoute() {
           <ErrorAlert error={error} />
 
           {warning !== null && (
-            <output className="mt-4 flex items-start gap-3 rounded-[14px] border-2 border-ink bg-lemon px-4 py-3 shadow-pop-2">
+            <output className="wb-fade-in mt-4 flex items-start gap-3 rounded-[14px] border-2 border-ink bg-lemon px-4 py-3 shadow-pop-2">
               <TriangleAlert className="mt-0.5 size-5 shrink-0 text-ink" strokeWidth={2.5} />
               <p className="font-mono text-[13px] leading-relaxed text-ink">{warning}</p>
             </output>
@@ -489,7 +492,7 @@ export default function SvgOptimizerRoute() {
                   disabled={isZipping || allDownloaded}
                 >
                   {allDownloaded ? (
-                    <Check className="size-4" strokeWidth={2.5} />
+                    <Check className="wb-svg-check-pop size-4" strokeWidth={2.5} />
                   ) : isZipping ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
@@ -514,13 +517,13 @@ export default function SvgOptimizerRoute() {
                 return (
                   <li
                     key={file.id}
-                    className={`flex flex-wrap items-center justify-between gap-4 py-4 ${
+                    className={`wb-item-enter flex flex-wrap items-center justify-between gap-4 py-4 ${
                       file.status === "processing" ? "opacity-80" : ""
                     }`}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-4">
                       <div
-                        className={`grid size-11 shrink-0 place-items-center rounded-md border-2 border-ink shadow-pop-1 ${thumbBg}`}
+                        className={`grid size-11 shrink-0 place-items-center rounded-md border-2 border-ink shadow-pop-1 transition-colors ${thumbBg}`}
                       >
                         {file.status === "processing" ? (
                           <Loader2 className="size-5 animate-spin text-ink" />
@@ -535,7 +538,7 @@ export default function SvgOptimizerRoute() {
                           {file.name}
                         </span>
                         {file.status === "done" && file.optimizedSize !== null && (
-                          <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.1em]">
+                          <div className="wb-svg-done-meta flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.1em]">
                             <span className="text-ink-3 line-through">
                               {formatFileSize(file.originalSize)}
                             </span>
@@ -543,7 +546,7 @@ export default function SvgOptimizerRoute() {
                             <span className="font-semibold text-ink">
                               {formatFileSize(file.optimizedSize)}
                             </span>
-                            <span className="rounded-md border-2 border-ink bg-mint px-1.5 py-px text-[10.5px] font-bold text-ink">
+                            <span className="wb-svg-badge rounded-md border-2 border-ink bg-mint px-1.5 py-px text-[10.5px] font-bold text-ink">
                               -{calculateReduction(file.originalSize, file.optimizedSize)}%
                             </span>
                           </div>
@@ -576,7 +579,7 @@ export default function SvgOptimizerRoute() {
                           </button>
                           {file.downloaded ? (
                             <span className="inline-flex items-center gap-1.5 rounded-md border-2 border-ink bg-mint px-3 py-2 text-[12px] font-bold text-ink shadow-pop-1">
-                              <Check className="size-4" strokeWidth={2.5} />
+                              <Check className="wb-svg-check-pop size-4" strokeWidth={2.5} />
                               Downloaded
                             </span>
                           ) : (
@@ -602,9 +605,10 @@ export default function SvgOptimizerRoute() {
                         </button>
                       )}
                       {file.status === "processing" && (
-                        <div className="h-1.5 w-24 overflow-hidden rounded-full border-2 border-ink bg-paper">
-                          <div className="h-full w-2/3 animate-pulse rounded-full bg-ink" />
-                        </div>
+                        <div
+                          className="wb-svg-shimmer h-1.5 w-24 rounded-full border-2 border-ink"
+                          aria-hidden="true"
+                        />
                       )}
                       <button
                         type="button"

@@ -737,6 +737,91 @@ body {
   animation: wb-item-in 200ms ease-out both;
 }
 
+/* ── SVG optimizer: queue + status motion ─────────────────────── */
+@keyframes wb-svg-done-meta {
+  from {
+    opacity: 0;
+    transform: translate3d(-4px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes wb-svg-badge-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes wb-svg-shimmer {
+  from {
+    transform: translate3d(-100%, 0, 0);
+  }
+  to {
+    transform: translate3d(220%, 0, 0);
+  }
+}
+@keyframes wb-svg-check-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.55) rotate(-8deg);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.12) rotate(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+.wb-svg-done-meta {
+  animation: wb-svg-done-meta 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.wb-svg-badge {
+  display: inline-block;
+  animation: wb-svg-badge-pop 320ms cubic-bezier(0.22, 1, 0.36, 1) 60ms both;
+  transform-origin: center;
+}
+.wb-svg-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bg);
+}
+.wb-svg-shimmer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: var(--ink);
+  border-radius: inherit;
+  animation: wb-svg-shimmer 1100ms cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  will-change: transform;
+}
+.wb-svg-check-pop {
+  display: inline-flex;
+  animation: wb-svg-check-pop 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: center;
+}
+.wb-svg-drop-icon {
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms
+    cubic-bezier(0.22, 1, 0.36, 1);
+}
+.wb-svg-drop-icon[data-dragging="true"] {
+  transform: translate3d(-2px, -4px, 0) scale(1.04);
+  box-shadow: 5px 6px 0 var(--ink);
+}
+
 /* ── Breadcrumb / inline link smoothing ───────────────────────── */
 .wb-link-soft {
   transition: color 160ms ease, opacity 160ms ease;
@@ -1031,6 +1116,10 @@ button[role="switch"] [data-state] {
   .wb-reveal,
   .animate-in,
   .animate-out,
+  .wb-svg-done-meta,
+  .wb-svg-badge,
+  .wb-svg-check-pop,
+  .wb-svg-drop-icon,
   .wb-hero-line,
   .wb-hero-sub,
   .wb-hero-cta,
@@ -1053,5 +1142,8 @@ button[role="switch"] [data-state] {
   }
   .wb-tools-icon {
     transform: rotate(-4deg) !important;
+  }
+  .wb-svg-shimmer::before {
+    display: none !important;
   }
 }
