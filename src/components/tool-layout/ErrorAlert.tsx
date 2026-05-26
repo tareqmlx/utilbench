@@ -4,9 +4,10 @@ import { CircleAlert } from "lucide-react";
 interface ErrorAlertProps {
   error: string | null;
   className?: string;
+  testId?: string;
 }
 
-export function ErrorAlert({ error, className }: ErrorAlertProps) {
+export function ErrorAlert({ error, className, testId }: ErrorAlertProps) {
   if (error === null) return null;
 
   return (
@@ -18,7 +19,9 @@ export function ErrorAlert({ error, className }: ErrorAlertProps) {
       )}
     >
       <CircleAlert className="mt-0.5 size-5 shrink-0 text-tomato" strokeWidth={2.5} />
-      <p className="font-mono text-[13px] leading-relaxed text-ink">{error}</p>
+      <p data-testid={testId} className="font-mono text-[13px] leading-relaxed text-ink">
+        {error}
+      </p>
     </div>
   );
 }
