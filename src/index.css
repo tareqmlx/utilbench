@@ -439,19 +439,23 @@ body {
   transform: translateZ(0);
   backface-visibility: hidden;
 }
-.wb-tile:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0 var(--ink);
+@media (hover: hover) and (pointer: fine) {
+  .wb-tile:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--ink);
+  }
 }
 .wb-tile .pin {
   position: absolute;
   top: 14px;
   right: 14px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-weight: 500;
+  font-size: 11px;
+  /* ink-2 (not ink-3 per wb-meta): ink-3 fails AA on lemon/lilac tile fills */
   color: var(--ink-2);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.12em;
 }
 .wb-tile .icn {
   width: 48px;
@@ -929,14 +933,12 @@ button[role="switch"] [data-state] {
 }
 .wb-tools-icon {
   opacity: 0;
-  will-change: transform, opacity;
   animation: wb-tools-icon-in 520ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both, wb-tools-icon-sway
-    5600ms cubic-bezier(0.22, 1, 0.36, 1) 1200ms 4 alternate;
+    5600ms cubic-bezier(0.22, 1, 0.36, 1) 1200ms 2 alternate;
   transform-origin: center;
 }
 .wb-tools-rise {
   opacity: 0;
-  will-change: opacity, transform;
   animation: wb-tools-rise 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .wb-tools-rise--1 {
