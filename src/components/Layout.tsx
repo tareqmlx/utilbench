@@ -178,18 +178,13 @@ export function Layout() {
               >
                 Make something. Locally.
               </h2>
-              <p
-                className="mt-4 max-w-[34ch] text-[13.5px] leading-relaxed"
-                style={{ color: "#a89a85" }}
-              >
+              <p className="mt-4 max-w-[34ch] text-[13.5px] leading-relaxed text-ink-muted">
                 {APP_DESCRIPTION}
               </p>
             </div>
 
             <nav aria-label="Product links">
-              <h5 className="wb-meta mb-3.5" style={{ color: "#a89a85" }}>
-                Product
-              </h5>
+              <h5 className="wb-meta mb-3.5 text-ink-muted">Product</h5>
               <ul className="flex flex-col gap-2 text-[13.5px]">
                 <li>
                   <Link to="/tools" className="text-paper transition-colors hover:text-lemon">
@@ -210,9 +205,7 @@ export function Layout() {
             </nav>
 
             <nav aria-label="Workflow links">
-              <h5 className="wb-meta mb-3.5" style={{ color: "#a89a85" }}>
-                Workflow
-              </h5>
+              <h5 className="wb-meta mb-3.5 text-ink-muted">Workflow</h5>
               <ul className="flex flex-col gap-2 text-[13.5px]">
                 <li>
                   <button
@@ -237,9 +230,7 @@ export function Layout() {
             </nav>
 
             <div>
-              <h5 className="wb-meta mb-3.5" style={{ color: "#a89a85" }}>
-                Project
-              </h5>
+              <h5 className="wb-meta mb-3.5 text-ink-muted">Project</h5>
               <ul className="flex flex-col gap-2 text-[13.5px]">
                 <li>
                   <a
@@ -262,20 +253,14 @@ export function Layout() {
                   </a>
                 </li>
               </ul>
-              <div
-                className="mt-3 flex flex-wrap gap-2 font-mono text-[10.5px] uppercase tracking-[0.12em]"
-                style={{ color: "#a89a85" }}
-              >
+              <div className="mt-3 flex flex-wrap gap-2 font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-muted">
                 <span className="rounded-full border border-current px-2 py-0.5">No cookies</span>
                 <span className="rounded-full border border-current px-2 py-0.5">No tracking</span>
               </div>
             </div>
           </div>
 
-          <div
-            className="mt-10 flex flex-col gap-2 border-t pt-5 font-mono text-[11px] uppercase tracking-[0.12em] sm:flex-row sm:justify-between"
-            style={{ borderColor: "#3a342b", color: "#a89a85" }}
-          >
+          <div className="mt-10 flex flex-col gap-2 border-t border-ink-divider pt-5 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-muted sm:flex-row sm:justify-between">
             <span>© 2026 {APP_NAME} · No cookies, no tracking</span>
           </div>
         </div>
