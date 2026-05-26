@@ -128,7 +128,8 @@ describe("SvgOptimizerRoute", () => {
     render(<SvgOptimizerRoute />);
     const mobileBtn = screen.getByText("MOBILE");
     fireEvent.click(mobileBtn);
-    expect(mobileBtn.className).toContain("bg-primary/10");
+    expect(mobileBtn).toHaveAttribute("data-active", "true");
+    expect(mobileBtn).toHaveAttribute("aria-pressed", "true");
   });
 
   it("renders all option sections", () => {
@@ -279,11 +280,11 @@ describe("SvgOptimizerRoute", () => {
   it("resets active preset when manual checkbox change occurs", () => {
     render(<SvgOptimizerRoute />);
     fireEvent.click(screen.getByText("UI ICONS"));
-    expect(screen.getByText("UI ICONS").className).toContain("bg-primary/10");
+    expect(screen.getByText("UI ICONS")).toHaveAttribute("data-active", "true");
 
     // Manually toggle a checkbox
     fireEvent.click(screen.getByLabelText("Prefix IDs"));
     // Active preset should be cleared since manual change was made
-    expect(screen.getByText("UI ICONS").className).not.toContain("bg-primary/10");
+    expect(screen.getByText("UI ICONS")).toHaveAttribute("data-active", "false");
   });
 });

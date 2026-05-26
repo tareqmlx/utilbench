@@ -1,10 +1,10 @@
 import {
   ArrowRight,
   Check,
-  CheckCircle,
   CircleAlert,
   Download,
   Eye,
+  FileCode2,
   KeyRound,
   Loader2,
   RefreshCw,
@@ -17,9 +17,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KbdHint } from "../../components/KbdHint";
 import { ErrorAlert, ToolShell } from "../../components/tool-layout";
-import { Alert, AlertDescription } from "../../components/ui/alert";
-import { Button } from "../../components/ui/button";
-import { Card, CardContent } from "../../components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +24,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
-import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
 import { Textarea } from "../../components/ui/textarea";
 import { useKeyboardShortcut } from "../../hooks/useKeyboardShortcut";
@@ -58,6 +54,24 @@ const PRESET_LABELS: Record<PresetName, string> = {
   legacy: "LEGACY",
 };
 
+const CLEANUP_TOGGLES: Array<{
+  key: "removeComments" | "removeMetadata" | "simplifyPaths";
+  label: string;
+}> = [
+  { key: "removeComments", label: "Remove Comments" },
+  { key: "removeMetadata", label: "Remove Metadata" },
+  { key: "simplifyPaths", label: "Simplify Path Data" },
+];
+
+const ATTRIBUTE_TOGGLES: Array<{
+  key: "removeUnusedIds" | "prefixIds" | "convertColorsToHex";
+  label: string;
+}> = [
+  { key: "removeUnusedIds", label: "Remove Unused IDs" },
+  { key: "prefixIds", label: "Prefix IDs" },
+  { key: "convertColorsToHex", label: "Convert Colors to Hex" },
+];
+
 export default function SvgOptimizerRoute() {
   const [files, setFiles] = useState<QueuedFile[]>([]);
   const [prefs, setPrefs] = useToolPreferences("svg-optimizer", DEFAULT_PREFS);
@@ -86,21 +100,18 @@ export default function SvgOptimizerRoute() {
   const optionsRef = useRef(currentOptions);
   optionsRef.current = currentOptions;
 
-  // Auto-clear error after 5s
   useEffect(() => {
     if (!error) return;
     const timer = setTimeout(() => setError(null), 5000);
     return () => clearTimeout(timer);
   }, [error]);
 
-  // Auto-dismiss warning after 8s
   useEffect(() => {
     if (!warning) return;
     const timer = setTimeout(() => setWarning(null), 8000);
     return () => clearTimeout(timer);
   }, [warning]);
 
-  // Process pending files
   useEffect(() => {
     const pendingFiles = files.filter((f) => f.status === "pending");
     if (pendingFiles.length === 0 || isProcessing) return;
@@ -111,12 +122,10 @@ export default function SvgOptimizerRoute() {
     const processBatch = async () => {
       let completed = 0;
       for (const file of pendingFiles) {
-        // Mark processing
         setFiles((prev) =>
           prev.map((f) => (f.id === file.id ? { ...f, status: "processing" } : f)),
         );
 
-        // Yield for UI update
         await new Promise((r) => setTimeout(r, 0));
 
         try {
@@ -176,8 +185,8 @@ export default function SvgOptimizerRoute() {
       const inputFiles = e.target.files;
       if (!inputFiles) return;
       setError(null);
-
       setWarning(null);
+
       const readers: Array<{ name: string; content: string }> = [];
       let pending = inputFiles.length;
 
@@ -208,7 +217,6 @@ export default function SvgOptimizerRoute() {
         reader.readAsText(file);
       }
 
-      // Reset input so same files can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = "";
     },
     [addFilesToQueue],
@@ -351,6 +359,7 @@ export default function SvgOptimizerRoute() {
   const completedFiles = files.filter((f) => f.status === "done");
   const allDownloaded = completedFiles.length > 0 && completedFiles.every((f) => f.downloaded);
   const previewFile = previewFileId ? files.find((f) => f.id === previewFileId) : null;
+  const pendingRemaining = files.filter((f) => f.status === "pending").length;
 
   useKeyboardShortcut(
     useMemo(
@@ -368,39 +377,48 @@ export default function SvgOptimizerRoute() {
 
   return (
     <ToolShell>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-8">
         {/* Drop Zone */}
         <div className="flex flex-col">
           <div
-            className={`group flex flex-col items-center gap-6 rounded-[6px] border-2 border-dashed px-6 py-6 transition-colors sm:py-12 ${
-              isDragging
-                ? "border-primary bg-primary/10"
-                : "border-border bg-card hover:border-primary/50"
+            className={`flex flex-col items-center gap-6 rounded-lg border-2 border-dashed px-6 py-10 shadow-pop-3 transition-colors sm:py-14 ${
+              isDragging ? "border-ink bg-mint" : "border-ink/45 bg-paper hover:border-ink"
             }`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <div className="flex flex-col items-center gap-3">
-              <div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-110">
-                <Upload className="h-8 w-8" />
+            <div className="flex flex-col items-center gap-4">
+              <div className="grid size-16 place-items-center rounded-[14px] border-2 border-ink bg-pink shadow-pop-2">
+                <Upload className="size-7 text-ink" strokeWidth={2.25} />
               </div>
               <div className="text-center">
-                <p className="text-lg font-bold leading-tight tracking-tight text-foreground">
+                <p className="font-display text-[24px] font-extrabold leading-tight tracking-tight text-ink sm:text-[28px]">
                   Drop multiple SVGs here
                 </p>
-                <p className="mt-1 text-sm font-normal leading-normal text-muted-foreground">
-                  Files will be queued for automatic optimization
+                <p className="mt-2 text-[13.5px] leading-relaxed text-ink-2">
+                  Drop, browse, or paste — each file is optimised in your browser.
                 </p>
               </div>
             </div>
-            <div className="flex gap-3">
-              <Button onClick={() => fileInputRef.current?.click()}>
-                <span className="truncate">Select Files</span>
-              </Button>
-              <Button variant="secondary" onClick={() => setShowPasteArea((prev) => !prev)}>
-                <span className="truncate">Paste Code</span>
-              </Button>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                className="wb-btn"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="size-4" strokeWidth={2.25} />
+                <span>Select Files</span>
+              </button>
+              <button
+                type="button"
+                className="wb-btn wb-btn--ghost"
+                onClick={() => setShowPasteArea((prev) => !prev)}
+                aria-expanded={showPasteArea}
+                aria-controls="svg-paste-area"
+              >
+                <span>Paste Code</span>
+              </button>
             </div>
             <input
               ref={fileInputRef}
@@ -415,25 +433,34 @@ export default function SvgOptimizerRoute() {
 
           {/* Paste Area */}
           {showPasteArea && (
-            <div className="mt-4 flex flex-col gap-3">
+            <div id="svg-paste-area" className="wb-fade-in mt-4 flex flex-col gap-3">
               <Textarea
-                className="h-40 w-full font-mono text-sm"
-                placeholder="Paste your SVG code here..."
+                className="h-44 w-full resize-none rounded-md border-2 border-ink bg-paper p-4 font-mono text-[13px] leading-relaxed text-ink shadow-pop-1 placeholder:text-ink-3 focus-visible:ring-tomato focus-visible:ring-offset-paper"
+                placeholder="Paste your SVG markup here…"
                 value={pasteContent}
                 onChange={(e) => setPasteContent(e.target.value)}
                 data-testid="paste-textarea"
               />
-              <Button className="w-fit" onClick={handlePasteSubmit} disabled={!pasteContent.trim()}>
-                Process
-              </Button>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  className="wb-btn wb-btn--sm"
+                  onClick={handlePasteSubmit}
+                  disabled={!pasteContent.trim()}
+                >
+                  Process
+                </button>
+                <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+                  Markup never leaves your browser.
+                </span>
+              </div>
             </div>
           )}
 
-          {/* Error Banner */}
           <ErrorAlert error={error} />
 
           {warning !== null && (
-            <output className="block mt-4 flex items-start gap-3 rounded-[14px] border-2 border-ink bg-lemon px-4 py-3 shadow-pop-2">
+            <output className="mt-4 flex items-start gap-3 rounded-[14px] border-2 border-ink bg-lemon px-4 py-3 shadow-pop-2">
               <TriangleAlert className="mt-0.5 size-5 shrink-0 text-ink" strokeWidth={2.5} />
               <p className="font-mono text-[13px] leading-relaxed text-ink">{warning}</p>
             </output>
@@ -442,272 +469,233 @@ export default function SvgOptimizerRoute() {
 
         {/* File Queue */}
         {files.length > 0 && (
-          <Card className="p-6">
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-foreground">Optimization Queue</h2>
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
-                  {files.length} {files.length === 1 ? "File" : "Files"}
+          <section className="overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink bg-paper-2 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <h2 className="font-display text-[20px] font-extrabold leading-none tracking-tight text-ink">
+                  Optimization Queue
+                </h2>
+                <span className="rounded-full border-2 border-ink bg-paper px-2.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink">
+                  {isProcessing
+                    ? `Working ${processedCount + 1}/${processedCount + pendingRemaining + 1}`
+                    : `${files.length} ${files.length === 1 ? "file" : "files"}`}
                 </span>
               </div>
               {completedFiles.length > 0 && (
-                <Button
-                  variant={allDownloaded ? "outline" : "default"}
-                  className={allDownloaded ? "border-ink bg-mint text-ink" : ""}
+                <button
+                  type="button"
+                  className={`wb-btn wb-btn--sm ${allDownloaded ? "wb-btn--lemon" : ""}`}
                   onClick={handleDownloadAll}
                   disabled={isZipping || allDownloaded}
                 >
                   {allDownloaded ? (
-                    <CheckCircle className="h-4 w-4" />
+                    <Check className="size-4" strokeWidth={2.5} />
                   ) : isZipping ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    <Download className="h-4 w-4" />
+                    <Download className="size-4" strokeWidth={2.25} />
                   )}
                   <span>
-                    {allDownloaded ? "Downloaded" : isZipping ? "Creating ZIP..." : "Download All"}
+                    {allDownloaded ? "Downloaded" : isZipping ? "Creating ZIP…" : "Download All"}
                   </span>
                   {!allDownloaded && !isZipping && <KbdHint>⌘S</KbdHint>}
-                </Button>
+                </button>
               )}
             </div>
 
-            <div className="flex flex-col divide-y divide-border">
-              {files.map((file) => (
-                <div
-                  key={file.id}
-                  className={`group flex items-center justify-between py-4 ${
-                    file.status === "processing" ? "opacity-70" : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex size-10 items-center justify-center overflow-hidden rounded-[6px] border border-border bg-muted">
-                      {file.status === "processing" ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                      ) : file.status === "error" ? (
-                        <CircleAlert className="h-5 w-5 text-tomato" />
-                      ) : (
-                        <div className="h-6 w-6 rounded-[2px] bg-primary/20" />
-                      )}
+            <ul className="divide-y divide-ink/10 px-5">
+              {files.map((file) => {
+                const thumbBg =
+                  file.status === "done"
+                    ? "bg-mint"
+                    : file.status === "error"
+                      ? "bg-paper-2"
+                      : "bg-paper-2";
+                return (
+                  <li
+                    key={file.id}
+                    className={`flex flex-wrap items-center justify-between gap-4 py-4 ${
+                      file.status === "processing" ? "opacity-80" : ""
+                    }`}
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-4">
+                      <div
+                        className={`grid size-11 shrink-0 place-items-center rounded-md border-2 border-ink shadow-pop-1 ${thumbBg}`}
+                      >
+                        {file.status === "processing" ? (
+                          <Loader2 className="size-5 animate-spin text-ink" />
+                        ) : file.status === "error" ? (
+                          <CircleAlert className="size-5 text-tomato" strokeWidth={2.5} />
+                        ) : (
+                          <FileCode2 className="size-5 text-ink" strokeWidth={2} />
+                        )}
+                      </div>
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <span className="truncate text-[14px] font-semibold text-ink">
+                          {file.name}
+                        </span>
+                        {file.status === "done" && file.optimizedSize !== null && (
+                          <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.1em]">
+                            <span className="text-ink-3 line-through">
+                              {formatFileSize(file.originalSize)}
+                            </span>
+                            <ArrowRight className="size-3 text-ink-3" strokeWidth={2.5} />
+                            <span className="font-semibold text-ink">
+                              {formatFileSize(file.optimizedSize)}
+                            </span>
+                            <span className="rounded-md border-2 border-ink bg-mint px-1.5 py-px text-[10.5px] font-bold text-ink">
+                              -{calculateReduction(file.originalSize, file.optimizedSize)}%
+                            </span>
+                          </div>
+                        )}
+                        {file.status === "processing" && (
+                          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+                            Optimising…
+                          </span>
+                        )}
+                        {file.status === "pending" && (
+                          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+                            Pending · {formatFileSize(file.originalSize)}
+                          </span>
+                        )}
+                        {file.status === "error" && (
+                          <span className="text-[12px] font-medium text-tomato">{file.error}</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold text-foreground">{file.name}</span>
-                      {file.status === "done" && file.optimizedSize !== null && (
-                        <div className="flex items-center gap-3 text-[11px] font-medium uppercase tracking-wider">
-                          <span className="text-muted-foreground line-through">
-                            {formatFileSize(file.originalSize)}
-                          </span>
-                          <span className="font-bold text-grass">
-                            {formatFileSize(file.optimizedSize)}
-                          </span>
-                          <span className="rounded-[6px] border border-ink bg-mint px-1.5 text-ink">
-                            -{calculateReduction(file.originalSize, file.optimizedSize)}%
-                          </span>
-                        </div>
-                      )}
-                      {file.status === "processing" && (
-                        <span className="text-[11px] font-medium uppercase italic tracking-wider text-muted-foreground">
-                          Processing {processedCount + 1} of{" "}
-                          {processedCount + files.filter((f) => f.status === "pending").length + 1}{" "}
-                          files...
-                        </span>
-                      )}
-                      {file.status === "pending" && (
-                        <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                          Pending ({formatFileSize(file.originalSize)})
-                        </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {file.status === "done" && (
+                        <>
+                          <button
+                            type="button"
+                            className="grid size-11 place-items-center rounded-md border-2 border-ink bg-paper text-ink shadow-pop-1 transition-transform hover:-translate-y-0.5"
+                            onClick={() => setPreviewFileId(file.id)}
+                            aria-label={`Preview ${file.name}`}
+                          >
+                            <Eye className="size-5" strokeWidth={2} />
+                          </button>
+                          {file.downloaded ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-md border-2 border-ink bg-mint px-3 py-2 text-[12px] font-bold text-ink shadow-pop-1">
+                              <Check className="size-4" strokeWidth={2.5} />
+                              Downloaded
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="wb-btn wb-btn--sm wb-btn--ghost"
+                              onClick={() => handleDownloadFile(file)}
+                            >
+                              <Download className="size-4" strokeWidth={2.25} />
+                              <span>Download</span>
+                            </button>
+                          )}
+                        </>
                       )}
                       {file.status === "error" && (
-                        <span className="text-[11px] font-medium text-tomato">{file.error}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {file.status === "done" && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setPreviewFileId(file.id)}
-                          aria-label={`Preview ${file.name}`}
+                        <button
+                          type="button"
+                          className="wb-btn wb-btn--sm wb-btn--ghost"
+                          onClick={() => handleRetry(file.id)}
                         >
-                          <Eye className="h-5 w-5" />
-                        </Button>
-                        {file.downloaded ? (
-                          <span className="flex items-center gap-2 rounded-[6px] border-2 border-ink bg-mint px-3 py-1.5 text-xs font-bold text-ink">
-                            <Check className="h-4 w-4" />
-                            Downloaded
-                          </span>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            className="text-xs font-bold text-primary hover:bg-primary/10"
-                            onClick={() => handleDownloadFile(file)}
-                          >
-                            <Download className="h-4 w-4" />
-                            Download
-                          </Button>
-                        )}
-                      </>
-                    )}
-                    {file.status === "error" && (
-                      <Button
-                        variant="ghost"
-                        className="text-xs font-bold text-primary hover:bg-primary/10"
-                        onClick={() => handleRetry(file.id)}
+                          <RefreshCw className="size-4" strokeWidth={2.25} />
+                          <span>Retry</span>
+                        </button>
+                      )}
+                      {file.status === "processing" && (
+                        <div className="h-1.5 w-24 overflow-hidden rounded-full border-2 border-ink bg-paper">
+                          <div className="h-full w-2/3 animate-pulse rounded-full bg-ink" />
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        className="grid size-11 place-items-center rounded-md border-2 border-ink bg-paper text-ink-3 shadow-pop-1 transition-[transform,color] hover:-translate-y-0.5 hover:text-tomato"
+                        onClick={() => handleRemoveFile(file.id)}
+                        aria-label={`Remove ${file.name}`}
                       >
-                        <RefreshCw className="h-4 w-4" />
-                        Retry
-                      </Button>
-                    )}
-                    {file.status === "processing" && (
-                      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full w-2/3 animate-pulse rounded-full bg-primary" />
-                      </div>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-tomato"
-                      onClick={() => handleRemoveFile(file.id)}
-                      aria-label={`Remove ${file.name}`}
-                    >
-                      <X className="h-5 w-5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+                        <X className="size-5" strokeWidth={2.25} />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         )}
 
         {/* Options & Presets */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <Card>
-            <CardContent className="flex flex-col gap-3 p-5">
-              <h4 className="flex items-center gap-2 text-sm font-bold">
-                <Settings2 className="h-5 w-5 text-primary" />
-                Cleanup Options
-              </h4>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <Label
-                    htmlFor="opt-removeComments"
-                    className="cursor-pointer text-xs text-muted-foreground"
-                  >
-                    Remove Comments
-                  </Label>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+          <section className="rounded-lg border-2 border-ink bg-paper p-5 shadow-pop-3">
+            <h3 className="mb-4 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-3">
+              <Settings2 className="size-4 text-ink" strokeWidth={2.25} />
+              Cleanup Options
+            </h3>
+            <div className="flex flex-col gap-3.5">
+              {CLEANUP_TOGGLES.map(({ key, label }) => (
+                <label
+                  key={key}
+                  htmlFor={`opt-${key}`}
+                  className="flex cursor-pointer items-center justify-between gap-3 text-[13.5px] font-medium text-ink"
+                >
+                  <span>{label}</span>
                   <Switch
-                    id="opt-removeComments"
-                    checked={prefs.removeComments}
-                    onCheckedChange={(v) => handleOptionChange("removeComments", v)}
+                    id={`opt-${key}`}
+                    checked={prefs[key]}
+                    onCheckedChange={(v) => handleOptionChange(key, v)}
                   />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label
-                    htmlFor="opt-removeMetadata"
-                    className="cursor-pointer text-xs text-muted-foreground"
-                  >
-                    Remove Metadata
-                  </Label>
-                  <Switch
-                    id="opt-removeMetadata"
-                    checked={prefs.removeMetadata}
-                    onCheckedChange={(v) => handleOptionChange("removeMetadata", v)}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label
-                    htmlFor="opt-simplifyPaths"
-                    className="cursor-pointer text-xs text-muted-foreground"
-                  >
-                    Simplify Path Data
-                  </Label>
-                  <Switch
-                    id="opt-simplifyPaths"
-                    checked={prefs.simplifyPaths}
-                    onCheckedChange={(v) => handleOptionChange("simplifyPaths", v)}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                </label>
+              ))}
+            </div>
+          </section>
 
-          <Card>
-            <CardContent className="flex flex-col gap-3 p-5">
-              <h4 className="flex items-center gap-2 text-sm font-bold">
-                <KeyRound className="h-5 w-5 text-primary" />
-                Attributes
-              </h4>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <Label
-                    htmlFor="opt-removeUnusedIds"
-                    className="cursor-pointer text-xs text-muted-foreground"
-                  >
-                    Remove Unused IDs
-                  </Label>
+          <section className="rounded-lg border-2 border-ink bg-paper p-5 shadow-pop-3">
+            <h3 className="mb-4 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-3">
+              <KeyRound className="size-4 text-ink" strokeWidth={2.25} />
+              Attributes
+            </h3>
+            <div className="flex flex-col gap-3.5">
+              {ATTRIBUTE_TOGGLES.map(({ key, label }) => (
+                <label
+                  key={key}
+                  htmlFor={`opt-${key}`}
+                  className="flex cursor-pointer items-center justify-between gap-3 text-[13.5px] font-medium text-ink"
+                >
+                  <span>{label}</span>
                   <Switch
-                    id="opt-removeUnusedIds"
-                    checked={prefs.removeUnusedIds}
-                    onCheckedChange={(v) => handleOptionChange("removeUnusedIds", v)}
+                    id={`opt-${key}`}
+                    checked={prefs[key]}
+                    onCheckedChange={(v) => handleOptionChange(key, v)}
                   />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label
-                    htmlFor="opt-prefixIds"
-                    className="cursor-pointer text-xs text-muted-foreground"
-                  >
-                    Prefix IDs
-                  </Label>
-                  <Switch
-                    id="opt-prefixIds"
-                    checked={prefs.prefixIds}
-                    onCheckedChange={(v) => handleOptionChange("prefixIds", v)}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label
-                    htmlFor="opt-convertColorsToHex"
-                    className="cursor-pointer text-xs text-muted-foreground"
-                  >
-                    Convert Colors to Hex
-                  </Label>
-                  <Switch
-                    id="opt-convertColorsToHex"
-                    checked={prefs.convertColorsToHex}
-                    onCheckedChange={(v) => handleOptionChange("convertColorsToHex", v)}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                </label>
+              ))}
+            </div>
+          </section>
 
-          <Card>
-            <CardContent className="flex flex-col gap-3 p-5">
-              <h4 className="flex items-center gap-2 text-sm font-bold">
-                <Wand2 className="h-5 w-5 text-primary" />
-                Presets
-              </h4>
-              <div className="grid grid-cols-2 gap-2">
-                {(Object.keys(PRESET_LABELS) as PresetName[]).map((preset) => (
-                  <Button
+          <section className="rounded-lg border-2 border-ink bg-paper-2 p-5 shadow-pop-3">
+            <h3 className="mb-4 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-3">
+              <Wand2 className="size-4 text-ink" strokeWidth={2.25} />
+              Presets
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(PRESET_LABELS) as PresetName[]).map((preset) => {
+                const active = prefs.activePreset === preset;
+                return (
+                  <button
                     key={preset}
-                    variant={prefs.activePreset === preset ? "default" : "secondary"}
-                    size="sm"
-                    className={`text-[10px] font-bold ${
-                      prefs.activePreset === preset
-                        ? "bg-primary/10 text-primary hover:bg-primary/20"
-                        : ""
-                    }`}
+                    type="button"
+                    aria-pressed={active}
+                    data-active={active}
+                    className={`wb-chip font-mono text-[11px] tracking-[0.1em] ${active ? "on" : ""}`}
                     onClick={() => handlePresetClick(preset)}
                   >
                     {PRESET_LABELS[preset]}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-3 font-mono text-[11px] leading-relaxed text-ink-3">
+              Presets overwrite the toggles to the left.
+            </p>
+          </section>
         </div>
       </div>
 
@@ -719,27 +707,29 @@ export default function SvgOptimizerRoute() {
         }}
       >
         <DialogContent className="max-h-[80vh] overflow-hidden p-0">
-          <DialogHeader className="border-b border-border px-6 py-4">
-            <DialogTitle className="text-sm font-bold">{previewFile?.name}</DialogTitle>
+          <DialogHeader className="border-b-2 border-ink bg-paper-2 px-6 py-4">
+            <DialogTitle className="font-display text-[18px] font-extrabold leading-none tracking-tight text-ink">
+              {previewFile?.name}
+            </DialogTitle>
             <DialogDescription className="sr-only">
               Optimized SVG preview with size comparison
             </DialogDescription>
             {previewFile?.optimizedSize !== null && previewFile?.optimizedSize !== undefined && (
-              <div className="flex items-center gap-3 text-[11px] font-medium uppercase tracking-wider">
-                <span className="text-muted-foreground">
+              <div className="mt-2 flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.1em]">
+                <span className="text-ink-3 line-through">
                   {formatFileSize(previewFile.originalSize)}
                 </span>
-                <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                <span className="font-bold text-grass">
+                <ArrowRight className="size-3 text-ink-3" strokeWidth={2.5} />
+                <span className="font-semibold text-ink">
                   {formatFileSize(previewFile.optimizedSize)}
                 </span>
-                <span className="rounded-[6px] border border-ink bg-mint px-1.5 text-ink">
+                <span className="rounded-md border-2 border-ink bg-mint px-1.5 py-px text-[10.5px] font-bold text-ink">
                   -{calculateReduction(previewFile.originalSize, previewFile.optimizedSize)}%
                 </span>
               </div>
             )}
           </DialogHeader>
-          <div className="flex items-center justify-center overflow-auto p-8">
+          <div className="flex items-center justify-center overflow-auto bg-paper p-8">
             {previewFile?.optimizedContent && (
               <img
                 src={URL.createObjectURL(createSvgBlob(previewFile.optimizedContent))}
