@@ -654,7 +654,7 @@ export default function LottiePreviewerRoute() {
           </section>
 
           {/* Features */}
-          <section className="wb-panel p-6">
+          <section className="wb-panel wb-panel--out p-6">
             <h4 className="wb-meta mb-5">Features found</h4>
             {features.length > 0 ? (
               <div className="flex flex-wrap gap-2">
