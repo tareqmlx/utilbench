@@ -35,6 +35,7 @@ import {
   calculateReduction,
   createSvgBlob,
   formatFileSize,
+  quickValidateSvgContent,
   validateSvgContent,
   validateSvgFile,
 } from "./svg-optimizer";
@@ -73,6 +74,7 @@ export default function SvgOptimizerRoute() {
   const [previewFileId, setPreviewFileId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedCount, setProcessedCount] = useState(0);
+  const [batchTotal, setBatchTotal] = useState(0);
   const [isZipping, setIsZipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -80,6 +82,7 @@ export default function SvgOptimizerRoute() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const filesRef = useRef(files);
   filesRef.current = files;
+  const processingRef = useRef(false);
 
   const currentOptions: SvgOptimizerOptions = {
     removeComments: prefs.removeComments,
@@ -92,47 +95,56 @@ export default function SvgOptimizerRoute() {
   const optionsRef = useRef(currentOptions);
   optionsRef.current = currentOptions;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: kick processor on any files mutation; reads via refs
   useEffect(() => {
-    const pendingFiles = files.filter((f) => f.status === "pending");
-    if (pendingFiles.length === 0 || isProcessing) return;
+    if (processingRef.current) return;
+    const pendingFiles = filesRef.current.filter((f) => f.status === "pending");
+    if (pendingFiles.length === 0) return;
 
+    processingRef.current = true;
     setIsProcessing(true);
+    setBatchTotal(pendingFiles.length);
     setProcessedCount(0);
 
-    const processBatch = async () => {
-      let completed = 0;
-      for (const file of pendingFiles) {
-        setFiles((prev) =>
-          prev.map((f) => (f.id === file.id ? { ...f, status: "processing" } : f)),
-        );
+    const pendingIds = new Set(pendingFiles.map((f) => f.id));
+    setFiles((prev) =>
+      prev.map((f) => (pendingIds.has(f.id) ? { ...f, status: "processing" } : f)),
+    );
 
-        try {
-          const result = await svgPool.dispatch<string>("optimize-svg", {
-            content: file.originalContent,
-            options: optionsRef.current,
-          }).promise;
-          const optimizedSize = new TextEncoder().encode(result).byteLength;
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.id === file.id
-                ? { ...f, status: "done", optimizedContent: result, optimizedSize, error: null }
-                : f,
-            ),
-          );
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "Optimization failed";
-          setFiles((prev) =>
-            prev.map((f) => (f.id === file.id ? { ...f, status: "error", error: message } : f)),
-          );
-        }
-        completed++;
-        setProcessedCount(completed);
-      }
+    const tasks = pendingFiles.map((file) =>
+      svgPool
+        .dispatch<string>("optimize-svg", {
+          content: file.originalContent,
+          options: optionsRef.current,
+        })
+        .promise.then(
+          (result) => {
+            const optimizedSize = new TextEncoder().encode(result).byteLength;
+            setFiles((prev) =>
+              prev.map((f) =>
+                f.id === file.id
+                  ? { ...f, status: "done", optimizedContent: result, optimizedSize, error: null }
+                  : f,
+              ),
+            );
+          },
+          (err) => {
+            const message = err instanceof Error ? err.message : "Optimization failed";
+            setFiles((prev) =>
+              prev.map((f) => (f.id === file.id ? { ...f, status: "error", error: message } : f)),
+            );
+          },
+        )
+        .finally(() => {
+          setProcessedCount((c) => c + 1);
+        }),
+    );
+
+    Promise.allSettled(tasks).then(() => {
+      processingRef.current = false;
       setIsProcessing(false);
-    };
-
-    processBatch();
-  }, [files, isProcessing]);
+    });
+  }, [files]);
 
   const addFilesToQueue = useCallback((svgFiles: Array<{ name: string; content: string }>) => {
     const currentCount = filesRef.current.length;
@@ -186,7 +198,7 @@ export default function SvgOptimizerRoute() {
         const reader = new FileReader();
         reader.onload = (ev) => {
           const content = ev.target?.result as string;
-          const contentValidation = validateSvgContent(content);
+          const contentValidation = quickValidateSvgContent(content);
           if (!contentValidation.valid) {
             setError(contentValidation.error ?? "Invalid SVG content");
           } else {
@@ -241,7 +253,7 @@ export default function SvgOptimizerRoute() {
         const reader = new FileReader();
         reader.onload = (ev) => {
           const content = ev.target?.result as string;
-          const contentValidation = validateSvgContent(content);
+          const contentValidation = quickValidateSvgContent(content);
           if (!contentValidation.valid) {
             setError(contentValidation.error ?? "Invalid SVG content");
           } else {
@@ -344,7 +356,6 @@ export default function SvgOptimizerRoute() {
   const completedFiles = files.filter((f) => f.status === "done");
   const allDownloaded = completedFiles.length > 0 && completedFiles.every((f) => f.downloaded);
   const previewFile = previewFileId ? files.find((f) => f.id === previewFileId) : null;
-  const pendingRemaining = files.filter((f) => f.status === "pending").length;
 
   const previewUrl = useMemo(() => {
     if (!previewFile?.optimizedContent) return null;
@@ -375,9 +386,10 @@ export default function SvgOptimizerRoute() {
       <div className="flex flex-col gap-8">
         {/* Drop Zone */}
         <div className="flex flex-col">
-          <div
-            className={`flex flex-col items-center gap-6 rounded-lg border-2 border-ink px-6 py-10 shadow-pop-3 transition-colors sm:py-14 ${
-              isDragging ? "bg-mint" : "bg-paper-2 hover:bg-paper"
+          <section
+            aria-label="SVG file drop zone"
+            className={`flex flex-col items-center gap-6 rounded-lg border-2 border-ink px-6 py-10 shadow-pop-3 transition-colors focus-within:ring-2 focus-within:ring-tomato focus-within:ring-offset-2 focus-within:ring-offset-paper sm:py-14 ${
+              isDragging ? "bg-mint" : "bg-paper-2"
             }`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -392,9 +404,9 @@ export default function SvgOptimizerRoute() {
                 <Upload className="size-7 text-ink" strokeWidth={2.25} />
               </div>
               <div className="text-center">
-                <p className="font-display text-[24px] font-extrabold leading-tight tracking-tight text-ink sm:text-[28px]">
+                <h2 className="font-display text-[24px] font-extrabold leading-tight tracking-tight text-ink sm:text-[28px]">
                   Drop multiple SVGs here
-                </p>
+                </h2>
                 <p className="mt-2 text-[13.5px] leading-relaxed text-ink-2">
                   Drop, browse, or paste. Each file is optimized in your browser.
                 </p>
@@ -429,7 +441,7 @@ export default function SvgOptimizerRoute() {
               aria-label="Upload SVG files"
               data-testid="file-input"
             />
-          </div>
+          </section>
 
           {/* Paste Area */}
           {showPasteArea && (
@@ -467,7 +479,7 @@ export default function SvgOptimizerRoute() {
                 type="button"
                 onClick={() => setWarning(null)}
                 aria-label="Dismiss warning"
-                className="-mr-1 -mt-1 grid size-7 shrink-0 place-items-center rounded-md text-ink transition-colors hover:text-tomato focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-lemon"
+                className="-mr-2 -mt-2 grid size-11 shrink-0 place-items-center rounded-md text-ink transition-colors hover:text-tomato focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-lemon sm:-mr-1 sm:-mt-1 sm:size-7"
               >
                 <X className="size-4" strokeWidth={2.5} />
               </button>
@@ -485,7 +497,7 @@ export default function SvgOptimizerRoute() {
                 </h2>
                 <span className="rounded-full border-2 border-ink bg-paper px-2.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink">
                   {isProcessing
-                    ? `Working ${processedCount + 1}/${processedCount + pendingRemaining + 1}`
+                    ? `Working ${processedCount}/${batchTotal}`
                     : `${files.length} ${files.length === 1 ? "file" : "files"}`}
                 </span>
               </div>
@@ -511,7 +523,7 @@ export default function SvgOptimizerRoute() {
               )}
             </div>
 
-            <ul className="divide-y divide-ink/10 px-5">
+            <ul className="px-5">
               {files.map((file) => {
                 const thumbBg =
                   file.status === "done"
@@ -533,7 +545,7 @@ export default function SvgOptimizerRoute() {
                         {file.status === "processing" ? (
                           <Loader2 className="size-5 animate-spin text-ink" />
                         ) : file.status === "error" ? (
-                          <CircleAlert className="size-5 text-tomato" strokeWidth={2.5} />
+                          <CircleAlert className="size-5 text-ink" strokeWidth={2.5} />
                         ) : (
                           <FileCode2 className="size-5 text-ink" strokeWidth={2} />
                         )}
@@ -567,7 +579,7 @@ export default function SvgOptimizerRoute() {
                           </span>
                         )}
                         {file.status === "error" && (
-                          <span className="text-[12px] font-medium text-tomato">{file.error}</span>
+                          <span className="text-[12px] font-medium text-ink">{file.error}</span>
                         )}
                       </div>
                     </div>
@@ -590,7 +602,7 @@ export default function SvgOptimizerRoute() {
                           ) : (
                             <button
                               type="button"
-                              className="wb-btn wb-btn--sm wb-btn--ghost"
+                              className="wb-btn wb-btn--sm wb-btn--ghost min-h-11 sm:min-h-0"
                               onClick={() => handleDownloadFile(file)}
                             >
                               <Download className="size-4" strokeWidth={2.25} />
@@ -602,7 +614,7 @@ export default function SvgOptimizerRoute() {
                       {file.status === "error" && (
                         <button
                           type="button"
-                          className="wb-btn wb-btn--sm wb-btn--ghost"
+                          className="wb-btn wb-btn--sm wb-btn--ghost min-h-11 sm:min-h-0"
                           onClick={() => handleRetry(file.id)}
                         >
                           <RefreshCw className="size-4" strokeWidth={2.25} />
@@ -670,7 +682,7 @@ export default function SvgOptimizerRoute() {
                     type="button"
                     aria-pressed={active}
                     data-active={active}
-                    className={`wb-chip font-mono text-[11px] tracking-[0.1em] ${active ? "on" : ""}`}
+                    className={`wb-chip min-h-11 font-mono text-[11px] tracking-[0.1em] sm:min-h-0 ${active ? "on" : ""}`}
                     onClick={() => handlePresetClick(preset)}
                   >
                     {PRESET_LABELS[preset]}
@@ -712,6 +724,7 @@ export default function SvgOptimizerRoute() {
                 <span className="rounded-md border-2 border-ink bg-mint px-1.5 py-px text-[10.5px] font-bold text-ink">
                   -{calculateReduction(previewFile.originalSize, previewFile.optimizedSize)}%
                 </span>
+                <KbdHint>Esc to close</KbdHint>
               </div>
             )}
           </DialogHeader>
