@@ -41,7 +41,7 @@ describe("LottiePreviewerRoute", () => {
   it("shows upload zone initially", () => {
     render(<LottiePreviewerRoute />);
     expect(screen.getByText("Drag your animation here")).toBeInTheDocument();
-    expect(screen.getByText("Browse Files")).toBeInTheDocument();
+    expect(screen.getByText("Browse files")).toBeInTheDocument();
   });
 
   it("has a file input with correct accept attribute", () => {
@@ -52,10 +52,9 @@ describe("LottiePreviewerRoute", () => {
     expect(input).toHaveAttribute("accept", ".json,.lottie");
   });
 
-  it("shows metadata placeholders initially", () => {
+  it("shows metadata empty hint initially", () => {
     render(<LottiePreviewerRoute />);
-    const dashes = screen.getAllByText("--");
-    expect(dashes.length).toBeGreaterThanOrEqual(7);
+    expect(screen.getByText("Upload a file to inspect its metadata.")).toBeInTheDocument();
   });
 
   it("shows empty features message initially", () => {
@@ -67,7 +66,7 @@ describe("LottiePreviewerRoute", () => {
     render(<LottiePreviewerRoute />);
     const dotLottieBtn = screen.getByText("Download .dotLottie").closest("button");
     const gifBtn = screen.getByText("Export as GIF").closest("button");
-    const embedBtn = screen.getByText("Get Embed Code").closest("button");
+    const embedBtn = screen.getByText("Get embed code").closest("button");
 
     expect(dotLottieBtn).toBeDisabled();
     expect(gifBtn).toBeDisabled();
@@ -102,19 +101,14 @@ describe("LottiePreviewerRoute", () => {
     expect(labels.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("renders metadata section", () => {
+  it("renders metadata section heading", () => {
     render(<LottiePreviewerRoute />);
     expect(screen.getByText("Metadata")).toBeInTheDocument();
-    expect(screen.getByText("Filename")).toBeInTheDocument();
-    expect(screen.getByText("Size")).toBeInTheDocument();
-    expect(screen.getByText("Dimensions")).toBeInTheDocument();
-    expect(screen.getByText("Frame Rate")).toBeInTheDocument();
-    expect(screen.getByText("Duration")).toBeInTheDocument();
   });
 
   it("renders upload zone", () => {
     render(<LottiePreviewerRoute />);
-    expect(screen.getByText("Browse Files")).toBeInTheDocument();
+    expect(screen.getByText("Browse files")).toBeInTheDocument();
   });
 
   it("has file input element", () => {
@@ -156,13 +150,13 @@ describe("LottiePreviewerRoute", () => {
 
   it("has settings toggle button", () => {
     render(<LottiePreviewerRoute />);
-    const settingsBtn = screen.getByTitle("Settings");
+    const settingsBtn = screen.getByTitle("Playback settings");
     expect(settingsBtn).toBeInTheDocument();
   });
 
   it("opens settings dropdown on toggle click", () => {
     render(<LottiePreviewerRoute />);
-    const settingsBtn = screen.getByTitle("Settings");
+    const settingsBtn = screen.getByTitle("Playback settings");
     fireEvent.click(settingsBtn);
     expect(screen.getByText("Loop")).toBeInTheDocument();
   });
@@ -344,12 +338,12 @@ describe("LottiePreviewerRoute", () => {
       expect(createUrl).toHaveBeenCalled();
     });
 
-    it("Get Embed Code copies to clipboard", async () => {
+    it("Get embed code copies to clipboard", async () => {
       render(<LottiePreviewerRoute />);
       await uploadFile();
 
       const writeText = navigator.clipboard.writeText as ReturnType<typeof vi.fn>;
-      const btn = screen.getByText("Get Embed Code").closest("button");
+      const btn = screen.getByText("Get embed code").closest("button");
       expect(btn).not.toBeDisabled();
       await act(async () => {
         fireEvent.click(btn as HTMLButtonElement);
@@ -363,7 +357,7 @@ describe("LottiePreviewerRoute", () => {
       render(<LottiePreviewerRoute />);
       await uploadFile();
       await act(async () => {
-        fireEvent.click(screen.getByTitle("Settings"));
+        fireEvent.click(screen.getByTitle("Playback settings"));
       });
       const loop = await screen.findByText("Loop");
       expect(loop).toBeInTheDocument();

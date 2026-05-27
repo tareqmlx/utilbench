@@ -306,12 +306,15 @@ export default function LottiePreviewerRoute() {
     ),
   );
 
+  const activeBg = hasFile ? prefs.background : "neutral";
   const bgClass =
-    prefs.background === "white"
+    activeBg === "white"
       ? "bg-[var(--canvas-light)]"
-      : prefs.background === "black"
+      : activeBg === "black"
         ? "bg-[var(--canvas-dark)]"
-        : "bg-[length:20px_20px] [background-image:linear-gradient(45deg,var(--bg-3)_25%,transparent_25%,transparent_75%,var(--bg-3)_75%),linear-gradient(45deg,var(--bg-3)_25%,transparent_25%,transparent_75%,var(--bg-3)_75%)] [background-position:0_0,10px_10px]";
+        : activeBg === "transparent"
+          ? "bg-[length:20px_20px] [background-image:linear-gradient(45deg,var(--bg-3)_25%,transparent_25%,transparent_75%,var(--bg-3)_75%),linear-gradient(45deg,var(--bg-3)_25%,transparent_25%,transparent_75%,var(--bg-3)_75%)] [background-position:0_0,10px_10px]"
+          : "bg-paper-2";
 
   const progressRatio = totalFrames > 0 ? Math.min(1, currentFrame / totalFrames) : 0;
   const currentTime = metadata ? formatDuration(currentFrame / metadata.frameRate) : "0:00";
@@ -332,7 +335,9 @@ export default function LottiePreviewerRoute() {
                 <Play className="size-5 text-ink" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-ink">{sourceFile?.name}</p>
+                <p className="truncate text-sm font-bold text-ink" title={sourceFile?.name}>
+                  {sourceFile?.name}
+                </p>
                 <p className="wb-mono-sm">{sourceFile ? formatFileSize(sourceFile.size) : ""}</p>
               </div>
               <button
@@ -371,7 +376,7 @@ export default function LottiePreviewerRoute() {
                 Upload .json or .lottie files to start previewing.
               </p>
               <span className="wb-btn wb-btn--sm wb-btn--ghost pointer-events-none">
-                Browse Files
+                Browse files
               </span>
             </button>
           )}
@@ -394,19 +399,16 @@ export default function LottiePreviewerRoute() {
             <PaneHeader
               label="Preview"
               className="bg-paper-2"
-              trailing={
-                <span className="wb-mono-sm uppercase tracking-[0.18em] text-ink-3">
-                  SVG renderer
-                </span>
-              }
+              trailing={<span className="wb-meta">SVG renderer</span>}
             />
 
             <div
               className={`relative flex aspect-video items-center justify-center overflow-hidden ${bgClass}`}
             >
               {!hasFile && (
-                <div className="flex items-center justify-center text-ink/15 select-none">
-                  <PlayCircle className="size-24" />
+                <div className="flex flex-col items-center justify-center gap-3 text-ink-3/45 select-none">
+                  <PlayCircle className="size-20" strokeWidth={1.5} aria-hidden="true" />
+                  <span className="wb-meta">No animation loaded</span>
                 </div>
               )}
               <div
@@ -418,28 +420,43 @@ export default function LottiePreviewerRoute() {
             <div className="space-y-6 border-t-2 border-ink p-6">
               {/* Timeline */}
               <div className="space-y-2">
-                <div className="flex justify-between font-mono text-[11px] font-medium text-ink-3 tracking-[0.08em]">
+                <div className="flex justify-between font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-3 tabular-nums">
                   <span>{currentTime}</span>
                   <span>{totalTime}</span>
                 </div>
                 <div
-                  className="relative h-2 w-full cursor-pointer overflow-hidden rounded-full border-2 border-ink bg-paper"
-                  onClick={handleTimelineClick}
+                  className="relative h-2 w-full cursor-pointer overflow-hidden rounded-full border-2 border-ink bg-paper-2 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:cursor-not-allowed"
+                  onClick={hasFile ? handleTimelineClick : undefined}
                   onKeyDown={(e) => {
-                    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-                      e.preventDefault();
-                      const delta = e.key === "ArrowRight" ? 1 : -1;
-                      const newFrame = Math.max(0, Math.min(timelineMax, currentFrame + delta));
-                      lottieRef.current?.goToAndStop(newFrame, true);
-                      setCurrentFrame(newFrame);
+                    if (!hasFile) return;
+                    const stepKey =
+                      e.key === "ArrowRight" ||
+                      e.key === "ArrowLeft" ||
+                      e.key === "Home" ||
+                      e.key === "End";
+                    if (!stepKey) return;
+                    e.preventDefault();
+                    let newFrame = currentFrame;
+                    if (e.key === "Home") newFrame = 0;
+                    else if (e.key === "End") newFrame = timelineMax;
+                    else {
+                      const jump = e.shiftKey ? Math.max(1, Math.round(timelineMax / 20)) : 1;
+                      const delta = e.key === "ArrowRight" ? jump : -jump;
+                      newFrame = Math.max(0, Math.min(timelineMax, currentFrame + delta));
                     }
+                    lottieRef.current?.goToAndStop(newFrame, true);
+                    setCurrentFrame(newFrame);
                   }}
                   role="slider"
-                  tabIndex={0}
+                  tabIndex={hasFile ? 0 : -1}
                   aria-valuenow={currentFrame}
                   aria-valuemin={0}
                   aria-valuemax={timelineMax}
+                  aria-valuetext={
+                    hasFile ? `${currentTime} of ${totalTime}` : "No animation loaded"
+                  }
                   aria-label="Animation timeline"
+                  aria-disabled={!hasFile}
                 >
                   <div
                     className="absolute inset-y-0 left-0 w-full origin-left bg-tomato"
@@ -480,9 +497,10 @@ export default function LottiePreviewerRoute() {
                         <button
                           key={s}
                           type="button"
-                          className={`wb-chip px-3 py-1 text-[12px] font-semibold ${prefs.speed === s ? "on" : ""}`}
+                          className={`wb-chip min-h-11 px-3 text-[12.5px] font-semibold sm:min-h-0 sm:py-1.5 ${prefs.speed === s ? "on" : ""}`}
                           onClick={() => handleSpeedChange(s)}
                           aria-pressed={prefs.speed === s}
+                          aria-label={`${s}x speed`}
                         >
                           {s}x
                         </button>
@@ -493,31 +511,36 @@ export default function LottiePreviewerRoute() {
                   {/* Background */}
                   <div className="flex items-center gap-3">
                     <span className="wb-meta">Background</span>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        className={`size-6 rounded-full border-2 border-ink bg-[var(--canvas-light)] transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper ${prefs.background === "white" ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
-                        onClick={() => setPrefs({ background: "white" })}
-                        aria-label="White background"
-                        aria-pressed={prefs.background === "white"}
-                      />
-                      <button
-                        type="button"
-                        className={`size-6 rounded-full border-2 border-ink bg-[var(--canvas-dark)] transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper ${prefs.background === "black" ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
-                        onClick={() => setPrefs({ background: "black" })}
-                        aria-label="Black background"
-                        aria-pressed={prefs.background === "black"}
-                      />
-                      <button
-                        type="button"
-                        className={`relative size-6 overflow-hidden rounded-full border-2 border-ink bg-paper transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper ${prefs.background === "transparent" ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
-                        onClick={() => setPrefs({ background: "transparent" })}
-                        aria-label="Transparent background"
-                        aria-pressed={prefs.background === "transparent"}
-                      >
-                        <div className="absolute inset-0 bg-ink/20 [mask-image:linear-gradient(45deg,transparent_45%,black_45%,black_55%,transparent_55%)]" />
-                        <div className="absolute inset-0 bg-ink/20 [mask-image:linear-gradient(-45deg,transparent_45%,black_45%,black_55%,transparent_55%)]" />
-                      </button>
+                    <div className="flex gap-0.5">
+                      {(
+                        [
+                          { value: "white", label: "White background" },
+                          { value: "black", label: "Black background" },
+                          { value: "transparent", label: "Transparent background" },
+                        ] as const
+                      ).map(({ value, label }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          className="group grid size-11 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+                          onClick={() => setPrefs({ background: value })}
+                          aria-label={label}
+                          aria-pressed={prefs.background === value}
+                        >
+                          {value === "transparent" ? (
+                            <span
+                              className={`relative size-6 overflow-hidden rounded-full border-2 border-ink bg-paper transition-shadow ${prefs.background === "transparent" ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
+                            >
+                              <span className="absolute inset-0 bg-ink/20 [mask-image:linear-gradient(45deg,transparent_45%,black_45%,black_55%,transparent_55%)]" />
+                              <span className="absolute inset-0 bg-ink/20 [mask-image:linear-gradient(-45deg,transparent_45%,black_45%,black_55%,transparent_55%)]" />
+                            </span>
+                          ) : (
+                            <span
+                              className={`size-6 rounded-full border-2 border-ink transition-shadow ${value === "white" ? "bg-[var(--canvas-light)]" : "bg-[var(--canvas-dark)]"} ${prefs.background === value ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
+                            />
+                          )}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -527,8 +550,8 @@ export default function LottiePreviewerRoute() {
                     variant="ghost"
                     size="icon"
                     className="text-ink-3 hover:bg-paper-2 hover:text-ink"
-                    title="Export Frame"
-                    aria-label="Export frame"
+                    title="Export frame as PNG"
+                    aria-label="Export frame as PNG"
                     onClick={handleExportFrame}
                     disabled={!hasFile}
                   >
@@ -540,8 +563,8 @@ export default function LottiePreviewerRoute() {
                         variant="ghost"
                         size="icon"
                         className="text-ink-3 hover:bg-paper-2 hover:text-ink"
-                        title="Settings"
-                        aria-label="Settings"
+                        title="Playback settings"
+                        aria-label="Playback settings"
                       >
                         <Settings className="size-5" />
                       </Button>
@@ -578,32 +601,36 @@ export default function LottiePreviewerRoute() {
           {/* Metadata */}
           <section className="wb-panel p-6">
             <h4 className="wb-meta mb-5">Metadata</h4>
-            <dl className="space-y-3">
-              {(
-                [
-                  ["Filename", metadata?.filename],
-                  ["Size", metadata ? formatFileSize(metadata.fileSize) : undefined],
+            {metadata ? (
+              <dl className="space-y-3">
+                {(
                   [
-                    "Dimensions",
-                    metadata ? `${metadata.width} × ${metadata.height} px` : undefined,
-                  ],
-                  ["Frame Rate", metadata ? `${metadata.frameRate} FPS` : undefined],
-                  ["Duration", metadata ? `${metadata.duration.toFixed(2)}s` : undefined],
-                  ["Version", metadata?.version],
-                  ["Name", metadata?.animationName],
-                ] as const
-              ).map(([label, value]) => (
-                <div
-                  key={label}
-                  className="flex items-baseline justify-between gap-4 border-b border-ink/15 pb-2 last:border-b-0 last:pb-0"
-                >
-                  <dt className="text-xs font-medium text-ink-3">{label}</dt>
-                  <dd className="truncate text-right text-sm font-semibold text-ink">
-                    {value ?? "--"}
-                  </dd>
-                </div>
-              ))}
-            </dl>
+                    ["Filename", metadata.filename],
+                    ["Size", formatFileSize(metadata.fileSize)],
+                    ["Dimensions", `${metadata.width} × ${metadata.height} px`],
+                    ["Frame rate", `${metadata.frameRate} FPS`],
+                    ["Duration", `${metadata.duration.toFixed(2)}s`],
+                    ["Version", metadata.version],
+                    ["Name", metadata.animationName],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="flex items-baseline justify-between gap-4 border-b border-ink/15 pb-2 last:border-b-0 last:pb-0"
+                  >
+                    <dt className="text-xs font-medium text-ink-3">{label}</dt>
+                    <dd
+                      className="truncate text-right text-sm font-semibold text-ink"
+                      title={value}
+                    >
+                      {value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p className="text-sm text-ink-2">Upload a file to inspect its metadata.</p>
+            )}
           </section>
 
           {/* Features */}
@@ -668,7 +695,7 @@ export default function LottiePreviewerRoute() {
                 disabled={!hasFile}
               >
                 <Code className="size-4" />
-                <IconSwap swapKey={copied}>{copied ? "Copied!" : "Get Embed Code"}</IconSwap>
+                <IconSwap swapKey={copied}>{copied ? "Copied!" : "Get embed code"}</IconSwap>
                 <KbdHint>⌘⇧C</KbdHint>
               </button>
             </div>
