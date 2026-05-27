@@ -10,57 +10,58 @@ import { useKeyboardShortcut } from "../../hooks/useKeyboardShortcut";
 import { parseMarkdown } from "./markdown";
 import "./preview.css";
 
-const DEFAULT_MARKDOWN = `# Welcome to Utilbench Markdown Editor
+const DEFAULT_MARKDOWN = `# Paste your Markdown here.
 
-A markdown previewer with full GFM support.
+Or start fresh. Everything renders locally — *nothing leaves your browser*.
 
-## Features
-- Real-time preview with debounced rendering
-- GitHub Flavored Markdown support
-- Export to HTML or copy to clipboard
+## What it handles
 
-### GFM Examples
+- **Tables** with aligned columns
+- **Task lists** with \`[x]\` / \`[ ]\`
+- **Strikethrough**, autolinks, fenced code
+- Block quotes, headings, emphasis
 
-#### Table
+| Syntax | Example |
+|--------|---------|
+| Bold | \`**bold**\` |
+| Italic | \`*italic*\` |
+| Inline code | \`\` \`code\` \`\` |
 
-| Feature | Status |
-|---------|--------|
-| Tables | Supported |
-| Task Lists | Supported |
-| Strikethrough | Supported |
+### Task list
 
-#### Task List
+- [x] Paste some Markdown
+- [x] Eyeball the preview
+- [ ] Copy the HTML out
 
-- [x] Markdown parsing
-- [x] Live preview
-- [ ] More features coming soon
+### Fenced code
 
-#### Strikethrough
-
-This is ~~removed~~ updated text.
-
-### Example Code Block
-
-\`\`\`js
-const greeting = "Hello, World!";
-console.log(greeting);
+\`\`\`ts
+function greet(name: string) {
+  return \`Hello, \${name}!\`;
+}
 \`\`\`
 
-> Markdown is a lightweight markup language for creating formatted text.
+> Small enough to keep in your head. Friendly enough to write by hand.
 `;
 
-const INITIAL_HTML = parseMarkdown(DEFAULT_MARKDOWN);
+const PANE_HEIGHT = "clamp(420px,60vh,720px)";
 
 export default function MarkdownPreviewRoute() {
   const [markdown, setMarkdown] = useState(DEFAULT_MARKDOWN);
-  const [html, setHtml] = useState(INITIAL_HTML);
+  const [html, setHtml] = useState(() => {
+    try {
+      return parseMarkdown(DEFAULT_MARKDOWN);
+    } catch {
+      return "";
+    }
+  });
   const [error, setError] = useState<string | null>(null);
   const [cursorLine, setCursorLine] = useState(1);
   const [cursorCol, setCursorCol] = useState(1);
   const [parseTick, setParseTick] = useState(0);
   const { copied, copy } = useClipboard();
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -163,7 +164,11 @@ export default function MarkdownPreviewRoute() {
 
   return (
     <ToolShell className="flex-grow sm:py-8">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <div
+        role="toolbar"
+        aria-label="Markdown actions"
+        className="mb-4 flex flex-wrap items-center justify-between gap-2"
+      >
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
@@ -215,14 +220,15 @@ export default function MarkdownPreviewRoute() {
               htmlFor="markdown-editor"
               className="border-b-2 bg-paper-2 px-4 py-2"
               actions={
-                <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+                <span aria-hidden="true" className="wb-meta">
                   Line {cursorLine}, Column {cursorCol}
                 </span>
               }
             />
             <Textarea
               id="markdown-editor"
-              className="h-[500px] w-full resize-none rounded-none border-none bg-transparent p-6 font-mono text-sm leading-relaxed text-ink shadow-none placeholder:text-ink-3 focus-visible:ring-0"
+              style={{ height: PANE_HEIGHT }}
+              className="w-full resize-none rounded-none border-none bg-transparent p-6 font-mono text-sm leading-relaxed text-ink shadow-none placeholder:text-ink-3 focus-visible:ring-0"
               placeholder={"# Hello World\n\nType your markdown here..."}
               value={markdown}
               onChange={handleChange}
@@ -238,7 +244,7 @@ export default function MarkdownPreviewRoute() {
               label="Preview"
               className="border-b-2 bg-paper-2 px-4 py-2"
               actions={
-                <span className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+                <span className="wb-meta inline-flex items-center gap-1.5">
                   <span key={parseTick} className="wb-md-livedot" aria-hidden="true" />
                   Live
                 </span>
@@ -246,21 +252,29 @@ export default function MarkdownPreviewRoute() {
             />
             {html ? (
               <div
-                className="markdown-preview h-[500px] overflow-y-auto p-6"
+                role="region"
+                aria-label="Rendered Markdown preview"
+                style={{ height: PANE_HEIGHT }}
+                className="markdown-preview overflow-y-auto p-6"
                 data-testid="preview-pane"
                 // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is sanitized via DOMPurify
                 dangerouslySetInnerHTML={{ __html: html }}
               />
             ) : (
-              <div
-                className="flex h-[500px] flex-col items-center justify-center gap-3 text-ink-3"
+              <output
+                aria-label="Preview empty"
+                style={{ height: PANE_HEIGHT }}
+                className="flex flex-col items-center justify-center gap-3 text-ink-3"
                 data-testid="preview-empty"
               >
-                <div className="wb-md-empty-icon grid size-14 place-items-center rounded-md border-2 border-ink bg-mint shadow-pop-2">
+                <span
+                  aria-hidden="true"
+                  className="wb-md-empty-icon grid size-14 place-items-center rounded-md border-2 border-ink bg-mint shadow-pop-2"
+                >
                   <PenLine className="h-6 w-6 text-ink" strokeWidth={2.25} />
-                </div>
+                </span>
                 <p className="text-sm font-medium text-ink-2">Start typing to see the preview</p>
-              </div>
+              </output>
             )}
           </div>
         }

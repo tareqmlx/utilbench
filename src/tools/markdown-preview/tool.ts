@@ -3,9 +3,9 @@ import type { ToolDefinition } from "../types";
 export const tool: ToolDefinition = {
   name: "Markdown Preview",
   slug: "markdown-preview",
-  description: "Preview Markdown with live rendering and syntax highlighting.",
+  description: "Render Markdown to clean HTML, live, in your browser.",
   seoDescription:
-    "Free Markdown previewer with live rendering and syntax highlighting. Write and preview Markdown in real-time with GitHub-flavored Markdown support. Great for README editing.",
+    "Write GitHub-flavored Markdown and see the rendered HTML side by side. Tables, task lists, fenced code, strikethrough — all parsed locally, nothing uploaded. Handy for drafting READMEs and notes.",
   category: "text",
   tags: ["markdown", "preview", "render", "document", "readme", "gfm", "editor"],
   featured: false,
@@ -14,19 +14,20 @@ export const tool: ToolDefinition = {
   features: [
     {
       icon: "Zap",
-      title: "Real-time Preview",
-      description: "See rendered output update live as you type with debounced rendering.",
+      title: "Live preview",
+      description:
+        "Type on the left, see rendered HTML on the right. Debounced so long documents stay smooth.",
     },
     {
       icon: "Code",
-      title: "GFM Support",
+      title: "GitHub-flavored",
       description:
-        "Tables, task lists, strikethrough, code blocks, and full GitHub Flavored Markdown.",
+        "Tables, task lists, strikethrough, fenced code, autolinks — full GFM, parsed locally.",
     },
     {
       icon: "Download",
-      title: "Import & Export",
-      description: "Import .md files and copy rendered HTML to clipboard.",
+      title: "Import or export",
+      description: "Drop in a .md file, or copy the rendered HTML straight to your clipboard.",
     },
   ],
 };

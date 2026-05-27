@@ -56,6 +56,18 @@ describe("parseMarkdown", () => {
       expect(result).toContain("checked");
     });
 
+    it("marks task-list checkboxes as decorative for screen readers", () => {
+      const input = "- [x] done\n- [ ] todo";
+      const result = parseMarkdown(input);
+      // Both checkboxes should carry aria-hidden and tabindex=-1 — they reflect `[x]` syntax, not interactive controls.
+      const matches = result.match(/<input[^>]*type="checkbox"[^>]*>/g) ?? [];
+      expect(matches).toHaveLength(2);
+      for (const tag of matches) {
+        expect(tag).toContain('aria-hidden="true"');
+        expect(tag).toContain('tabindex="-1"');
+      }
+    });
+
     it("renders strikethrough", () => {
       const result = parseMarkdown("~~deleted~~");
       expect(result).toContain("<del>deleted</del>");

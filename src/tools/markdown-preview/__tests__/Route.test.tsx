@@ -40,7 +40,7 @@ describe("MarkdownPreviewRoute", () => {
     render(<MarkdownPreviewRoute />);
     const textarea = screen.getByPlaceholderText(/Hello World/);
     expect(textarea).toBeInTheDocument();
-    expect((textarea as HTMLTextAreaElement).value).toContain("Welcome to Utilbench");
+    expect((textarea as HTMLTextAreaElement).value).toContain("Paste your Markdown");
   });
 
   it("shows preview for default content", () => {
