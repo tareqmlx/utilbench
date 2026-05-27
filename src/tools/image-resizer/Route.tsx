@@ -99,9 +99,13 @@ export default function ImageResizerRoute() {
     };
   }, []);
 
+  const selectedFile = useMemo(
+    () => queue.find((q) => q.id === selectedItemId)?.file ?? null,
+    [queue, selectedItemId],
+  );
+
   useEffect(() => {
-    const selected = queue.find((q) => q.id === selectedItemId);
-    if (!selected) {
+    if (!selectedFile) {
       setPreviewUrl(null);
       return;
     }
@@ -109,7 +113,7 @@ export default function ImageResizerRoute() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        const blob = await resizeImage(selected.file, {
+        const blob = await resizeImage(selectedFile, {
           width,
           height,
           format: prefs.format,
@@ -124,7 +128,7 @@ export default function ImageResizerRoute() {
         // Preview failed silently
       }
     }, 250);
-  }, [selectedItemId, width, height, prefs.format, prefs.quality, queue]);
+  }, [selectedFile, width, height, prefs.format, prefs.quality]);
 
   const handleFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -726,7 +730,13 @@ export default function ImageResizerRoute() {
                     }}
                   >
                     <div className="size-11 shrink-0 overflow-hidden rounded-sm border-2 border-ink bg-paper">
-                      <img className="h-full w-full object-cover" src={item.thumbnailUrl} alt="" />
+                      <img
+                        className="h-full w-full object-cover"
+                        src={item.thumbnailUrl}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                      />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13.5px] font-semibold text-ink">
@@ -903,7 +913,13 @@ export default function ImageResizerRoute() {
                 aria-label={`Download ${asset.filename}`}
                 onClick={() => downloadBlob(asset.blob, asset.filename)}
               >
-                <img className="h-full w-full object-cover" src={asset.url} alt="" />
+                <img
+                  className="h-full w-full object-cover"
+                  src={asset.url}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                />
                 <div className="absolute inset-0 flex items-center justify-center bg-ink/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                   <Download className="size-6 text-paper" aria-hidden="true" />
                 </div>
