@@ -2,7 +2,7 @@ import { Check, Copy, Download, PenLine, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IconSwap } from "../../components/IconSwap";
 import { KbdHint } from "../../components/KbdHint";
-import { ErrorAlert, ToolShell, TwoPane } from "../../components/tool-layout";
+import { ErrorAlert, PaneHeader, ToolShell, TwoPane } from "../../components/tool-layout";
 import { Button } from "../../components/ui/button";
 import { Textarea } from "../../components/ui/textarea";
 import { useClipboard } from "../../hooks/useClipboard";
@@ -61,7 +61,6 @@ export default function MarkdownPreviewRoute() {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     return () => {
@@ -164,20 +163,36 @@ export default function MarkdownPreviewRoute() {
     <ToolShell className="flex-grow sm:py-8">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleImport}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleImport}
+            className="min-h-11 sm:min-h-0"
+          >
             <Upload className="h-4 w-4" />
             Import
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExport}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            className="min-h-11 sm:min-h-0"
+          >
             <Download className="h-4 w-4" />
             Export
           </Button>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={handleClear}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleClear}
+            className="min-h-11 sm:min-h-0"
+          >
             Clear
+            <KbdHint>⌘⇧X</KbdHint>
           </Button>
-          <Button size="sm" onClick={handleCopyHtml}>
+          <Button size="sm" onClick={handleCopyHtml} className="min-h-11 sm:min-h-0">
             <IconSwap swapKey={copied}>
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               {copied ? "Copied!" : "Copy HTML"}
@@ -190,20 +205,22 @@ export default function MarkdownPreviewRoute() {
       <ErrorAlert error={error} className="mb-4 mt-0" />
 
       <TwoPane
-        className="gap-0 overflow-hidden rounded-lg border-2 border-ink bg-card shadow-pop-3"
+        className="gap-0 overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-pop-3 focus-within:shadow-pop-cta"
         left={
-          <div className="flex flex-col border-b border-border lg:border-b-0 lg:border-r">
-            <div className="flex items-center justify-between border-b border-border bg-muted px-4 py-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Markdown Editor
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                Line {cursorLine}, Column {cursorCol}
-              </span>
-            </div>
+          <div className="flex flex-col border-b-2 border-ink lg:border-b-0 lg:border-r-2">
+            <PaneHeader
+              label="Markdown Editor"
+              htmlFor="markdown-editor"
+              className="border-b-2 bg-paper-2 px-4 py-2"
+              actions={
+                <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+                  Line {cursorLine}, Column {cursorCol}
+                </span>
+              }
+            />
             <Textarea
-              ref={textareaRef}
-              className="h-[500px] w-full resize-none rounded-none border-none bg-transparent p-6 font-mono text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+              id="markdown-editor"
+              className="h-[500px] w-full resize-none rounded-none border-none bg-transparent p-6 font-mono text-sm leading-relaxed text-ink shadow-none placeholder:text-ink-3 focus-visible:ring-0"
               placeholder={"# Hello World\n\nType your markdown here..."}
               value={markdown}
               onChange={handleChange}
@@ -215,11 +232,7 @@ export default function MarkdownPreviewRoute() {
         }
         right={
           <div className="flex flex-col">
-            <div className="flex items-center justify-between border-b border-border bg-muted px-4 py-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Preview
-              </span>
-            </div>
+            <PaneHeader label="Preview" className="border-b-2 bg-paper-2 px-4 py-2" />
             {html ? (
               <div
                 className="markdown-preview h-[500px] overflow-y-auto p-6"
@@ -229,11 +242,13 @@ export default function MarkdownPreviewRoute() {
               />
             ) : (
               <div
-                className="flex h-[500px] flex-col items-center justify-center text-muted-foreground"
+                className="flex h-[500px] flex-col items-center justify-center gap-3 text-ink-3"
                 data-testid="preview-empty"
               >
-                <PenLine className="mb-2 h-12 w-12" />
-                <p className="text-sm">Start typing to see the preview</p>
+                <div className="grid size-14 place-items-center rounded-md border-2 border-ink bg-mint shadow-pop-2">
+                  <PenLine className="h-6 w-6 text-ink" strokeWidth={2.25} />
+                </div>
+                <p className="text-sm font-medium text-ink-2">Start typing to see the preview</p>
               </div>
             )}
           </div>
