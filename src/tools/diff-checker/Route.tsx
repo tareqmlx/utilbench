@@ -329,7 +329,8 @@ const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
 ];
 
 const PILL_TRIGGER_CLASS = cn(
-  "inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-ink bg-paper px-3.5 py-1.5 text-[13px] font-medium text-ink shadow-pop-1 transition-all",
+  "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full border-2 border-ink bg-paper px-4 py-2.5 text-[13.5px] font-medium text-ink shadow-pop-1 transition-all",
+  "sm:min-h-0 sm:px-3.5 sm:py-1.5 sm:text-[13px]",
   "hover:bg-lemon hover:-translate-y-0.5",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
   "data-[state=active]:bg-ink data-[state=active]:text-paper data-[state=active]:shadow-pop-2",
