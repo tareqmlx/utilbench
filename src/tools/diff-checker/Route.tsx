@@ -1,6 +1,6 @@
 import type { Change } from "diff";
 import { ArrowLeftRight, Check, CheckCircle, Copy, GitCompare, Loader2 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import { IconSwap } from "../../components/IconSwap";
 import { KbdHint } from "../../components/KbdHint";
@@ -165,21 +165,23 @@ function getRowDelayStyle(index?: number): React.CSSProperties | undefined {
   return { ["--wb-row-delay" as string]: `${index * ROW_STAGGER_STEP_MS}ms` };
 }
 
-function DiffLine({
-  lineNumber,
-  content,
-  tone = "default",
-  prefix,
-  index,
-  animate,
-}: {
+interface DiffLineProps {
   lineNumber: number | null;
   content: string;
   tone?: DiffTone;
   prefix?: string;
   index?: number;
   animate?: boolean;
-}) {
+}
+
+const DiffLine = memo(function DiffLine({
+  lineNumber,
+  content,
+  tone = "default",
+  prefix,
+  index,
+  animate,
+}: DiffLineProps) {
   const rowToneClass =
     tone === "added"
       ? "bg-mint/40 hover:bg-mint/60"
@@ -212,7 +214,7 @@ function DiffLine({
       <div className="px-2 font-mono text-sm text-ink whitespace-pre">{content}</div>
     </div>
   );
-}
+});
 
 function SubPaneLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -286,7 +288,7 @@ function InlineView({ lines }: { lines: DiffLineData[] }) {
 }
 
 function UnifiedView({ patch }: { patch: string }) {
-  const lines = patch.split("\n");
+  const lines = useMemo(() => patch.split("\n"), [patch]);
 
   return (
     <div className="overflow-x-auto">
