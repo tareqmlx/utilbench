@@ -188,7 +188,7 @@ export default function FaviconGeneratorRoute() {
 
     setIsGenerating(true);
     setError(null);
-    setStatusMessage("Generating favicon pack.");
+    setStatusMessage("Building favicon pack.");
     try {
       const blob = await generateFaviconPack(imageDataUrl, {
         backgroundColor: prefs.backgroundColor,
@@ -251,7 +251,7 @@ export default function FaviconGeneratorRoute() {
                   <button
                     type="button"
                     onClick={handleRemoveFile}
-                    className="wb-btn wb-btn--sm wb-btn--ghost"
+                    className="wb-btn wb-btn--sm wb-btn--ghost min-h-11 sm:min-h-0"
                     aria-label={`Remove ${sourceFile.name}`}
                   >
                     <X className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
@@ -365,7 +365,11 @@ export default function FaviconGeneratorRoute() {
                         // biome-ignore lint/a11y/useSemanticElements: swatch needs 2px ink border + hard offset shadow; native radio can't replicate
                         role="radio"
                         aria-checked={isCustomColor}
-                        aria-label="Custom color picker"
+                        aria-label={
+                          isCustomColor
+                            ? `Custom color picker, current ${prefs.backgroundColor}`
+                            : "Custom color picker"
+                        }
                         onClick={handlePaletteClick}
                         style={
                           isCustomColor ? { backgroundColor: prefs.backgroundColor } : undefined
@@ -464,7 +468,7 @@ export default function FaviconGeneratorRoute() {
                 {isGenerating ? (
                   <>
                     <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                    <span>Generating...</span>
+                    <span>Building favicon pack…</span>
                   </>
                 ) : (
                   <>
@@ -489,7 +493,10 @@ export default function FaviconGeneratorRoute() {
             <div className="space-y-8 p-5 sm:p-6">
               <div>
                 <p className="wb-meta mb-3">Browser Tab (16x16)</p>
-                <div className="rounded-t-md border-2 border-ink bg-paper px-3 py-2">
+                <div
+                  aria-hidden="true"
+                  className="rounded-t-md border-2 border-ink bg-paper px-3 py-2"
+                >
                   <div className="flex items-center gap-2 rounded-md border-2 border-ink bg-paper-2 px-2.5 py-1.5">
                     <span className="grid size-4 shrink-0 place-items-center overflow-hidden rounded-sm border border-ink bg-paper">
                       {previewUrls[16] ? (
@@ -500,11 +507,11 @@ export default function FaviconGeneratorRoute() {
                           className="wb-fade-in size-full object-cover"
                         />
                       ) : (
-                        <span className="size-1.5 rounded-full bg-ink-3" aria-hidden="true" />
+                        <span className="size-1.5 rounded-full bg-ink-3" />
                       )}
                     </span>
                     <span className="truncate text-[11px] font-medium text-ink">My Website</span>
-                    <X className="ml-auto size-3 text-ink-3" aria-hidden="true" strokeWidth={2.5} />
+                    <X className="ml-auto size-3 text-ink-3" strokeWidth={2.5} />
                   </div>
                 </div>
               </div>
