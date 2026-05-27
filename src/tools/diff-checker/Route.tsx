@@ -570,8 +570,9 @@ export default function DiffCheckerRoute() {
         </div>
 
         <div className="wb-panel wb-panel--out">
+          <h2 className="sr-only">Differences</h2>
           <PaneHeader
-            label="Comparison"
+            label="Differences"
             actions={
               <button
                 type="button"
