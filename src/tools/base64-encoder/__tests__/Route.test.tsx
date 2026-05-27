@@ -25,11 +25,11 @@ describe("Base64EncoderRoute", () => {
   });
 
   function getInput() {
-    return screen.getByPlaceholderText(/Enter or paste your content here/) as HTMLTextAreaElement;
+    return document.getElementById("base64-input") as HTMLTextAreaElement;
   }
 
   function getOutput() {
-    return screen.getByPlaceholderText(/Result will appear here/) as HTMLTextAreaElement;
+    return document.getElementById("base64-output") as HTMLTextAreaElement;
   }
 
   function setInput(value: string) {
@@ -72,7 +72,7 @@ describe("Base64EncoderRoute", () => {
         <Base64EncoderRoute />
       </MemoryRouter>,
     );
-    await user.click(screen.getByRole("tab", { name: /DECODE/ }));
+    await user.click(screen.getByRole("button", { name: "Decode" }));
     setInput("SGVsbG8=");
     expect(getOutput()).toHaveValue("Hello");
   });
@@ -84,7 +84,7 @@ describe("Base64EncoderRoute", () => {
         <Base64EncoderRoute />
       </MemoryRouter>,
     );
-    await user.click(screen.getByRole("tab", { name: /DECODE/ }));
+    await user.click(screen.getByRole("button", { name: "Decode" }));
     setInput("!!!invalid!!!");
     expect(screen.getByText(/Invalid Base64/)).toBeInTheDocument();
     expect(getOutput()).toHaveValue("");
@@ -100,7 +100,7 @@ describe("Base64EncoderRoute", () => {
     setInput("Hello");
     expect(getOutput()).toHaveValue("SGVsbG8=");
 
-    await user.click(screen.getByRole("tab", { name: /DECODE/ }));
+    await user.click(screen.getByRole("button", { name: "Decode" }));
     // "Hello" is not valid Base64 with that content, so expect error
     expect(screen.getByText(/Invalid Base64/)).toBeInTheDocument();
   });
@@ -112,11 +112,11 @@ describe("Base64EncoderRoute", () => {
         <Base64EncoderRoute />
       </MemoryRouter>,
     );
-    await user.click(screen.getByRole("tab", { name: /DECODE/ }));
+    await user.click(screen.getByRole("button", { name: "Decode" }));
     setInput("!!!invalid!!!");
     expect(screen.getByText(/Invalid Base64/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Clear/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Clear input/ }));
 
     expect(getInput()).toHaveValue("");
     expect(getOutput()).toHaveValue("");
@@ -130,7 +130,7 @@ describe("Base64EncoderRoute", () => {
       </MemoryRouter>,
     );
     setInput("Hello");
-    fireEvent.click(screen.getByRole("button", { name: /Copy Result/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Copy result to clipboard/i }));
     expect(clipboardMock.writeText).toHaveBeenCalledWith("SGVsbG8=");
   });
 
@@ -141,7 +141,7 @@ describe("Base64EncoderRoute", () => {
       </MemoryRouter>,
     );
     setInput("Hello");
-    fireEvent.click(screen.getByRole("button", { name: /Copy Result/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Copy result to clipboard/i }));
 
     expect(await screen.findByText("Copied!")).toBeInTheDocument();
   });
@@ -167,7 +167,7 @@ describe("Base64EncoderRoute", () => {
     expect(screen.getByText("Input String")).toBeInTheDocument();
     expect(screen.getByText("Base64 Result")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: /DECODE/ }));
+    await user.click(screen.getByRole("button", { name: "Decode" }));
     expect(screen.getByText("Base64 Input")).toBeInTheDocument();
     expect(screen.getByText("Decoded Text")).toBeInTheDocument();
   });
