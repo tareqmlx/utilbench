@@ -152,26 +152,46 @@ function JsonFormatterSkeleton() {
 function CronParserSkeleton() {
   return (
     <ToolShell>
-      <div className="space-y-12">
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
-          <div className="space-y-6 lg:col-span-7">
-            <SkeletonBlock className="h-14 rounded-xl" />
-            <SkeletonBlock className="h-20 rounded-xl" />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {sk(6).map((key) => (
-                <SkeletonButton key={key} width="w-full" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
+        <div className="space-y-6 lg:col-span-7">
+          <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+            <div className="flex items-center justify-between border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+              <SkeletonLine width="w-32" height="h-3" />
+              <SkeletonLine width="w-16" height="h-6" className="rounded-full" />
+            </div>
+            <div className="space-y-6 p-5 sm:p-7">
+              <SkeletonBlock className="h-16 rounded-md" />
+              <div>
+                <SkeletonLine width="w-24" height="h-3" className="mb-3" />
+                <SkeletonBlock className="h-20 rounded-lg" />
+              </div>
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper-2 shadow-pop-3">
+            <div className="flex items-center justify-between border-b-2 border-ink bg-paper-2 px-[18px] py-[14px]">
+              <SkeletonLine width="w-28" height="h-3" />
+              <SkeletonLine width="w-12" height="h-3" />
+            </div>
+            <div className="flex flex-wrap gap-2 p-5 sm:p-7">
+              {sk(5).map((key) => (
+                <SkeletonButton key={key} width="w-28" />
               ))}
             </div>
           </div>
-          <div className="lg:col-span-5">
-            <div className="rounded-xl bg-card p-6">
-              <SkeletonLine width="w-32" height="h-5" className="mb-5" />
-              <div className="space-y-4">
-                {sk(5).map((key) => (
-                  <SkeletonLine key={key} width="w-full" height="h-4" />
-                ))}
-              </div>
-              <SkeletonLine width="w-40" height="h-3" className="mt-5" />
+        </div>
+        <div className="lg:col-span-5">
+          <div className="flex h-full flex-col overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+            <div className="flex items-center justify-between border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+              <SkeletonLine width="w-32" height="h-3" />
+              <SkeletonBlock className="size-8 rounded-md" />
+            </div>
+            <div className="flex-1 space-y-2 p-5 sm:p-7">
+              {sk(5).map((key) => (
+                <SkeletonBlock key={key} className="h-14 rounded-md" />
+              ))}
+            </div>
+            <div className="border-t-2 border-ink bg-paper px-[18px] py-[14px]">
+              <SkeletonLine width="w-48" height="h-3" />
             </div>
           </div>
         </div>
