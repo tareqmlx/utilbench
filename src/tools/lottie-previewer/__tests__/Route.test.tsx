@@ -128,7 +128,7 @@ describe("LottiePreviewerRoute", () => {
     const input = screen.getByTestId("file-input");
     const file = new File(["data"], "test.png", { type: "image/png" });
     fireEvent.change(input, { target: { files: [file] } });
-    expect(screen.getByText(/Invalid file type/)).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(/Invalid file type/);
   });
 
   it("speed buttons render correctly", () => {

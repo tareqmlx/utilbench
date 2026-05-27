@@ -10,14 +10,13 @@ import {
   PlayCircle,
   RotateCcw,
   Settings,
-  TriangleAlert,
   Upload,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IconSwap } from "../../components/IconSwap";
 import { KbdHint } from "../../components/KbdHint";
-import { ErrorAlert, ToolShell } from "../../components/tool-layout";
+import { ErrorAlert, PaneHeader, ToolShell, WarningAlert } from "../../components/tool-layout";
 import { Button } from "../../components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../../components/ui/popover";
 import { Switch } from "../../components/ui/switch";
@@ -53,12 +52,17 @@ export default function LottiePreviewerRoute() {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [status, setStatus] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lottieRef = useRef<AnimationItem | null>(null);
 
   const { copied, copy } = useClipboard();
+
+  useEffect(() => {
+    if (copied) setStatus("Embed code copied to clipboard.");
+  }, [copied]);
 
   const metadata = useMemo(
     () => (animationData && sourceFile ? extractMetadata(animationData, sourceFile) : null),
@@ -127,7 +131,9 @@ export default function LottiePreviewerRoute() {
     setWarning(null);
     const validation = validateFile(file);
     if (!validation.valid) {
-      setError(validation.error ?? "Unknown error");
+      const message = validation.error ?? "Unknown error";
+      setError(message);
+      setStatus(`Error: ${message}`);
       return;
     }
     if (validation.warning) {
@@ -138,8 +144,11 @@ export default function LottiePreviewerRoute() {
       const data = await parseFile(file);
       setSourceFile(file);
       setAnimationData(data);
+      setStatus(`Animation loaded: ${file.name}.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to parse animation file.");
+      const message = err instanceof Error ? err.message : "Failed to parse animation file.";
+      setError(message);
+      setStatus(`Error: ${message}`);
     }
   }, []);
 
@@ -224,8 +233,11 @@ export default function LottiePreviewerRoute() {
     try {
       const blob = await exportFrameAsPng(svg as SVGSVGElement, metadata.width, metadata.height);
       downloadBlob(blob, "lottie-frame.png");
+      setStatus("Frame exported as lottie-frame.png.");
     } catch {
-      setError("Failed to export frame as PNG.");
+      const message = "Failed to export frame as PNG.";
+      setError(message);
+      setStatus(`Error: ${message}`);
     }
   }, [metadata]);
 
@@ -233,12 +245,14 @@ export default function LottiePreviewerRoute() {
     if (!animationData) return;
     const blob = buildDotLottie(animationData);
     downloadBlob(blob, "animation.lottie");
+    setStatus("Downloaded as animation.lottie.");
   }, [animationData]);
 
   const handleExportGif = useCallback(async () => {
     if (!containerRef.current || !metadata || !lottieRef.current) return;
 
     setIsExporting(true);
+    setStatus("Exporting GIF...");
     const wasPlaying = isPlaying;
     if (wasPlaying) lottieRef.current.pause();
 
@@ -251,8 +265,11 @@ export default function LottiePreviewerRoute() {
         lottieRef.current,
       );
       downloadBlob(blob, "animation.gif");
+      setStatus("Downloaded as animation.gif.");
     } catch {
-      setError("Failed to export GIF.");
+      const message = "Failed to export GIF.";
+      setError(message);
+      setStatus(`Error: ${message}`);
     } finally {
       setIsExporting(false);
       if (wasPlaying && lottieRef.current) {
@@ -302,7 +319,10 @@ export default function LottiePreviewerRoute() {
   const timelineMax = totalFrames > 0 ? totalFrames - 1 : 0;
 
   return (
-    <ToolShell className="flex-1">
+    <ToolShell>
+      <output aria-live="polite" className="sr-only">
+        {status}
+      </output>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <div className="space-y-6 lg:col-span-8">
           {/* Upload / File info */}
@@ -322,6 +342,7 @@ export default function LottiePreviewerRoute() {
                   setAnimationData(null);
                   setError(null);
                   setCurrentFrame(0);
+                  setStatus("File removed.");
                   if (fileInputRef.current) fileInputRef.current.value = "";
                 }}
                 className="wb-chip"
@@ -366,19 +387,19 @@ export default function LottiePreviewerRoute() {
 
           <ErrorAlert error={error} className="mt-0" />
 
-          {warning !== null && (
-            <output className="wb-fade-in flex items-start gap-3 rounded-md border-2 border-ink bg-lemon px-4 py-3 shadow-pop-2">
-              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-ink" />
-              <p className="text-sm text-ink">{warning}</p>
-            </output>
-          )}
+          <WarningAlert warning={warning} className="mt-0" onDismiss={() => setWarning(null)} />
 
           {/* Preview panel */}
           <div className="wb-panel">
-            <div className="flex items-center justify-between border-b-2 border-ink bg-paper-2 px-5 py-3">
-              <span className="wb-meta">Preview</span>
-              <span className="wb-mono-sm uppercase tracking-[0.18em]">SVG renderer</span>
-            </div>
+            <PaneHeader
+              label="Preview"
+              className="bg-paper-2"
+              trailing={
+                <span className="wb-mono-sm uppercase tracking-[0.18em] text-ink-3">
+                  SVG renderer
+                </span>
+              }
+            />
 
             <div
               className={`relative flex aspect-video items-center justify-center overflow-hidden ${bgClass}`}
@@ -475,21 +496,21 @@ export default function LottiePreviewerRoute() {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        className={`size-6 rounded-full border-2 border-ink bg-[var(--canvas-light)] transition-shadow ${prefs.background === "white" ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
+                        className={`size-6 rounded-full border-2 border-ink bg-[var(--canvas-light)] transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper ${prefs.background === "white" ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
                         onClick={() => setPrefs({ background: "white" })}
                         aria-label="White background"
                         aria-pressed={prefs.background === "white"}
                       />
                       <button
                         type="button"
-                        className={`size-6 rounded-full border-2 border-ink bg-[var(--canvas-dark)] transition-shadow ${prefs.background === "black" ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
+                        className={`size-6 rounded-full border-2 border-ink bg-[var(--canvas-dark)] transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper ${prefs.background === "black" ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
                         onClick={() => setPrefs({ background: "black" })}
                         aria-label="Black background"
                         aria-pressed={prefs.background === "black"}
                       />
                       <button
                         type="button"
-                        className={`relative size-6 overflow-hidden rounded-full border-2 border-ink bg-paper transition-shadow ${prefs.background === "transparent" ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
+                        className={`relative size-6 overflow-hidden rounded-full border-2 border-ink bg-paper transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper ${prefs.background === "transparent" ? "ring-2 ring-tomato ring-offset-2 ring-offset-paper" : ""}`}
                         onClick={() => setPrefs({ background: "transparent" })}
                         aria-label="Transparent background"
                         aria-pressed={prefs.background === "transparent"}
