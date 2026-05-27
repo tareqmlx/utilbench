@@ -28,7 +28,7 @@ export function ErrorAlert({ error, className, testId, onDismiss }: ErrorAlertPr
           type="button"
           onClick={onDismiss}
           aria-label="Dismiss error"
-          className="-mr-1 -mt-1 grid size-7 shrink-0 place-items-center rounded-md text-ink-3 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+          className="-mr-2 -mt-2 grid size-11 shrink-0 place-items-center rounded-md text-ink-3 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:-mr-1 sm:-mt-1 sm:size-7"
         >
           <X className="size-4" strokeWidth={2.5} />
         </button>
