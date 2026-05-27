@@ -78,6 +78,7 @@ export default function ImageResizerRoute() {
   const [recentAssets, setRecentAssets] = useState<
     Array<{ blob: Blob; url: string; filename: string }>
   >([]);
+  const [statusMessage, setStatusMessage] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -175,6 +176,9 @@ export default function ImageResizerRoute() {
           setHeight(first.originalHeight);
           setAspectRatio(first.aspectRatio);
           setSelectedItemId(first.id);
+          setStatusMessage(
+            `${first.file.name} loaded, ${first.originalWidth} by ${first.originalHeight}.`,
+          );
         }
       } else {
         setQueue((prev) => {
@@ -196,6 +200,11 @@ export default function ImageResizerRoute() {
             setAspectRatio(first.aspectRatio);
             setSelectedItemId(first.id);
           }
+          setStatusMessage(
+            toAdd.length === 1
+              ? `Added ${toAdd[0]?.file.name} to queue.`
+              : `Added ${toAdd.length} files to queue.`,
+          );
           return [...prev, ...toAdd];
         });
       }
@@ -238,6 +247,7 @@ export default function ImageResizerRoute() {
         if (item) {
           URL.revokeObjectURL(item.thumbnailUrl);
           if (item.resultUrl) URL.revokeObjectURL(item.resultUrl);
+          setStatusMessage(`Removed ${item.file.name} from queue.`);
         }
         return prev.filter((q) => q.id !== id);
       });
@@ -301,9 +311,14 @@ export default function ImageResizerRoute() {
     setIsProcessing(true);
     setError(null);
     setOverallProgress(0);
+    setStatusMessage(
+      queue.length === 1 ? `Resizing ${queue[0]?.file.name}.` : `Resizing ${queue.length} images.`,
+    );
 
     const options = { width, height, format: prefs.format, quality: prefs.quality };
     let processed = 0;
+    let succeeded = 0;
+    let failed = 0;
 
     for (const item of queue) {
       setQueue((prev) =>
@@ -336,12 +351,14 @@ export default function ImageResizerRoute() {
         );
 
         setRecentAssets((prev) => [{ blob, url: resultUrl, filename }, ...prev].slice(0, 10));
+        succeeded++;
       } catch {
         setQueue((prev) =>
           prev.map((q) =>
             q.id === item.id ? { ...q, status: "error" as const, error: "Resize failed" } : q,
           ),
         );
+        failed++;
       }
 
       processed++;
@@ -349,6 +366,11 @@ export default function ImageResizerRoute() {
     }
 
     setIsProcessing(false);
+    setStatusMessage(
+      failed === 0
+        ? `Done. Resized ${succeeded} of ${queue.length}.`
+        : `Finished with ${failed} ${failed === 1 ? "error" : "errors"}. ${succeeded} of ${queue.length} resized.`,
+    );
 
     if (mode === "single") {
       setQueue((prev) => {
@@ -375,6 +397,7 @@ export default function ImageResizerRoute() {
     try {
       const zipBlob = await createBatchZip(zipItems);
       downloadBlob(zipBlob, "resized-images.zip");
+      setStatusMessage(`Downloaded ZIP with ${zipItems.length} images.`);
     } catch {
       setError("Failed to create ZIP file.");
     }
@@ -422,6 +445,10 @@ export default function ImageResizerRoute() {
 
   return (
     <ToolShell>
+      <output aria-live="polite" className="sr-only">
+        {statusMessage}
+      </output>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Left column — controls */}
         <div className="space-y-6 lg:col-span-7">
