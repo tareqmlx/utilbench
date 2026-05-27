@@ -5,3 +5,4 @@ export { StatusBadge } from "./StatusBadge";
 export type { StatusTone } from "./StatusBadge";
 export { ToolShell } from "./ToolShell";
 export { TwoPane } from "./TwoPane";
+export { WarningAlert } from "./WarningAlert";
