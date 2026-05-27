@@ -146,9 +146,9 @@ export default function LoremIpsumRoute() {
       <output aria-live="polite" className="sr-only">
         {status}
       </output>
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-stretch">
         <aside className="lg:col-span-4">
-          <section className="wb-panel lg:sticky lg:top-24">
+          <section className="wb-panel h-full">
             <PaneHeader label="Settings" />
 
             <div className="space-y-5 p-5 sm:p-6">
@@ -247,7 +247,7 @@ export default function LoremIpsumRoute() {
         </aside>
 
         <div className="lg:col-span-8">
-          <section className="wb-panel wb-panel--out">
+          <section className="wb-panel wb-panel--out h-full">
             <PaneHeader
               label="Output"
               className="bg-paper-2"
@@ -290,7 +290,7 @@ export default function LoremIpsumRoute() {
             />
 
             <div
-              className="max-h-[70vh] overflow-y-auto bg-paper p-6 sm:p-8 lg:max-h-[640px]"
+              className="max-h-[70vh] overflow-y-auto bg-paper p-6 sm:p-8 lg:max-h-none lg:flex-1"
               data-testid="output-area"
             >
               <div
