@@ -463,11 +463,12 @@ export default function ImageResizerRoute() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            aria-label="Add images: drop here, or click to browse"
             className={cn(
               "group block w-full rounded-[18px] border-2 border-ink p-6 text-center transition-[background,box-shadow,transform] duration-200 sm:p-10",
               isDragging
-                ? "bg-lemon shadow-[6px_6px_0_var(--ink)] -translate-x-px -translate-y-px"
-                : "bg-paper shadow-pop-3 hover:bg-lemon hover:shadow-[6px_6px_0_var(--ink)] hover:-translate-x-px hover:-translate-y-px",
+                ? "-translate-x-px -translate-y-px bg-lemon shadow-[6px_6px_0_var(--ink)]"
+                : "bg-paper shadow-pop-3 hover:-translate-x-px hover:-translate-y-px hover:bg-lemon hover:shadow-[6px_6px_0_var(--ink)]",
             )}
           >
             <div className="flex flex-col items-center gap-4">
@@ -482,24 +483,27 @@ export default function ImageResizerRoute() {
                   Drag and drop images here
                 </p>
                 <p key={mode} className="wb-fade-in text-sm text-ink-2">
-                  PNG, JPG, WebP{mode === "batch" ? " · Bulk upload up to 50 files" : ""}
+                  PNG, JPG, WebP up to 20 MB
+                  {mode === "batch" ? `, bulk up to ${MAX_QUEUE_SIZE} files` : ""}
                 </p>
               </div>
-              <span className="wb-btn wb-btn--sm wb-btn--ghost mt-1 pointer-events-none">
+              <span
+                aria-hidden="true"
+                className="pointer-events-none mt-1 inline-flex items-center rounded-full border-2 border-ink bg-paper px-3 py-1.5 text-[12.5px] font-semibold text-ink shadow-pop-1 group-hover:bg-lemon"
+              >
                 Browse Files
               </span>
-              <input
-                ref={fileInputRef}
-                className="hidden"
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                multiple={mode === "batch"}
-                onChange={handleFileInput}
-                onClick={(e) => e.stopPropagation()}
-                data-testid="file-input"
-              />
             </div>
           </button>
+          <input
+            ref={fileInputRef}
+            className="hidden"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            multiple={mode === "batch"}
+            onChange={handleFileInput}
+            data-testid="file-input"
+          />
 
           <ErrorAlert error={error} className="mt-0" onDismiss={() => setError(null)} />
           <WarningAlert warning={warning} className="mt-0" onDismiss={() => setWarning(null)} />
