@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../markdown", () => ({
   parseMarkdown: vi.fn((input: string) => (input.trim() ? `<p>${input}</p>` : "")),
+  parseMarkdownAsync: vi.fn(async (input: string) => (input.trim() ? `<p>${input}</p>` : "")),
+  disposeMarkdownWorker: vi.fn(),
 }));
 
 vi.mock("../../../hooks/useClipboard", () => ({
@@ -14,9 +16,10 @@ vi.mock("../../../hooks/useClipboard", () => ({
 }));
 
 import MarkdownPreviewRoute from "../Route";
-import { parseMarkdown } from "../markdown";
+import { parseMarkdown, parseMarkdownAsync } from "../markdown";
 
 const mockParseMarkdown = vi.mocked(parseMarkdown);
+const mockParseMarkdownAsync = vi.mocked(parseMarkdownAsync);
 
 afterEach(() => {
   cleanup();
@@ -26,6 +29,9 @@ afterEach(() => {
 describe("MarkdownPreviewRoute", () => {
   beforeEach(() => {
     mockParseMarkdown.mockImplementation((input: string) =>
+      input.trim() ? `<p>${input}</p>` : "",
+    );
+    mockParseMarkdownAsync.mockImplementation(async (input: string) =>
       input.trim() ? `<p>${input}</p>` : "",
     );
   });
@@ -48,23 +54,24 @@ describe("MarkdownPreviewRoute", () => {
     expect(screen.getByTestId("preview-pane")).toBeInTheDocument();
   });
 
-  it("updates preview after debounce when typing", () => {
+  it("updates preview after debounce when typing", async () => {
     vi.useFakeTimers();
     render(<MarkdownPreviewRoute />);
 
     const textarea = screen.getByPlaceholderText(/Hello World/);
     fireEvent.change(textarea, { target: { value: "# New content" } });
 
-    // Before debounce fires, the old preview is still there
-    vi.advanceTimersByTime(250);
+    await act(async () => {
+      vi.advanceTimersByTime(250);
+    });
 
-    expect(mockParseMarkdown).toHaveBeenCalledWith("# New content");
+    expect(mockParseMarkdownAsync).toHaveBeenCalledWith("# New content");
     vi.useRealTimers();
   });
 
-  it("shows empty state when content is cleared", () => {
+  it("shows empty state when content is cleared", async () => {
     vi.useFakeTimers();
-    mockParseMarkdown.mockReturnValue("");
+    mockParseMarkdownAsync.mockResolvedValue("");
     render(<MarkdownPreviewRoute />);
 
     fireEvent.click(screen.getByText("Clear"));
@@ -128,9 +135,9 @@ describe("MarkdownPreviewRoute", () => {
     // useClipboard is mocked, so copy should have been called
   });
 
-  it("handles clear and re-type cycle", () => {
+  it("handles clear and re-type cycle", async () => {
     vi.useFakeTimers();
-    mockParseMarkdown.mockImplementation((input: string) =>
+    mockParseMarkdownAsync.mockImplementation(async (input: string) =>
       input.trim() ? `<p>${input}</p>` : "",
     );
     render(<MarkdownPreviewRoute />);
@@ -141,8 +148,10 @@ describe("MarkdownPreviewRoute", () => {
 
     // Re-type content
     fireEvent.change(textarea, { target: { value: "# Restored" } });
-    vi.advanceTimersByTime(250);
-    expect(mockParseMarkdown).toHaveBeenCalledWith("# Restored");
+    await act(async () => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(mockParseMarkdownAsync).toHaveBeenCalledWith("# Restored");
 
     vi.useRealTimers();
   });
@@ -158,16 +167,13 @@ describe("MarkdownPreviewRoute", () => {
 
   it("handles parse error gracefully", async () => {
     vi.useFakeTimers();
-    mockParseMarkdown.mockImplementation(() => {
-      throw new Error("Parse failed");
-    });
+    mockParseMarkdownAsync.mockRejectedValue(new Error("Parse failed"));
 
     render(<MarkdownPreviewRoute />);
     const textarea = screen.getByPlaceholderText(/Hello World/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: "bad content" } });
 
-    // Advance timer and flush state updates
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(300);
     });
 
@@ -178,26 +184,28 @@ describe("MarkdownPreviewRoute", () => {
     });
   });
 
-  it("recovers after parse error when valid content entered", () => {
+  it("recovers after parse error when valid content entered", async () => {
     vi.useFakeTimers();
 
     // First, cause an error
-    mockParseMarkdown.mockImplementation(() => {
-      throw new Error("Parse failed");
-    });
+    mockParseMarkdownAsync.mockRejectedValueOnce(new Error("Parse failed"));
     render(<MarkdownPreviewRoute />);
     const textarea = screen.getByPlaceholderText(/Hello World/) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: "bad" } });
-    vi.advanceTimersByTime(250);
+    await act(async () => {
+      vi.advanceTimersByTime(250);
+    });
 
     // Now fix it
-    mockParseMarkdown.mockImplementation((input: string) =>
+    mockParseMarkdownAsync.mockImplementation(async (input: string) =>
       input.trim() ? `<p>${input}</p>` : "",
     );
     fireEvent.change(textarea, { target: { value: "good content" } });
-    vi.advanceTimersByTime(250);
+    await act(async () => {
+      vi.advanceTimersByTime(250);
+    });
 
-    expect(mockParseMarkdown).toHaveBeenCalledWith("good content");
+    expect(mockParseMarkdownAsync).toHaveBeenCalledWith("good content");
     vi.useRealTimers();
   });
 });

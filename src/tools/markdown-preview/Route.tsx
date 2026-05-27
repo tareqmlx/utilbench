@@ -7,7 +7,7 @@ import { Button } from "../../components/ui/button";
 import { Textarea } from "../../components/ui/textarea";
 import { useClipboard } from "../../hooks/useClipboard";
 import { useKeyboardShortcut } from "../../hooks/useKeyboardShortcut";
-import { parseMarkdown } from "./markdown";
+import { disposeMarkdownWorker, parseMarkdown, parseMarkdownAsync } from "./markdown";
 import "./preview.css";
 
 const DEFAULT_MARKDOWN = `# Paste your Markdown here.
@@ -63,23 +63,30 @@ export default function MarkdownPreviewRoute() {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const requestSeqRef = useRef(0);
 
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      disposeMarkdownWorker();
     };
   }, []);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      try {
-        setHtml(parseMarkdown(markdown));
-        setError(null);
-        setParseTick((t) => t + 1);
-      } catch {
-        setError("Failed to parse markdown. Please check your input.");
-      }
+      const seq = ++requestSeqRef.current;
+      parseMarkdownAsync(markdown)
+        .then((result) => {
+          if (seq !== requestSeqRef.current) return;
+          setHtml(result);
+          setError(null);
+          setParseTick((t) => t + 1);
+        })
+        .catch(() => {
+          if (seq !== requestSeqRef.current) return;
+          setError("Failed to parse markdown. Please check your input.");
+        });
     }, 250);
   }, [markdown]);
 
@@ -164,11 +171,7 @@ export default function MarkdownPreviewRoute() {
 
   return (
     <ToolShell className="flex-grow sm:py-8">
-      <div
-        role="toolbar"
-        aria-label="Markdown actions"
-        className="mb-4 flex flex-wrap items-center justify-between gap-2"
-      >
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
@@ -220,7 +223,7 @@ export default function MarkdownPreviewRoute() {
               htmlFor="markdown-editor"
               className="border-b-2 bg-paper-2 px-4 py-2"
               actions={
-                <span aria-hidden="true" className="wb-meta">
+                <span className="wb-meta">
                   Line {cursorLine}, Column {cursorCol}
                 </span>
               }
@@ -251,8 +254,7 @@ export default function MarkdownPreviewRoute() {
               }
             />
             {html ? (
-              <div
-                role="region"
+              <section
                 aria-label="Rendered Markdown preview"
                 style={{ height: PANE_HEIGHT }}
                 className="markdown-preview overflow-y-auto p-6"
@@ -261,8 +263,8 @@ export default function MarkdownPreviewRoute() {
                 dangerouslySetInnerHTML={{ __html: html }}
               />
             ) : (
-              <output
-                aria-label="Preview empty"
+              <section
+                aria-label="Rendered Markdown preview"
                 style={{ height: PANE_HEIGHT }}
                 className="flex flex-col items-center justify-center gap-3 text-ink-3"
                 data-testid="preview-empty"
@@ -274,7 +276,7 @@ export default function MarkdownPreviewRoute() {
                   <PenLine className="h-6 w-6 text-ink" strokeWidth={2.25} />
                 </span>
                 <p className="text-sm font-medium text-ink-2">Start typing to see the preview</p>
-              </output>
+              </section>
             )}
           </div>
         }
