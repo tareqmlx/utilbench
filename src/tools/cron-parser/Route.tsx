@@ -166,6 +166,13 @@ export default function CronParserRoute() {
     if (copied) setStatus("Expression copied to clipboard.");
   }, [copied]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only on first mount
+  useEffect(() => {
+    if (expression === DEFAULT_EXPRESSION && window.matchMedia("(min-width: 1024px)").matches) {
+      inputRef.current?.focus({ preventScroll: true });
+    }
+  }, []);
+
   useKeyboardShortcut(
     useMemo(
       () => [
@@ -237,23 +244,24 @@ export default function CronParserRoute() {
               </div>
 
               <div id={DESCRIPTION_ID}>
-                <span className="mb-3 block font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
-                  Interpretation
+                <span
+                  key={error !== null ? "err" : "interp"}
+                  className={`wb-fade-in mb-3 block font-mono text-[11px] uppercase tracking-[0.12em] ${
+                    error !== null ? "text-tomato" : "text-ink-3"
+                  }`}
+                >
+                  {error !== null ? "Parse Error" : "Interpretation"}
                 </span>
                 {error ? (
                   <ErrorAlert error={error} id={ERROR_ID} className="!mt-0" testId="cron-error" />
                 ) : description ? (
-                  <div
+                  <p
                     key={description}
-                    className="wb-fade-in rounded-lg border-2 border-ink bg-lemon p-5 shadow-pop-1"
+                    data-testid="cron-description"
+                    className="wb-fade-in rounded-md bg-lemon px-5 py-5 text-lg font-medium leading-snug text-ink sm:text-xl"
                   >
-                    <p
-                      data-testid="cron-description"
-                      className="text-lg font-medium leading-snug text-ink sm:text-xl"
-                    >
-                      &ldquo;{description}&rdquo;
-                    </p>
-                  </div>
+                    &ldquo;{description}&rdquo;
+                  </p>
                 ) : (
                   <div
                     key="placeholder"
@@ -269,15 +277,7 @@ export default function CronParserRoute() {
           </div>
 
           <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper-2 shadow-pop-3">
-            <PaneHeader
-              label="Common Presets"
-              trailing={
-                <span className="hidden font-mono text-[11px] tabular-nums text-ink-3 sm:inline">
-                  {PRESET_ENTRIES.length} ready
-                </span>
-              }
-              className="bg-paper-2"
-            />
+            <PaneHeader label="Common Presets" className="bg-paper-2" />
             <div className="flex flex-wrap gap-2 p-5 sm:p-7">
               {PRESET_ENTRIES.map(([label, expr]) => {
                 const isActive = label === activePreset;
