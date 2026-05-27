@@ -8,16 +8,12 @@ import {
   ListOrdered,
   Loader2,
   Settings,
-  TriangleAlert,
   Upload,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KbdHint } from "../../components/KbdHint";
-import { ErrorAlert, ToolShell } from "../../components/tool-layout";
-import { Alert, AlertDescription } from "../../components/ui/alert";
-import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { ErrorAlert, PaneHeader, ToolShell, WarningAlert } from "../../components/tool-layout";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import {
@@ -31,6 +27,7 @@ import { Slider } from "../../components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { useKeyboardShortcut } from "../../hooks/useKeyboardShortcut";
 import { useToolPreferences } from "../../hooks/useToolPreferences";
+import { cn } from "../../lib/utils";
 import { MAX_QUEUE_SIZE } from "../constants";
 import {
   clampDimension,
@@ -84,26 +81,22 @@ export default function ImageResizerRoute() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Detect AVIF support on mount
   useEffect(() => {
     setAvifSupported(isFormatSupported("avif"));
   }, []);
 
-  // Auto-dismiss warning after 8s
   useEffect(() => {
     if (!warning) return;
     const timer = setTimeout(() => setWarning(null), 8000);
     return () => clearTimeout(timer);
   }, [warning]);
 
-  // Clean up on unmount
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
 
-  // Debounced preview generation
   useEffect(() => {
     const selected = queue.find((q) => q.id === selectedItemId);
     if (!selected) {
@@ -171,12 +164,10 @@ export default function ImageResizerRoute() {
       if (newItems.length === 0) return;
 
       if (mode === "single") {
-        // Replace entire queue with the single item
         setQueue((prev) => {
           for (const q of prev) URL.revokeObjectURL(q.thumbnailUrl);
           return newItems;
         });
-        // Single mode always enqueues, so defaults are always valid
         const first = newItems[0];
         if (first) {
           setWidth(first.originalWidth);
@@ -197,7 +188,6 @@ export default function ImageResizerRoute() {
               `Only ${toAdd.length} of ${newItems.length} files added. Queue limit is ${MAX_QUEUE_SIZE}.`,
             );
           }
-          // Set defaults from first actually-added item
           const first = toAdd[0];
           if (first) {
             setWidth(first.originalWidth);
@@ -216,7 +206,6 @@ export default function ImageResizerRoute() {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (files && files.length > 0) handleFiles(files);
-      // Reset input so same file can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = "";
     },
     [handleFiles],
@@ -281,7 +270,6 @@ export default function ImageResizerRoute() {
   const handleToggleAspectLock = useCallback(() => {
     setAspectRatioLocked((prev) => {
       if (!prev) {
-        // Locking: compute ratio from current dimensions
         setAspectRatio(width / height);
       }
       return !prev;
@@ -292,7 +280,6 @@ export default function ImageResizerRoute() {
     (newMode: ResizeMode) => {
       setMode(newMode);
       if (newMode === "single" && queue.length > 1) {
-        // Keep only the selected (or first) item
         const keepId = selectedItemId ?? queue[0]?.id;
         setQueue((prev) => {
           for (const q of prev) {
@@ -347,7 +334,6 @@ export default function ImageResizerRoute() {
           ),
         );
 
-        // Add to recent assets (cap at 10)
         setRecentAssets((prev) => [{ blob, url: resultUrl, filename }, ...prev].slice(0, 10));
       } catch {
         setQueue((prev) =>
@@ -363,9 +349,7 @@ export default function ImageResizerRoute() {
 
     setIsProcessing(false);
 
-    // Auto-download for single mode
     if (mode === "single") {
-      // Need fresh queue state for the result
       setQueue((prev) => {
         const doneItem = prev.find((q) => q.status === "done");
         if (doneItem?.resultBlob) {
@@ -411,7 +395,9 @@ export default function ImageResizerRoute() {
 
   const selectedItem = queue.find((q) => q.id === selectedItemId);
   const doneCount = queue.filter((q) => q.status === "done").length;
+  const processingIndex = queue.findIndex((q) => q.status === "processing");
   const hasQueue = queue.length > 0;
+  const fileCountLabel = `${queue.length} ${queue.length === 1 ? "File" : "Files"}`;
 
   useKeyboardShortcut(
     useMemo(
@@ -435,35 +421,38 @@ export default function ImageResizerRoute() {
 
   return (
     <ToolShell>
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        {/* Left column */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* Left column — controls */}
         <div className="space-y-6 lg:col-span-7">
           {/* Upload zone */}
-          <div
-            className={`group cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition-colors sm:p-12 ${
-              isDragging
-                ? "border-primary bg-primary/10"
-                : "border-border bg-card hover:border-primary"
-            }`}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            className={cn(
+              "group block w-full rounded-[18px] border-2 border-ink p-6 text-center transition-[background,box-shadow,transform] duration-200 sm:p-10",
+              isDragging
+                ? "bg-lemon shadow-[6px_6px_0_var(--ink)] -translate-x-px -translate-y-px"
+                : "bg-paper shadow-pop-3 hover:bg-lemon hover:shadow-[6px_6px_0_var(--ink)] hover:-translate-x-px hover:-translate-y-px",
+            )}
           >
             <div className="flex flex-col items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 transition-transform group-hover:scale-110 sm:h-16 sm:w-16">
-                <Upload className="h-6 w-6 text-primary sm:h-8 sm:w-8" />
-              </div>
-              <div>
-                <p className="text-base font-bold text-foreground sm:text-lg">
+              <span className="grid size-14 place-items-center rounded-[14px] border-2 border-ink bg-paper shadow-pop-2 transition-transform duration-200 group-hover:rotate-[-4deg]">
+                <Upload className="size-6 text-ink" strokeWidth={2.5} aria-hidden="true" />
+              </span>
+              <div className="space-y-1">
+                <p className="font-display text-[22px] font-bold leading-tight tracking-tight text-ink">
                   Drag and drop images here
                 </p>
-                <p className="text-muted-foreground">
-                  Supports PNG, JPG, WebP{mode === "batch" ? " (Bulk upload supported)" : ""}
+                <p className="text-sm text-ink-2">
+                  PNG, JPG, WebP{mode === "batch" ? " · Bulk upload up to 50 files" : ""}
                 </p>
               </div>
-              <Button className="mt-2" onClick={() => fileInputRef.current?.click()}>
+              <span className="wb-btn wb-btn--sm wb-btn--ghost mt-1 pointer-events-none">
                 Browse Files
-              </Button>
+              </span>
               <input
                 ref={fileInputRef}
                 className="hidden"
@@ -471,44 +460,39 @@ export default function ImageResizerRoute() {
                 accept="image/png,image/jpeg,image/webp"
                 multiple={mode === "batch"}
                 onChange={handleFileInput}
+                onClick={(e) => e.stopPropagation()}
                 data-testid="file-input"
               />
             </div>
-          </div>
+          </button>
 
-          <ErrorAlert error={error} className="mt-0" />
-
-          {warning !== null && (
-            <output className="block flex items-start gap-3 rounded-[14px] border-2 border-ink bg-lemon px-4 py-3 shadow-pop-2">
-              <TriangleAlert className="mt-0.5 size-5 shrink-0 text-ink" strokeWidth={2.5} />
-              <p className="font-mono text-[13px] leading-relaxed text-ink">{warning}</p>
-            </output>
-          )}
+          <ErrorAlert error={error} className="mt-0" onDismiss={() => setError(null)} />
+          <WarningAlert warning={warning} className="mt-0" onDismiss={() => setWarning(null)} />
 
           {/* Configuration */}
-          <Card>
-            <CardHeader className="flex-row items-center gap-2 space-y-0 border-b border-border px-6 py-4">
-              <Settings className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base font-bold">Configuration</CardTitle>
-              <Tabs
-                value={mode}
-                onValueChange={(v) => handleModeChange(v as ResizeMode)}
-                className="ml-auto"
-              >
-                <TabsList className="h-8">
-                  <TabsTrigger value="single" className="px-3 py-1 text-xs font-bold">
-                    Single
-                  </TabsTrigger>
-                  <TabsTrigger value="batch" className="px-3 py-1 text-xs font-bold">
-                    Batch
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </CardHeader>
-            <CardContent className="space-y-6 p-6">
+          <section className="wb-panel">
+            <PaneHeader
+              label="Configuration"
+              icon={<Settings className="size-4" aria-hidden="true" />}
+              actions={
+                <Tabs value={mode} onValueChange={(v) => handleModeChange(v as ResizeMode)}>
+                  <TabsList className="h-8">
+                    <TabsTrigger value="single" className="px-3 py-1 text-xs font-bold">
+                      Single
+                    </TabsTrigger>
+                    <TabsTrigger value="batch" className="px-3 py-1 text-xs font-bold">
+                      Batch
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              }
+            />
+            <div className="space-y-6 p-5 sm:p-6">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="resize-width">Width (px)</Label>
+                  <Label htmlFor="resize-width" className="text-ink-2">
+                    Width (px)
+                  </Label>
                   <Input
                     id="resize-width"
                     type="number"
@@ -516,51 +500,56 @@ export default function ImageResizerRoute() {
                     max={10000}
                     value={width}
                     onChange={handleWidthChange}
+                    className="border-2 border-ink bg-paper font-mono text-[14px] tabular-nums"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="resize-height">Height (px)</Label>
+                  <Label htmlFor="resize-height" className="text-ink-2">
+                    Height (px)
+                  </Label>
                   <div className="relative flex items-center gap-2">
                     <Input
                       id="resize-height"
-                      className="flex-1"
+                      className="flex-1 border-2 border-ink bg-paper font-mono text-[14px] tabular-nums"
                       type="number"
                       min={1}
                       max={10000}
                       value={height}
                       onChange={handleHeightChange}
                     />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={
+                    <button
+                      type="button"
+                      className={cn(
+                        "grid size-10 shrink-0 place-items-center rounded-md border-2 border-ink transition-[background,color,transform] duration-200",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
                         aspectRatioLocked
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                      }
+                          ? "bg-ink text-paper shadow-pop-1"
+                          : "bg-paper text-ink-2 hover:bg-lemon hover:text-ink shadow-pop-1",
+                      )}
                       title={aspectRatioLocked ? "Unlock Aspect Ratio" : "Lock Aspect Ratio"}
                       aria-label={aspectRatioLocked ? "Unlock aspect ratio" : "Lock aspect ratio"}
+                      aria-pressed={aspectRatioLocked}
                       onClick={handleToggleAspectLock}
                       data-testid="aspect-lock"
                     >
                       {aspectRatioLocked ? (
-                        <Link2 className="h-5 w-5" />
+                        <Link2 className="size-4" aria-hidden="true" />
                       ) : (
-                        <Link2Off className="h-5 w-5" />
+                        <Link2Off className="size-4" aria-hidden="true" />
                       )}
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Format</Label>
+                  <Label className="text-ink-2">Format</Label>
                   <Select
                     value={prefs.format}
                     onValueChange={(v) => setPrefs({ format: v as OutputFormat })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="border-2 border-ink bg-paper">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -575,8 +564,15 @@ export default function ImageResizerRoute() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="resize-quality">Quality</Label>
-                    <span className="text-xs font-bold text-primary">
+                    <Label htmlFor="resize-quality" className="text-ink-2">
+                      Quality
+                    </Label>
+                    <span
+                      className={cn(
+                        "font-mono text-[12px] font-bold tabular-nums",
+                        prefs.format === "png" ? "text-ink-3" : "text-tomato",
+                      )}
+                    >
                       {prefs.format === "png" ? "N/A" : `${prefs.quality}%`}
                     </span>
                   </div>
@@ -592,180 +588,220 @@ export default function ImageResizerRoute() {
                 </div>
               </div>
 
-              <Button
-                className="w-full py-4 font-bold"
-                size="lg"
+              <button
+                type="button"
                 onClick={handleResizeAll}
                 disabled={!hasQueue || isProcessing}
+                className="wb-btn w-full justify-center py-4 text-[15px]"
               >
                 {isProcessing ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Processing...
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    <span>Processing...</span>
                   </>
                 ) : (
                   <>
-                    <LayoutGrid className="h-4 w-4" />
-                    Resize {mode === "batch" ? "& Download All" : "& Download"}
+                    <LayoutGrid className="size-4" aria-hidden="true" />
+                    <span>Resize {mode === "batch" ? "& Download All" : "& Download"}</span>
                     <KbdHint>⌘⏎</KbdHint>
                   </>
                 )}
-              </Button>
-            </CardContent>
-          </Card>
+              </button>
+            </div>
+          </section>
 
           {/* Processing Queue */}
-          <Card className="mt-6">
-            <CardHeader className="flex-row items-center justify-between space-y-0 border-b border-border px-6 py-4">
-              <div className="flex items-center gap-2">
-                <ListOrdered className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base font-bold">Processing Queue</CardTitle>
+          <section className="wb-panel wb-panel--out">
+            <PaneHeader
+              label="Processing Queue"
+              icon={<ListOrdered className="size-4" aria-hidden="true" />}
+              className="bg-paper-2"
+              actions={
+                <>
+                  <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-ink-3 tabular-nums">
+                    {isProcessing
+                      ? `${Math.min(processingIndex + 1, queue.length)} of ${queue.length}`
+                      : fileCountLabel}
+                  </span>
+                  {mode === "batch" && doneCount > 1 && (
+                    <button
+                      type="button"
+                      onClick={handleDownloadZip}
+                      className="wb-btn wb-btn--sm wb-btn--ghost"
+                      aria-label="Download all resized images as ZIP"
+                    >
+                      <Download className="size-3.5" aria-hidden="true" />
+                      <span>Download ZIP</span>
+                      <KbdHint>⌘S</KbdHint>
+                    </button>
+                  )}
+                </>
+              }
+            />
+            {isProcessing && (
+              <div
+                className="h-1.5 w-full overflow-hidden border-b-2 border-ink bg-paper"
+                aria-hidden="true"
+              >
+                <div
+                  className="h-full bg-tomato transition-[width] duration-300 ease-out"
+                  style={{ width: `${overallProgress}%` }}
+                />
               </div>
-              <div className="relative flex items-center gap-3 pb-2">
-                {mode === "batch" && doneCount > 1 && (
-                  <Button variant="outline" size="sm" onClick={handleDownloadZip}>
-                    <Download className="h-3.5 w-3.5" />
-                    Download as ZIP
-                  </Button>
-                )}
-                {isProcessing && (
-                  <div className="absolute -bottom-1 left-0 right-0 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all duration-300"
-                      style={{ width: `${overallProgress}%` }}
-                    />
-                  </div>
-                )}
-                <span className="text-xs font-bold text-muted-foreground">
-                  {isProcessing
-                    ? `Processing ${queue.filter((q) => q.status === "done").length + 1} of ${queue.length}...`
-                    : `${queue.length} ${queue.length === 1 ? "File" : "Files"}`}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent
-              className="max-h-[300px] space-y-3 overflow-y-auto p-4"
+            )}
+            <div
+              className="max-h-[320px] space-y-2 overflow-y-auto p-3 sm:p-4"
               aria-label="Processing queue"
             >
               {queue.length === 0 && (
-                <p className="py-8 text-center text-sm text-muted-foreground">
+                <p className="py-10 text-center text-sm text-ink-3">
                   No images in queue. Upload files to get started.
                 </p>
               )}
-              {queue.map((item) => (
-                <div
-                  key={item.id}
-                  className={`flex cursor-pointer items-center gap-4 rounded-lg border p-3 transition-[background,border-color,transform] duration-200 ${
-                    selectedItemId === item.id
-                      ? "border-primary bg-primary/5 -translate-y-px"
-                      : "border-border bg-muted hover:border-primary/30 hover:-translate-y-px"
-                  }`}
-                  // biome-ignore lint/a11y/noNoninteractiveTabindex: queue items need keyboard focus for selection
-                  tabIndex={0}
-                  aria-current={selectedItemId === item.id || undefined}
-                  aria-label={item.file.name}
-                  onClick={() => setSelectedItemId(item.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setSelectedItemId(item.id);
-                    }
-                  }}
-                >
-                  <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded bg-muted">
-                    <img
-                      className="h-full w-full object-cover"
-                      src={item.thumbnailUrl}
-                      alt={`${item.file.name} preview`}
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{item.file.name}</p>
-                    {item.status === "processing" ? (
-                      <div className="mt-1 h-1.5 w-full rounded-full bg-muted">
-                        <div className="h-full w-2/3 animate-pulse rounded-full bg-primary" />
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        {formatBytes(item.file.size)} •{" "}
-                        {item.status === "done"
-                          ? `Done (${formatBytes(item.resultSize ?? 0)})`
-                          : item.status === "error"
-                            ? (item.error ?? "Error")
-                            : "Ready"}
-                      </p>
+              {queue.map((item) => {
+                const selected = selectedItemId === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3 rounded-md border-2 p-2.5 transition-[background,box-shadow,transform,border-color] duration-200",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper-2",
+                      selected
+                        ? "border-ink bg-lemon shadow-pop-2 -translate-x-px -translate-y-px"
+                        : "border-ink bg-paper shadow-pop-1 hover:-translate-x-px hover:-translate-y-px hover:shadow-pop-2",
                     )}
-                  </div>
-                  {item.status === "done" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-primary hover:text-primary/80"
+                    // biome-ignore lint/a11y/noNoninteractiveTabindex: queue items need keyboard focus for selection
+                    tabIndex={0}
+                    aria-current={selected || undefined}
+                    aria-label={item.file.name}
+                    onClick={() => setSelectedItemId(item.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelectedItemId(item.id);
+                      }
+                    }}
+                  >
+                    <div className="size-11 shrink-0 overflow-hidden rounded-sm border-2 border-ink bg-paper">
+                      <img className="h-full w-full object-cover" src={item.thumbnailUrl} alt="" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13.5px] font-semibold text-ink">
+                        {item.file.name}
+                      </p>
+                      {item.status === "processing" ? (
+                        <div
+                          className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-ink/10"
+                          aria-hidden="true"
+                        >
+                          <div className="h-full w-2/3 animate-pulse rounded-full bg-tomato" />
+                        </div>
+                      ) : (
+                        <p className="font-mono text-[11px] text-ink-3 tabular-nums">
+                          {formatBytes(item.file.size)}
+                          {item.status === "done" && item.resultSize !== undefined && (
+                            <>
+                              {" → "}
+                              <span className="text-grass font-semibold">
+                                {formatBytes(item.resultSize)}
+                              </span>
+                            </>
+                          )}
+                          {item.status === "error" && (
+                            <>
+                              {" · "}
+                              <span className="text-tomato font-semibold">
+                                {item.error ?? "Error"}
+                              </span>
+                            </>
+                          )}
+                          {item.status === "pending" && (
+                            <>
+                              {" · "}
+                              <span className="text-ink-2">Ready</span>
+                            </>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                    {item.status === "done" && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadSingle(item);
+                        }}
+                        className="grid size-9 shrink-0 place-items-center rounded-md border-2 border-ink bg-paper text-ink transition-[background,transform] duration-200 hover:bg-mint hover:-translate-x-px hover:-translate-y-px shadow-pop-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper-2"
+                        title="Download"
+                        aria-label={`Download ${item.file.name}`}
+                      >
+                        <Download className="size-4" aria-hidden="true" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDownloadSingle(item);
+                        handleRemoveItem(item.id);
                       }}
-                      title="Download"
-                      aria-label={`Download ${item.file.name}`}
+                      className="grid size-9 shrink-0 place-items-center rounded-md text-ink-3 transition-colors hover:text-tomato focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper-2"
+                      title="Remove"
+                      aria-label={`Remove ${item.file.name}`}
+                      data-testid={`remove-${item.id}`}
                     >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveItem(item.id);
-                    }}
-                    title="Remove"
-                    aria-label={`Remove ${item.file.name}`}
-                    data-testid={`remove-${item.id}`}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+                      <X className="size-4" strokeWidth={2.5} aria-hidden="true" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         </div>
 
-        {/* Right column -- Preview */}
+        {/* Right column — preview */}
         <div className="lg:col-span-5">
-          <Card className="flex h-full flex-col overflow-hidden">
-            <CardHeader className="flex-row items-center justify-between space-y-0 border-b border-border px-6 py-4">
-              <div className="flex items-center gap-2">
-                <Eye className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base font-bold">Live Preview</CardTitle>
-              </div>
-              <span className="rounded bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
-                {width} x {height}
-              </span>
-            </CardHeader>
-            <CardContent className="flex min-h-[400px] flex-1 items-center justify-center bg-muted p-6">
+          <section className="wb-panel wb-panel--out flex h-full flex-col">
+            <PaneHeader
+              label="Live Preview"
+              icon={<Eye className="size-4" aria-hidden="true" />}
+              className="bg-paper-2"
+              actions={
+                <span className="inline-flex items-center rounded-md border-2 border-ink bg-paper px-2 py-1 font-mono text-[11px] font-medium text-ink shadow-pop-1 tabular-nums">
+                  {width} x {height}
+                </span>
+              }
+            />
+            <div className="flex min-h-[400px] flex-1 items-center justify-center p-5 sm:p-6">
               {previewUrl ? (
                 <img
-                  className="max-h-[500px] rounded-lg border-2 border-ink object-contain shadow-pop-3"
+                  className="max-h-[480px] rounded-md border-2 border-ink object-contain shadow-pop-3"
                   src={previewUrl}
                   alt="Resized preview"
                 />
               ) : (
-                <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                  <ImageIcon className="h-12 w-12" />
+                <div className="flex flex-col items-center gap-3 text-ink-3">
+                  <span className="grid size-14 place-items-center rounded-[14px] border-2 border-ink-3 bg-paper">
+                    <ImageIcon className="size-6" aria-hidden="true" />
+                  </span>
                   <p className="text-sm">Upload an image to see preview</p>
                 </div>
               )}
-            </CardContent>
+            </div>
             {selectedItem && (
-              <div className="flex flex-wrap gap-4 bg-muted p-4 text-xs">
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground">Original Size</span>
-                  <span className="font-bold">{formatBytes(selectedItem.file.size)}</span>
+              <div className="grid grid-cols-2 gap-3 border-t-2 border-ink bg-paper p-4 sm:grid-cols-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-ink-3">
+                    Original
+                  </span>
+                  <span className="font-mono text-[13px] font-bold text-ink tabular-nums">
+                    {formatBytes(selectedItem.file.size)}
+                  </span>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground">Estimated Size</span>
-                  <span className="font-bold text-primary">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-ink-3">
+                    {selectedItem.resultSize ? "Output" : "Estimated"}
+                  </span>
+                  <span className="font-mono text-[13px] font-bold text-tomato tabular-nums">
                     {selectedItem.resultSize
                       ? formatBytes(selectedItem.resultSize)
                       : formatBytes(
@@ -782,33 +818,42 @@ export default function ImageResizerRoute() {
                   </span>
                 </div>
                 {selectedItem.processingTime !== undefined && (
-                  <div className="ml-auto flex flex-col">
-                    <span className="text-muted-foreground">Processing Time</span>
-                    <span className="font-bold">~{selectedItem.processingTime}ms</span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-ink-3">
+                      Time
+                    </span>
+                    <span className="font-mono text-[13px] font-bold text-ink tabular-nums">
+                      ~{selectedItem.processingTime}ms
+                    </span>
                   </div>
                 )}
               </div>
             )}
-          </Card>
+          </section>
         </div>
       </div>
 
-      {/* Recent Assets */}
+      {/* Recent assets */}
       {recentAssets.length > 0 && (
-        <div className="mt-12">
-          <h2 className="mb-4 text-xl font-bold text-foreground">Recent Assets</h2>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
+        <div className="mt-10">
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <h2 className="wb-h3 text-ink">Recent assets</h2>
+            <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-ink-3">
+              Click to download
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
             {recentAssets.map((asset) => (
               <button
                 type="button"
                 key={asset.url}
-                className="group relative aspect-square cursor-pointer overflow-hidden rounded-lg border border-border bg-muted"
+                className="group relative aspect-square overflow-hidden rounded-md border-2 border-ink bg-paper shadow-pop-1 transition-[transform,box-shadow] duration-200 hover:-translate-x-px hover:-translate-y-px hover:shadow-pop-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
                 aria-label={`Download ${asset.filename}`}
                 onClick={() => downloadBlob(asset.blob, asset.filename)}
               >
-                <img className="h-full w-full object-cover" src={asset.url} alt={asset.filename} />
-                <div className="absolute inset-0 flex items-center justify-center bg-primary/40 opacity-0 transition-opacity group-hover:opacity-100">
-                  <Download className="h-6 w-6 text-white" />
+                <img className="h-full w-full object-cover" src={asset.url} alt="" />
+                <div className="absolute inset-0 flex items-center justify-center bg-ink/70 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                  <Download className="size-6 text-paper" aria-hidden="true" />
                 </div>
               </button>
             ))}
