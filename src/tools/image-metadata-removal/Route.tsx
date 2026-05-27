@@ -506,10 +506,12 @@ export default function ImageMetadataRemovalRoute() {
             {zipBlob && (
               <div className="wb-fade-in flex w-full max-w-lg flex-wrap items-center gap-4 rounded-[18px] border-2 border-ink bg-mint p-4 shadow-pop-2">
                 <span
-                  className="wb-svg-check-pop grid size-10 shrink-0 place-items-center rounded-full border-2 border-ink bg-paper text-grass"
+                  className="grid size-10 shrink-0 place-items-center rounded-full border-2 border-ink bg-paper text-grass"
                   aria-hidden="true"
                 >
-                  <Download className="size-5" strokeWidth={2.5} />
+                  <span className="wb-svg-check-pop">
+                    <Download className="size-5" strokeWidth={2.5} />
+                  </span>
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-ink">Processing Complete!</p>
