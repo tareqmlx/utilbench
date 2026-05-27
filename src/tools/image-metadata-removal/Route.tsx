@@ -394,8 +394,8 @@ export default function ImageMetadataRemovalRoute() {
                     {item.status === "ready" && item.metadata && (
                       <div className="wb-fade-in mt-1.5 flex flex-wrap items-center gap-1.5">
                         {item.metadata.hasGps && (
-                          <span className="inline-flex items-center gap-1 rounded-md border-2 border-ink bg-paper px-1.5 py-0.5 font-mono text-[10.5px] font-semibold uppercase tracking-wider text-tomato">
-                            <span aria-hidden="true" className="size-1.5 rounded-full bg-tomato" />
+                          <span className="inline-flex items-center gap-1 rounded-md border-2 border-ink bg-tomato px-1.5 py-0.5 font-mono text-[10.5px] font-semibold uppercase tracking-wider text-ink">
+                            <span aria-hidden="true" className="size-1.5 rounded-full bg-ink" />
                             GPS Data Detected
                           </span>
                         )}
@@ -430,13 +430,15 @@ export default function ImageMetadataRemovalRoute() {
                     )}
 
                     {item.status === "done" && (
-                      <p className="wb-fade-in mt-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-grass">
+                      <p className="wb-fade-in mt-0.5 inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-ink">
+                        <span aria-hidden="true" className="size-1.5 rounded-full bg-grass" />
                         Cleaned &amp; ready
                       </p>
                     )}
 
                     {item.status === "error" && (
-                      <p className="wb-fade-in mt-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-tomato">
+                      <p className="wb-fade-in mt-0.5 inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-ink">
+                        <span aria-hidden="true" className="size-1.5 rounded-full bg-tomato" />
                         {item.error ?? "Error"}
                       </p>
                     )}
