@@ -57,6 +57,7 @@ export default function MarkdownPreviewRoute() {
   const [error, setError] = useState<string | null>(null);
   const [cursorLine, setCursorLine] = useState(1);
   const [cursorCol, setCursorCol] = useState(1);
+  const [parseTick, setParseTick] = useState(0);
   const { copied, copy } = useClipboard();
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -74,6 +75,7 @@ export default function MarkdownPreviewRoute() {
       try {
         setHtml(parseMarkdown(markdown));
         setError(null);
+        setParseTick((t) => t + 1);
       } catch {
         setError("Failed to parse markdown. Please check your input.");
       }
@@ -205,7 +207,7 @@ export default function MarkdownPreviewRoute() {
       <ErrorAlert error={error} className="mb-4 mt-0" />
 
       <TwoPane
-        className="gap-0 overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-pop-3 focus-within:shadow-pop-cta"
+        className="gap-0 overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-pop-3 transition-shadow duration-300 ease-out focus-within:shadow-pop-cta"
         left={
           <div className="flex flex-col border-b-2 border-ink lg:border-b-0 lg:border-r-2">
             <PaneHeader
@@ -232,7 +234,16 @@ export default function MarkdownPreviewRoute() {
         }
         right={
           <div className="flex flex-col">
-            <PaneHeader label="Preview" className="border-b-2 bg-paper-2 px-4 py-2" />
+            <PaneHeader
+              label="Preview"
+              className="border-b-2 bg-paper-2 px-4 py-2"
+              actions={
+                <span className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+                  <span key={parseTick} className="wb-md-livedot" aria-hidden="true" />
+                  Live
+                </span>
+              }
+            />
             {html ? (
               <div
                 className="markdown-preview h-[500px] overflow-y-auto p-6"
@@ -245,7 +256,7 @@ export default function MarkdownPreviewRoute() {
                 className="flex h-[500px] flex-col items-center justify-center gap-3 text-ink-3"
                 data-testid="preview-empty"
               >
-                <div className="grid size-14 place-items-center rounded-md border-2 border-ink bg-mint shadow-pop-2">
+                <div className="wb-md-empty-icon grid size-14 place-items-center rounded-md border-2 border-ink bg-mint shadow-pop-2">
                   <PenLine className="h-6 w-6 text-ink" strokeWidth={2.25} />
                 </div>
                 <p className="text-sm font-medium text-ink-2">Start typing to see the preview</p>
