@@ -2,20 +2,18 @@ import {
   Check,
   CloudUpload,
   Download,
+  ListOrdered,
   Loader2,
   ShieldCheck,
   Trash2,
-  TriangleAlert,
   Wand2,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KbdHint } from "../../components/KbdHint";
-import { ErrorAlert, ToolShell } from "../../components/tool-layout";
-import { Alert, AlertDescription } from "../../components/ui/alert";
-import { Button } from "../../components/ui/button";
-import { Card } from "../../components/ui/card";
+import { ErrorAlert, PaneHeader, ToolShell, WarningAlert } from "../../components/tool-layout";
 import { useKeyboardShortcut } from "../../hooks/useKeyboardShortcut";
+import { cn } from "../../lib/utils";
 import { MAX_QUEUE_SIZE } from "../constants";
 import { buildZip, downloadBlob, extractMetadata, stripMetadata, validateFile } from "./metadata";
 import type { FileItem } from "./metadata";
@@ -28,19 +26,18 @@ export default function ImageMetadataRemovalRoute() {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [zipBlob, setZipBlob] = useState<Blob | null>(null);
+  const [statusMessage, setStatusMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filesRef = useRef(files);
   filesRef.current = files;
 
-  // Auto-dismiss warning after 8s
   useEffect(() => {
     if (!warning) return;
     const timer = setTimeout(() => setWarning(null), 8000);
     return () => clearTimeout(timer);
   }, [warning]);
 
-  // Clean up preview URLs on unmount
   useEffect(() => {
     return () => {
       for (const f of filesRef.current) {
@@ -91,8 +88,12 @@ export default function ImageMetadataRemovalRoute() {
     }
 
     setFiles((prev) => [...prev, ...newItems]);
+    setStatusMessage(
+      newItems.length === 1
+        ? `Added ${newItems[0]?.file.name}. Analyzing metadata.`
+        : `Added ${newItems.length} files. Analyzing metadata.`,
+    );
 
-    // Analyze metadata for each new file
     for (const item of newItems) {
       try {
         const metadata = await extractMetadata(item.file);
@@ -153,6 +154,9 @@ export default function ImageMetadataRemovalRoute() {
     setZipBlob(null);
     setError(null);
     setProgress({ current: 0, total: processable.length });
+    setStatusMessage(
+      `Stripping metadata from ${processable.length} image${processable.length === 1 ? "" : "s"}.`,
+    );
 
     const results: Array<{ name: string; data: Uint8Array }> = [];
 
@@ -180,7 +184,6 @@ export default function ImageMetadataRemovalRoute() {
       setProgress((prev) => ({ ...prev, current: prev.current + 1 }));
     }
 
-    // Include any previously done files too
     for (const item of files) {
       if (item.cleanedBlob && !processable.find((p) => p.id === item.id)) {
         const data = new Uint8Array(await item.cleanedBlob.arrayBuffer());
@@ -191,9 +194,15 @@ export default function ImageMetadataRemovalRoute() {
     if (results.length > 0) {
       try {
         setZipBlob(buildZip(results));
+        setStatusMessage(
+          `Done. ${results.length} clean image${results.length === 1 ? "" : "s"} ready to download.`,
+        );
       } catch {
         setError("Failed to generate ZIP archive.");
+        setStatusMessage("Failed to generate ZIP archive.");
       }
+    } else {
+      setStatusMessage("Processing finished with no successful files.");
     }
 
     setIsProcessing(false);
@@ -230,28 +239,47 @@ export default function ImageMetadataRemovalRoute() {
 
   return (
     <ToolShell>
-      <section className="space-y-8">
-        {/* Upload Area */}
+      <output aria-live="polite" className="sr-only">
+        {statusMessage}
+      </output>
+
+      <section className="space-y-6">
+        {/* Upload zone */}
         <div
-          className={`group rounded-lg border-2 border-dashed p-6 text-center transition-colors sm:p-12 ${
+          className={cn(
+            "group relative rounded-[18px] border-2 border-ink p-6 text-center transition-[background,box-shadow,transform] duration-200 sm:p-10",
             isDragging
-              ? "border-primary bg-primary/10"
-              : "border-border bg-card hover:border-primary"
-          }`}
+              ? "-translate-x-px -translate-y-px bg-lemon shadow-[6px_6px_0_var(--ink)]"
+              : "bg-paper shadow-pop-3 hover:-translate-x-px hover:-translate-y-px hover:bg-lemon hover:shadow-[6px_6px_0_var(--ink)]",
+          )}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 transition-transform group-hover:scale-110">
-            <CloudUpload className="h-8 w-8 text-primary" />
+          <div className="flex flex-col items-center gap-4">
+            <span
+              className="grid size-14 place-items-center rounded-[14px] border-2 border-ink bg-paper text-ink shadow-pop-2 transition-transform duration-200 group-hover:rotate-[-4deg]"
+              data-dragging={isDragging}
+              aria-hidden="true"
+            >
+              <CloudUpload className="size-6" strokeWidth={2.25} />
+            </span>
+            <div className="space-y-1">
+              <h2 className="font-display text-[22px] font-bold leading-tight tracking-tight text-ink">
+                Drop your images here
+              </h2>
+              <p className="text-sm text-ink-2">
+                JPG, PNG, or WebP, up to 50 MB. Stripped locally, never uploaded.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="wb-btn wb-btn--lemon wb-btn--sm mt-1"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Select Files
+            </button>
           </div>
-          <h2 className="mb-2 text-xl font-bold">Drop your images here</h2>
-          <p className="mb-6 text-muted-foreground">
-            Support for JPG, PNG, WebP (Max 50MB per file)
-          </p>
-          <Button size="lg" onClick={() => fileInputRef.current?.click()}>
-            Select Files
-          </Button>
           <input
             ref={fileInputRef}
             className="hidden"
@@ -263,198 +291,233 @@ export default function ImageMetadataRemovalRoute() {
           />
         </div>
 
-        {/* Error Banner */}
-        <ErrorAlert error={error} className="mt-0" />
-
-        {warning !== null && (
-          <output className="block flex items-start gap-3 rounded-[14px] border-2 border-ink bg-lemon px-4 py-3 shadow-pop-2">
-            <TriangleAlert className="mt-0.5 size-5 shrink-0 text-ink" strokeWidth={2.5} />
-            <p className="font-mono text-[13px] leading-relaxed text-ink">{warning}</p>
-          </output>
-        )}
+        <ErrorAlert error={error} className="mt-0" onDismiss={() => setError(null)} />
+        <WarningAlert warning={warning} className="mt-0" onDismiss={() => setWarning(null)} />
 
         {/* Processing Queue */}
         {files.length > 0 && (
-          <Card className="divide-y divide-border overflow-hidden">
-            <div className="flex items-center justify-between bg-muted p-4">
-              <h3 className="font-bold text-foreground">Processing Queue ({files.length})</h3>
-            </div>
+          <section className="wb-panel wb-panel--out">
+            <PaneHeader
+              label={`Processing Queue (${files.length})`}
+              icon={<ListOrdered className="size-4" aria-hidden="true" />}
+              className="bg-paper-2"
+              actions={
+                <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-ink-3 tabular-nums">
+                  {doneCount > 0
+                    ? `${doneCount} cleaned · ${readyCount} ready`
+                    : `${readyCount} ready`}
+                </span>
+              }
+            />
 
-            {files.map((item) => (
+            {isProcessing && (
               <div
-                key={item.id}
-                className={`flex items-center gap-4 p-4 ${
-                  item.status === "done" ? "bg-mint/30" : ""
-                }`}
+                className="h-1.5 w-full overflow-hidden border-b-2 border-ink bg-paper"
+                aria-hidden="true"
+                data-testid="progress-bar"
               >
-                {/* Thumbnail */}
-                <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded">
-                  <img
-                    className={`h-full w-full object-cover ${
-                      item.status === "done" ? "opacity-50 grayscale" : ""
-                    }`}
-                    src={item.previewUrl}
-                    alt={item.file.name}
-                  />
-                  {item.status === "analyzing" && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-paper/70">
-                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    </div>
-                  )}
-                  {item.status === "processing" && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-paper/70">
-                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    </div>
-                  )}
-                  {item.status === "done" && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-mint/70">
-                      <Check className="h-5 w-5 font-bold text-grass" />
-                    </div>
-                  )}
-                  {item.status === "error" && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-tomato/25">
-                      <X className="h-5 w-5 font-bold text-tomato" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="min-w-0 flex-1">
-                  <p
-                    className={`truncate text-sm font-semibold ${
-                      item.status === "done" ? "text-muted-foreground" : ""
-                    }`}
-                  >
-                    {item.file.name}
-                  </p>
-
-                  {item.status === "analyzing" && (
-                    <p className="text-[10px] font-bold uppercase tracking-tighter text-primary">
-                      Analyzing...
-                    </p>
-                  )}
-
-                  {item.status === "ready" && item.metadata && (
-                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                      {item.metadata.hasGps && (
-                        <span className="rounded border border-ink bg-tomato/15 px-1.5 py-0.5 text-[10px] font-medium text-tomato">
-                          GPS Data Detected
-                        </span>
-                      )}
-                      {item.metadata.cameraModel && (
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          {item.metadata.cameraModel}
-                        </span>
-                      )}
-                      {item.metadata.exifVersion && (
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          EXIF {item.metadata.exifVersion}
-                        </span>
-                      )}
-                      {item.metadata.tagCount > 0 && (
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          Metadata: {item.metadata.tagCount} tags
-                        </span>
-                      )}
-                      {item.metadata.tagCount === 0 && (
-                        <span className="rounded border border-ink bg-mint px-1.5 py-0.5 text-[10px] font-medium text-ink">
-                          No Metadata Found
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {item.status === "processing" && (
-                    <p className="text-[10px] font-bold uppercase tracking-tighter text-primary">
-                      Stripping metadata...
-                    </p>
-                  )}
-
-                  {item.status === "done" && (
-                    <p className="text-[10px] font-bold uppercase tracking-tighter text-grass">
-                      Cleaned &amp; Ready
-                    </p>
-                  )}
-
-                  {item.status === "error" && (
-                    <p className="text-[10px] font-bold uppercase tracking-tighter text-tomato">
-                      {item.error ?? "Error"}
-                    </p>
-                  )}
-                </div>
-
-                {/* Actions */}
-                {item.status === "done" ? (
-                  <ShieldCheck className="h-5 w-5 text-grass" />
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-tomato"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveFile(item.id);
-                    }}
-                    aria-label={`Remove ${item.file.name}`}
-                    data-testid={`remove-${item.id}`}
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </Button>
-                )}
+                <div
+                  className="h-full bg-tomato transition-[width] duration-300 ease-out"
+                  style={{ width: `${progressPercent}%` }}
+                />
               </div>
-            ))}
-          </Card>
+            )}
+
+            <ul className="space-y-2 p-3 sm:p-4" aria-label="Queue items">
+              {files.map((item) => (
+                <li
+                  key={item.id}
+                  className={cn(
+                    "flex items-center gap-3 rounded-md border-2 border-ink p-2.5 transition-[background,box-shadow,transform] duration-200",
+                    item.status === "done"
+                      ? "bg-mint shadow-pop-1"
+                      : item.status === "error"
+                        ? "bg-paper shadow-pop-1"
+                        : "bg-paper shadow-pop-1",
+                  )}
+                >
+                  {/* Thumbnail */}
+                  <div className="relative size-11 shrink-0 overflow-hidden rounded-sm border-2 border-ink bg-paper">
+                    <img
+                      className={cn(
+                        "h-full w-full object-cover",
+                        item.status === "done" && "opacity-60 grayscale",
+                      )}
+                      src={item.previewUrl}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    {(item.status === "analyzing" || item.status === "processing") && (
+                      <span className="absolute inset-0 grid place-items-center bg-paper/70">
+                        <Loader2
+                          className="size-5 animate-spin text-ink"
+                          strokeWidth={2.25}
+                          aria-hidden="true"
+                        />
+                      </span>
+                    )}
+                    {item.status === "done" && (
+                      <span className="absolute inset-0 grid place-items-center bg-mint/80">
+                        <Check className="size-5 text-grass" strokeWidth={3} aria-hidden="true" />
+                      </span>
+                    )}
+                    {item.status === "error" && (
+                      <span className="absolute inset-0 grid place-items-center bg-tomato/25">
+                        <X className="size-5 text-tomato" strokeWidth={3} aria-hidden="true" />
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={cn(
+                        "truncate text-[13.5px] font-semibold",
+                        item.status === "done" ? "text-ink-2" : "text-ink",
+                      )}
+                    >
+                      {item.file.name}
+                    </p>
+
+                    {item.status === "analyzing" && (
+                      <p className="mt-0.5 font-mono text-[11px] uppercase tracking-wider text-ink-3">
+                        Analyzing…
+                      </p>
+                    )}
+
+                    {item.status === "ready" && item.metadata && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {item.metadata.hasGps && (
+                          <span className="inline-flex items-center gap-1 rounded-md border-2 border-ink bg-paper px-1.5 py-0.5 font-mono text-[10.5px] font-semibold uppercase tracking-wider text-tomato">
+                            <span aria-hidden="true" className="size-1.5 rounded-full bg-tomato" />
+                            GPS Data Detected
+                          </span>
+                        )}
+                        {item.metadata.cameraModel && (
+                          <span className="inline-flex items-center rounded-md border border-ink bg-paper px-1.5 py-0.5 font-mono text-[10.5px] font-medium text-ink-2">
+                            {item.metadata.cameraModel}
+                          </span>
+                        )}
+                        {item.metadata.exifVersion && (
+                          <span className="inline-flex items-center rounded-md border border-ink bg-paper px-1.5 py-0.5 font-mono text-[10.5px] font-medium text-ink-2">
+                            EXIF {item.metadata.exifVersion}
+                          </span>
+                        )}
+                        {item.metadata.tagCount > 0 && (
+                          <span className="inline-flex items-center rounded-md border border-ink bg-paper px-1.5 py-0.5 font-mono text-[10.5px] font-medium text-ink-2 tabular-nums">
+                            Metadata: {item.metadata.tagCount} tags
+                          </span>
+                        )}
+                        {item.metadata.tagCount === 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-md border-2 border-ink bg-mint px-1.5 py-0.5 font-mono text-[10.5px] font-semibold uppercase tracking-wider text-ink">
+                            <span aria-hidden="true" className="size-1.5 rounded-full bg-grass" />
+                            No Metadata Found
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {item.status === "processing" && (
+                      <p className="mt-0.5 font-mono text-[11px] uppercase tracking-wider text-ink-3">
+                        Stripping metadata…
+                      </p>
+                    )}
+
+                    {item.status === "done" && (
+                      <p className="mt-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-grass">
+                        Cleaned &amp; ready
+                      </p>
+                    )}
+
+                    {item.status === "error" && (
+                      <p className="mt-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-tomato">
+                        {item.error ?? "Error"}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  {item.status === "done" ? (
+                    <span
+                      className="grid size-9 shrink-0 place-items-center rounded-md border-2 border-ink bg-paper text-grass shadow-pop-1"
+                      aria-label="Cleaned"
+                      title="Metadata stripped"
+                    >
+                      <ShieldCheck className="size-4" strokeWidth={2.5} aria-hidden="true" />
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="grid size-11 shrink-0 place-items-center rounded-md text-ink-3 transition-colors hover:text-tomato focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper-2 sm:size-9"
+                      onClick={() => handleRemoveFile(item.id)}
+                      aria-label={`Remove ${item.file.name}`}
+                      data-testid={`remove-${item.id}`}
+                    >
+                      <Trash2 className="size-4" strokeWidth={2.25} aria-hidden="true" />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
-        {/* Actions */}
+        {/* Action row */}
         {files.length > 0 && (
-          <div className="flex flex-col items-center gap-6 border-t border-border py-6">
-            <Button
-              size="lg"
-              className="w-full max-w-md py-4 text-lg font-bold shadow-pop-cta transition-all hover:scale-[1.02] active:scale-[0.98]"
+          <div className="flex flex-col items-stretch gap-4 sm:items-center">
+            <button
+              type="button"
+              className="wb-btn w-full justify-center py-4 text-[15px] sm:max-w-md"
               onClick={handleProcess}
               disabled={isProcessing || readyCount === 0}
             >
-              <Wand2 className="h-5 w-5" />
-              Remove Metadata &amp; Download ZIP
+              <Wand2 className="size-5" aria-hidden="true" />
+              <span>Remove Metadata &amp; Download ZIP</span>
               <KbdHint>⌘⏎</KbdHint>
-            </Button>
+            </button>
 
-            {/* Progress State */}
             {isProcessing && (
-              <div className="w-full max-w-md space-y-2" data-testid="progress-bar">
-                <div className="flex justify-between text-xs font-bold uppercase text-muted-foreground">
-                  <span>Processing images...</span>
+              <div className="w-full max-w-md space-y-2">
+                <div className="flex justify-between font-mono text-[11px] uppercase tracking-wider text-ink-3 tabular-nums">
+                  <span>Processing images…</span>
                   <span>{progressPercent}%</span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-2 w-full overflow-hidden rounded-full border-2 border-ink bg-paper"
+                  aria-hidden="true"
+                >
                   <div
-                    className="h-full rounded-full bg-primary transition-all"
+                    className="h-full bg-tomato transition-[width] duration-300 ease-out"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
               </div>
             )}
 
-            {/* Success State Banner */}
             {zipBlob && (
-              <div className="flex w-full max-w-lg items-center gap-4 rounded-lg border-2 border-ink bg-mint p-4 shadow-pop-2">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 border-ink bg-paper text-grass">
-                  <Download className="h-5 w-5" strokeWidth={2.5} />
-                </div>
-                <div className="flex-1">
+              <div className="flex w-full max-w-lg flex-wrap items-center gap-4 rounded-[18px] border-2 border-ink bg-mint p-4 shadow-pop-2">
+                <span
+                  className="grid size-10 shrink-0 place-items-center rounded-full border-2 border-ink bg-paper text-grass"
+                  aria-hidden="true"
+                >
+                  <Download className="size-5" strokeWidth={2.5} />
+                </span>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-ink">Processing Complete!</p>
                   <p className="text-xs text-ink-2">
-                    {doneCount} image{doneCount !== 1 ? "s" : ""} stripped of all metadata. Archive
-                    ready.
+                    {doneCount} image{doneCount !== 1 ? "s" : ""} stripped clean. Archive ready.
                   </p>
                 </div>
-                <Button
-                  className="bg-mint text-ink border-2 border-ink hover:bg-grass hover:text-paper"
+                <button
+                  type="button"
+                  className="wb-btn wb-btn--sm wb-btn--ghost"
                   onClick={handleDownloadZip}
                 >
-                  Download ZIP
-                </Button>
+                  <Download className="size-3.5" aria-hidden="true" />
+                  <span>Download ZIP</span>
+                  <KbdHint>⌘S</KbdHint>
+                </button>
               </div>
             )}
           </div>
