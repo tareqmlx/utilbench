@@ -157,16 +157,28 @@ function buildDiffResult(changes: Change[], unifiedPatch: string): DiffResult {
 
 // --- UI Components ---
 
+const ROW_STAGGER_MAX = 24;
+const ROW_STAGGER_STEP_MS = 14;
+
+function getRowDelayStyle(index?: number): React.CSSProperties | undefined {
+  if (index === undefined || index >= ROW_STAGGER_MAX) return undefined;
+  return { ["--wb-row-delay" as string]: `${index * ROW_STAGGER_STEP_MS}ms` };
+}
+
 function DiffLine({
   lineNumber,
   content,
   tone = "default",
   prefix,
+  index,
+  animate,
 }: {
   lineNumber: number | null;
   content: string;
   tone?: DiffTone;
   prefix?: string;
+  index?: number;
+  animate?: boolean;
 }) {
   const rowToneClass =
     tone === "added"
@@ -179,7 +191,10 @@ function DiffLine({
     tone === "added" ? "bg-mint/40" : tone === "removed" ? "bg-tomato/15" : "bg-paper-2";
 
   return (
-    <div className={`flex ${rowToneClass}`}>
+    <div
+      className={cn("flex", rowToneClass, animate && "wb-diff-row")}
+      style={animate ? getRowDelayStyle(index) : undefined}
+    >
       <div
         className={`w-10 flex-none border-r border-ink/40 pr-2 text-right font-mono text-sm text-ink-3 select-none ${gutterToneClass}`}
       >
@@ -214,13 +229,15 @@ function SideBySideView({ result }: { result: SideBySideResult }) {
         <SubPaneLabel>Original</SubPaneLabel>
         <div className="overflow-x-auto">
           <div className="min-w-max py-0 leading-6">
-            {result.original.map((line) => (
+            {result.original.map((line, i) => (
               <DiffLine
                 key={line.id}
                 lineNumber={line.lineNumber}
                 content={line.content}
                 tone={line.tone}
                 prefix={line.tone === "removed" ? "-" : line.tone === "added" ? "+" : " "}
+                index={i}
+                animate
               />
             ))}
           </div>
@@ -230,13 +247,15 @@ function SideBySideView({ result }: { result: SideBySideResult }) {
         <SubPaneLabel>Modified</SubPaneLabel>
         <div className="overflow-x-auto">
           <div className="min-w-max py-0 leading-6">
-            {result.modified.map((line) => (
+            {result.modified.map((line, i) => (
               <DiffLine
                 key={line.id}
                 lineNumber={line.lineNumber}
                 content={line.content}
                 tone={line.tone}
                 prefix={line.tone === "added" ? "+" : line.tone === "removed" ? "-" : " "}
+                index={i}
+                animate
               />
             ))}
           </div>
@@ -250,13 +269,15 @@ function InlineView({ lines }: { lines: DiffLineData[] }) {
   return (
     <div className="overflow-x-auto">
       <div className="min-w-max py-0 leading-6">
-        {lines.map((line) => (
+        {lines.map((line, i) => (
           <DiffLine
             key={line.id}
             lineNumber={line.lineNumber}
             content={line.content}
             tone={line.tone}
             prefix={line.tone === "added" ? "+" : line.tone === "removed" ? "-" : " "}
+            index={i}
+            animate
           />
         ))}
       </div>
@@ -591,19 +612,19 @@ export default function DiffCheckerRoute() {
 
             {!loading && hasNoDifferences && (
               <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center text-ink">
-                <CheckCircle className="size-9 text-grass" aria-hidden="true" />
+                <CheckCircle className="wb-success-pop size-9 text-grass" aria-hidden="true" />
                 <p className="text-sm font-medium">No differences found</p>
               </div>
             )}
 
             {!loading && hasResult && (
-              <>
+              <div key={prefs.viewMode} className="wb-fade-in">
                 {prefs.viewMode === "side-by-side" && (
                   <SideBySideView result={diffResult.sideBySide} />
                 )}
                 {prefs.viewMode === "inline" && <InlineView lines={diffResult.inlineLines} />}
                 {prefs.viewMode === "unified" && <UnifiedView patch={diffResult.unifiedPatch} />}
-              </>
+              </div>
             )}
           </div>
         </div>

@@ -737,6 +737,33 @@ body {
   animation: wb-item-in 200ms ease-out both;
 }
 
+/* ── Diff checker: per-row stagger on result reveal.
+   Delay carried via --wb-row-delay (capped in JS to first 24 rows
+   so 10k-line diffs do not animate every line). */
+.wb-diff-row {
+  animation: wb-item-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--wb-row-delay, 0ms);
+}
+
+/* ── Diff checker: "no differences" success badge pop ─────────── */
+@keyframes wb-success-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.wb-success-pop {
+  animation: wb-success-pop 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* ── SVG optimizer: queue + status motion ─────────────────────── */
 @keyframes wb-svg-done-meta {
   from {
@@ -1115,6 +1142,8 @@ button[role="switch"] [data-state] {
   }
   .wb-item-enter,
   .wb-fade-in,
+  .wb-diff-row,
+  .wb-success-pop,
   .wb-page,
   .wb-reveal,
   .animate-in,
