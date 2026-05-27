@@ -258,7 +258,7 @@ export default function ImageMetadataRemovalRoute() {
         >
           <div className="flex flex-col items-center gap-4">
             <span
-              className="grid size-14 place-items-center rounded-[14px] border-2 border-ink bg-paper text-ink shadow-pop-2 transition-transform duration-200 group-hover:rotate-[-4deg]"
+              className="wb-svg-drop-icon grid size-14 place-items-center rounded-[14px] border-2 border-ink bg-paper text-ink shadow-pop-2 group-hover:rotate-[-4deg]"
               data-dragging={isDragging}
               aria-hidden="true"
             >
@@ -296,13 +296,16 @@ export default function ImageMetadataRemovalRoute() {
 
         {/* Processing Queue */}
         {files.length > 0 && (
-          <section className="wb-panel wb-panel--out">
+          <section className="wb-fade-in wb-panel wb-panel--out">
             <PaneHeader
               label={`Processing Queue (${files.length})`}
               icon={<ListOrdered className="size-4" aria-hidden="true" />}
               className="bg-paper-2"
               actions={
-                <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-ink-3 tabular-nums">
+                <span
+                  key={`${doneCount}-${readyCount}`}
+                  className="wb-fade-in font-mono text-[11px] font-medium uppercase tracking-wider text-ink-3 tabular-nums"
+                >
                   {doneCount > 0
                     ? `${doneCount} cleaned · ${readyCount} ready`
                     : `${readyCount} ready`}
@@ -312,7 +315,7 @@ export default function ImageMetadataRemovalRoute() {
 
             {isProcessing && (
               <div
-                className="h-1.5 w-full overflow-hidden border-b-2 border-ink bg-paper"
+                className="wb-fade-in h-1.5 w-full overflow-hidden border-b-2 border-ink bg-paper"
                 aria-hidden="true"
                 data-testid="progress-bar"
               >
@@ -328,7 +331,7 @@ export default function ImageMetadataRemovalRoute() {
                 <li
                   key={item.id}
                   className={cn(
-                    "flex items-center gap-3 rounded-md border-2 border-ink p-2.5 transition-[background,box-shadow,transform] duration-200",
+                    "wb-item-enter flex items-center gap-3 rounded-md border-2 border-ink p-2.5 transition-[background,box-shadow,transform] duration-200",
                     item.status === "done"
                       ? "bg-mint shadow-pop-1"
                       : item.status === "error"
@@ -358,12 +361,14 @@ export default function ImageMetadataRemovalRoute() {
                       </span>
                     )}
                     {item.status === "done" && (
-                      <span className="absolute inset-0 grid place-items-center bg-mint/80">
-                        <Check className="size-5 text-grass" strokeWidth={3} aria-hidden="true" />
+                      <span className="wb-fade-in absolute inset-0 grid place-items-center bg-mint/80">
+                        <span className="wb-svg-check-pop">
+                          <Check className="size-5 text-grass" strokeWidth={3} aria-hidden="true" />
+                        </span>
                       </span>
                     )}
                     {item.status === "error" && (
-                      <span className="absolute inset-0 grid place-items-center bg-tomato/25">
+                      <span className="wb-fade-in absolute inset-0 grid place-items-center bg-tomato/25">
                         <X className="size-5 text-tomato" strokeWidth={3} aria-hidden="true" />
                       </span>
                     )}
@@ -381,13 +386,13 @@ export default function ImageMetadataRemovalRoute() {
                     </p>
 
                     {item.status === "analyzing" && (
-                      <p className="mt-0.5 font-mono text-[11px] uppercase tracking-wider text-ink-3">
+                      <p className="wb-fade-in mt-0.5 font-mono text-[11px] uppercase tracking-wider text-ink-3">
                         Analyzing…
                       </p>
                     )}
 
                     {item.status === "ready" && item.metadata && (
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <div className="wb-fade-in mt-1.5 flex flex-wrap items-center gap-1.5">
                         {item.metadata.hasGps && (
                           <span className="inline-flex items-center gap-1 rounded-md border-2 border-ink bg-paper px-1.5 py-0.5 font-mono text-[10.5px] font-semibold uppercase tracking-wider text-tomato">
                             <span aria-hidden="true" className="size-1.5 rounded-full bg-tomato" />
@@ -419,19 +424,19 @@ export default function ImageMetadataRemovalRoute() {
                     )}
 
                     {item.status === "processing" && (
-                      <p className="mt-0.5 font-mono text-[11px] uppercase tracking-wider text-ink-3">
+                      <p className="wb-fade-in mt-0.5 font-mono text-[11px] uppercase tracking-wider text-ink-3">
                         Stripping metadata…
                       </p>
                     )}
 
                     {item.status === "done" && (
-                      <p className="mt-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-grass">
+                      <p className="wb-fade-in mt-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-grass">
                         Cleaned &amp; ready
                       </p>
                     )}
 
                     {item.status === "error" && (
-                      <p className="mt-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-tomato">
+                      <p className="wb-fade-in mt-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-tomato">
                         {item.error ?? "Error"}
                       </p>
                     )}
@@ -440,7 +445,7 @@ export default function ImageMetadataRemovalRoute() {
                   {/* Actions */}
                   {item.status === "done" ? (
                     <span
-                      className="grid size-9 shrink-0 place-items-center rounded-md border-2 border-ink bg-paper text-grass shadow-pop-1"
+                      className="wb-fade-in grid size-9 shrink-0 place-items-center rounded-md border-2 border-ink bg-paper text-grass shadow-pop-1"
                       aria-label="Cleaned"
                       title="Metadata stripped"
                     >
@@ -449,7 +454,7 @@ export default function ImageMetadataRemovalRoute() {
                   ) : (
                     <button
                       type="button"
-                      className="grid size-11 shrink-0 place-items-center rounded-md text-ink-3 transition-colors hover:text-tomato focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper-2 sm:size-9"
+                      className="grid size-11 shrink-0 place-items-center rounded-md text-ink-3 transition-[color,transform] duration-200 hover:-translate-y-px hover:text-tomato focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper-2 sm:size-9"
                       onClick={() => handleRemoveFile(item.id)}
                       aria-label={`Remove ${item.file.name}`}
                       data-testid={`remove-${item.id}`}
@@ -478,7 +483,7 @@ export default function ImageMetadataRemovalRoute() {
             </button>
 
             {isProcessing && (
-              <div className="w-full max-w-md space-y-2">
+              <div className="wb-fade-in w-full max-w-md space-y-2">
                 <div className="flex justify-between font-mono text-[11px] uppercase tracking-wider text-ink-3 tabular-nums">
                   <span>Processing images…</span>
                   <span>{progressPercent}%</span>
@@ -496,9 +501,9 @@ export default function ImageMetadataRemovalRoute() {
             )}
 
             {zipBlob && (
-              <div className="flex w-full max-w-lg flex-wrap items-center gap-4 rounded-[18px] border-2 border-ink bg-mint p-4 shadow-pop-2">
+              <div className="wb-fade-in flex w-full max-w-lg flex-wrap items-center gap-4 rounded-[18px] border-2 border-ink bg-mint p-4 shadow-pop-2">
                 <span
-                  className="grid size-10 shrink-0 place-items-center rounded-full border-2 border-ink bg-paper text-grass"
+                  className="wb-svg-check-pop grid size-10 shrink-0 place-items-center rounded-full border-2 border-ink bg-paper text-grass"
                   aria-hidden="true"
                 >
                   <Download className="size-5" strokeWidth={2.5} />
