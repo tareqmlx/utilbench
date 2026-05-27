@@ -29,7 +29,7 @@ describe("JsonFormatterRoute", () => {
 
   function getOutput() {
     return screen.getByPlaceholderText(
-      /Your beautified JSON will appear here/,
+      /Your formatted JSON will appear here/,
     ) as HTMLTextAreaElement;
   }
 

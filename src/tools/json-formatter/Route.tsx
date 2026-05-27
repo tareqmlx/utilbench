@@ -1,7 +1,7 @@
 import { parse as jsoncParse, printParseErrorCode } from "jsonc-parser";
 import type { ParseError } from "jsonc-parser";
 import { Check, ClipboardPaste, Copy, Minimize2, Trash2, Wand2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { IconSwap } from "../../components/IconSwap";
 import { KbdHint } from "../../components/KbdHint";
 import { ErrorAlert, PaneHeader, StatusBadge, ToolShell } from "../../components/tool-layout";
@@ -33,7 +33,6 @@ function parseJson(value: string): { data: unknown; error: string | null } {
 export default function JsonFormatterRoute() {
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [pasteFeedback, setPasteFeedback] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const pasteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -46,11 +45,11 @@ export default function JsonFormatterRoute() {
     [],
   );
 
+  const deferredInput = useDeferredValue(input);
+  const { error } = useMemo(() => parseJson(deferredInput), [deferredInput]);
+
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setInput(val);
-    const { error: parseError } = parseJson(val);
-    setError(parseError);
+    setInput(e.target.value);
     setOutput("");
   }, []);
 
@@ -58,8 +57,6 @@ export default function JsonFormatterRoute() {
     const text = await readClipboard();
     if (text === null) return;
     setInput(text);
-    const { error: parseError } = parseJson(text);
-    setError(parseError);
     setOutput("");
     setPasteFeedback(true);
     setStatusMessage("JSON pasted from clipboard.");
@@ -70,33 +67,28 @@ export default function JsonFormatterRoute() {
   const handleClear = useCallback(() => {
     setInput("");
     setOutput("");
-    setError(null);
     setStatusMessage("Input cleared.");
   }, []);
 
   const handleFormat = useCallback(() => {
     const { data, error: parseError } = parseJson(input);
     if (parseError !== null) {
-      setError(parseError);
       setStatusMessage(`Parse error: ${parseError}`);
       return;
     }
     if (data === undefined) return;
     setOutput(JSON.stringify(data, null, 2));
-    setError(null);
     setStatusMessage("JSON formatted.");
   }, [input]);
 
   const handleMinify = useCallback(() => {
     const { data, error: parseError } = parseJson(input);
     if (parseError !== null) {
-      setError(parseError);
       setStatusMessage(`Parse error: ${parseError}`);
       return;
     }
     if (data === undefined) return;
     setOutput(JSON.stringify(data));
-    setError(null);
     setStatusMessage("JSON minified.");
   }, [input]);
 
@@ -216,6 +208,7 @@ export default function JsonFormatterRoute() {
         <section className="wb-panel wb-panel--out">
           <PaneHeader
             label="Formatted Output"
+            htmlFor="json-formatter-output"
             className="bg-paper-2"
             trailing={
               output ? (
@@ -251,9 +244,10 @@ export default function JsonFormatterRoute() {
           <div className="p-3 sm:p-4">
             <div key={output ? "filled" : "empty"} className="wb-fade-in">
               <textarea
+                id="json-formatter-output"
                 readOnly
                 value={output}
-                placeholder="Your beautified JSON will appear here..."
+                placeholder="Your formatted JSON will appear here..."
                 spellCheck={false}
                 className="h-72 w-full resize-none rounded-md border-2 border-ink/40 bg-paper p-4 font-mono text-[13px] leading-relaxed text-ink placeholder:text-ink-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:h-96 lg:h-[460px]"
               />
