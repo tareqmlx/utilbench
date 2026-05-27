@@ -158,7 +158,7 @@ describe("LottiePreviewerRoute", () => {
     render(<LottiePreviewerRoute />);
     const settingsBtn = screen.getByTitle("Playback settings");
     fireEvent.click(settingsBtn);
-    expect(screen.getByText("Loop")).toBeInTheDocument();
+    expect(screen.getByText("Loop playback")).toBeInTheDocument();
   });
 
   it("uploads a valid .json file and shows filename", async () => {
@@ -359,7 +359,7 @@ describe("LottiePreviewerRoute", () => {
       await act(async () => {
         fireEvent.click(screen.getByTitle("Playback settings"));
       });
-      const loop = await screen.findByText("Loop");
+      const loop = await screen.findByText("Loop playback");
       expect(loop).toBeInTheDocument();
     });
   });

@@ -341,7 +341,7 @@ export default function LottiePreviewerRoute() {
           {hasFile ? (
             <div className="wb-fade-in flex items-center gap-4 rounded-lg border-2 border-ink bg-paper-2 px-5 py-4 shadow-pop-3">
               <div className="grid size-10 shrink-0 place-items-center rounded-md border-2 border-ink bg-mint">
-                <Play className="size-5 text-ink" />
+                <Play className="size-5 text-ink" aria-hidden="true" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-ink" title={sourceFile?.name}>
@@ -362,7 +362,7 @@ export default function LottiePreviewerRoute() {
                 className="wb-chip"
                 aria-label="Remove file"
               >
-                <X className="size-3.5" />
+                <X className="size-3.5" aria-hidden="true" />
                 Remove
               </button>
             </div>
@@ -381,7 +381,7 @@ export default function LottiePreviewerRoute() {
                 data-dragging={isDragging}
                 className="wb-svg-drop-icon mb-5 grid size-16 place-items-center rounded-md border-2 border-ink bg-pink shadow-pop-2"
               >
-                <Upload className="size-7 text-ink" />
+                <Upload className="size-7 text-ink" aria-hidden="true" />
               </div>
               <span className="wb-h3 mb-2 block">Drag your animation here</span>
               <p className="mx-auto mb-6 max-w-xs text-sm text-ink-2">
@@ -418,9 +418,13 @@ export default function LottiePreviewerRoute() {
               className={`relative flex aspect-video items-center justify-center overflow-hidden ${bgClass}`}
             >
               {!hasFile && (
-                <div className="flex flex-col items-center justify-center gap-3 text-ink-3/45 select-none">
-                  <PlayCircle className="size-20" strokeWidth={1.5} aria-hidden="true" />
-                  <span className="wb-meta">No animation loaded</span>
+                <div className="flex flex-col items-center justify-center gap-3 select-none">
+                  <PlayCircle
+                    className="size-20 text-ink-3/45"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  />
+                  <span className="wb-meta text-ink-2">No animation loaded</span>
                 </div>
               )}
               <div
@@ -487,7 +491,11 @@ export default function LottiePreviewerRoute() {
                     aria-label={isPlaying ? "Pause" : "Play"}
                   >
                     <IconSwap swapKey={isPlaying}>
-                      {isPlaying ? <Pause className="size-5" /> : <Play className="size-5" />}
+                      {isPlaying ? (
+                        <Pause className="size-5" aria-hidden="true" />
+                      ) : (
+                        <Play className="size-5" aria-hidden="true" />
+                      )}
                     </IconSwap>
                   </Button>
                   <Button
@@ -498,7 +506,7 @@ export default function LottiePreviewerRoute() {
                     disabled={!hasFile}
                     aria-label="Replay"
                   >
-                    <RotateCcw className="size-5" />
+                    <RotateCcw className="size-5" aria-hidden="true" />
                   </Button>
                 </div>
 
@@ -571,9 +579,9 @@ export default function LottiePreviewerRoute() {
                   >
                     <IconSwap swapKey={frameExported}>
                       {frameExported ? (
-                        <Check className="size-5 text-ink" />
+                        <Check className="size-5 text-ink" aria-hidden="true" />
                       ) : (
-                        <ImageIcon className="size-5" />
+                        <ImageIcon className="size-5" aria-hidden="true" />
                       )}
                     </IconSwap>
                   </Button>
@@ -586,7 +594,7 @@ export default function LottiePreviewerRoute() {
                         title="Playback settings"
                         aria-label="Playback settings"
                       >
-                        <Settings className="size-5" />
+                        <Settings className="size-5" aria-hidden="true" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent
@@ -594,19 +602,19 @@ export default function LottiePreviewerRoute() {
                       className="w-56 border-2 border-ink bg-paper shadow-pop-3"
                     >
                       <h5 className="wb-meta mb-3">Settings</h5>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-ink">Loop</span>
-                          <Switch
-                            checked={prefs.isLooping}
-                            onCheckedChange={(v) => setPrefs({ isLooping: v })}
-                            aria-label="Toggle loop"
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-ink">Renderer</span>
-                          <span className="wb-mono-sm">SVG</span>
-                        </div>
+                      <div className="flex items-center justify-between">
+                        <label
+                          htmlFor="lottie-loop-switch"
+                          className="text-sm font-medium text-ink"
+                        >
+                          Loop playback
+                        </label>
+                        <Switch
+                          id="lottie-loop-switch"
+                          checked={prefs.isLooping}
+                          onCheckedChange={(v) => setPrefs({ isLooping: v })}
+                          aria-label="Toggle loop"
+                        />
                       </div>
                     </PopoverContent>
                   </Popover>
@@ -687,7 +695,7 @@ export default function LottiePreviewerRoute() {
                 onClick={handleDownloadDotLottie}
                 disabled={!hasFile}
               >
-                <Download className="size-4" />
+                <Download className="size-4" aria-hidden="true" />
                 Download .dotLottie
                 <KbdHint>⌘S</KbdHint>
               </button>
@@ -699,12 +707,12 @@ export default function LottiePreviewerRoute() {
               >
                 {isExporting ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                     Exporting GIF...
                   </>
                 ) : (
                   <>
-                    <ImageIcon className="size-4" />
+                    <ImageIcon className="size-4" aria-hidden="true" />
                     Export as GIF
                   </>
                 )}
@@ -715,7 +723,7 @@ export default function LottiePreviewerRoute() {
                 onClick={handleCopyEmbed}
                 disabled={!hasFile}
               >
-                <Code className="size-4" />
+                <Code className="size-4" aria-hidden="true" />
                 <IconSwap swapKey={copied}>{copied ? "Copied!" : "Get embed code"}</IconSwap>
                 <KbdHint>⌘⇧C</KbdHint>
               </button>
