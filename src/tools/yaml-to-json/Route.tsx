@@ -1,12 +1,20 @@
 import { Check, ClipboardPaste, Copy, Download, Trash2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { IconSwap } from "../../components/IconSwap";
-import { ErrorAlert, PaneHeader, ToolShell, TwoPane } from "../../components/tool-layout";
+import { KbdHint } from "../../components/KbdHint";
+import {
+  CodePreview,
+  ErrorAlert,
+  PaneHeader,
+  ToolShell,
+  TwoPane,
+} from "../../components/tool-layout";
 import { Button } from "../../components/ui/button";
 import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
 import { Textarea } from "../../components/ui/textarea";
 import { useClipboard } from "../../hooks/useClipboard";
+import { useKeyboardShortcut } from "../../hooks/useKeyboardShortcut";
 import { useToolPreferences } from "../../hooks/useToolPreferences";
 import { SAMPLE_YAML, convertYamlToJson } from "./yaml";
 
@@ -70,33 +78,55 @@ export default function YamlToJsonRoute() {
     URL.revokeObjectURL(url);
   }, [output]);
 
+  useKeyboardShortcut(
+    useMemo(
+      () => [
+        { key: "c", meta: true, shift: true, handler: handleCopy, enabled: output.length > 0 },
+        { key: "x", meta: true, shift: true, handler: handleClear },
+      ],
+      [handleCopy, handleClear, output.length],
+    ),
+  );
+
+  const inputRingClass =
+    input.trim() === ""
+      ? ""
+      : error !== null
+        ? "ring-2 ring-tomato/60 border-transparent"
+        : "ring-2 ring-grass/60 border-transparent";
+
   return (
     <ToolShell>
       <TwoPane
-        gap="8"
         className="items-start"
         left={
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             <PaneHeader
               label="YAML Input"
               htmlFor="yaml-input"
               actions={
-                <Button
-                  variant="link"
-                  size="sm"
-                  onClick={handlePasteExample}
-                  className="text-xs font-semibold"
-                >
-                  <ClipboardPaste className="size-3" />
-                  Paste Example
-                </Button>
+                <>
+                  <Button variant="outline" size="sm" onClick={handlePasteExample}>
+                    <ClipboardPaste className="size-4" />
+                    Paste example
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClear}
+                    aria-label="Clear input"
+                  >
+                    <Trash2 className="size-4" />
+                    Clear
+                    <KbdHint>⌘⇧X</KbdHint>
+                  </Button>
+                </>
               }
             />
-            <div className="group relative">
-              <Textarea
-                id="yaml-input"
-                className="min-h-[500px] font-mono text-sm leading-relaxed"
-                placeholder={`---
+            <Textarea
+              id="yaml-input"
+              className={`min-h-[400px] sm:min-h-[500px] resize-none font-mono text-sm leading-relaxed transition-all ${inputRingClass}`}
+              placeholder={`---
 # Enter your YAML here
 name: Utilbench Tool
 version: 1.0.0
@@ -104,82 +134,51 @@ features:
   - parsing
   - validation
   - export`}
-                value={input}
-                onChange={handleInputChange}
-              />
-              <div className="absolute bottom-4 right-4 flex gap-2">
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  onClick={handleClear}
-                  aria-label="Clear input"
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-            </div>
+              value={input}
+              onChange={handleInputChange}
+            />
           </div>
         }
         right={
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             <PaneHeader
               label="JSON Output"
               actions={
-                <div className="flex gap-4">
-                  <Button
-                    variant="link"
-                    size="sm"
-                    disabled={!output}
-                    onClick={handleCopy}
-                    className="text-xs font-semibold"
-                  >
+                <>
+                  <div className="mr-1 flex items-center gap-2">
+                    <Switch
+                      id="yaml-prettyprint"
+                      checked={prefs.prettyPrint}
+                      onCheckedChange={handlePrettyPrintToggle}
+                    />
+                    <Label htmlFor="yaml-prettyprint" className="text-xs">
+                      Pretty print
+                    </Label>
+                  </div>
+                  <Button variant="outline" size="sm" disabled={!output} onClick={handleCopy}>
                     <IconSwap swapKey={copied}>
-                      {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+                      {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
                       {copied ? "Copied!" : "Copy"}
                     </IconSwap>
+                    <KbdHint>⌘⇧C</KbdHint>
                   </Button>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    disabled={!output}
-                    onClick={handleDownload}
-                    className="text-xs font-semibold"
-                  >
-                    <Download className="size-3" />
+                  <Button variant="outline" size="sm" disabled={!output} onClick={handleDownload}>
+                    <Download className="size-4" />
                     Download
                   </Button>
-                </div>
+                </>
               }
             />
-            <div className="group relative">
-              {output ? (
-                <pre className="min-h-[500px] w-full overflow-auto rounded-md border-2 border-ink bg-muted p-6 font-mono text-sm leading-relaxed">
-                  <code>{output}</code>
-                </pre>
-              ) : (
-                <div className="min-h-[500px] w-full overflow-auto rounded-md border-2 border-ink bg-muted p-6 font-mono text-sm leading-relaxed text-muted-foreground italic">
-                  {"{"}
-                  <br />
-                  &nbsp;&nbsp;&quot;status&quot;: &quot;Waiting for input...&quot;,
-                  <br />
-                  &nbsp;&nbsp;&quot;action&quot;: &quot;Start typing or paste the example&quot;
-                  <br />
-                  {"}"}
-                </div>
-              )}
-            </div>
+            <CodePreview
+              isEmpty={!output}
+              emptyHint="Waiting for input — paste YAML or hit Paste example."
+              className="min-h-[400px] sm:min-h-[500px]"
+            >
+              <code>{output}</code>
+            </CodePreview>
           </div>
         }
       />
-
-      <div className="mt-8 flex items-center justify-center gap-2">
-        <Switch
-          id="yaml-prettyprint"
-          checked={prefs.prettyPrint}
-          onCheckedChange={handlePrettyPrintToggle}
-        />
-        <Label htmlFor="yaml-prettyprint">Pretty Print</Label>
-      </div>
 
       <ErrorAlert error={error} />
     </ToolShell>
