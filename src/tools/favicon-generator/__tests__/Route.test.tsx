@@ -95,10 +95,10 @@ describe("FaviconGeneratorRoute", () => {
 
   it("toggles corner rounding selection", () => {
     render(<FaviconGeneratorRoute />);
-    const softBtn = screen.getByRole("button", { name: "Soft" });
+    const softBtn = screen.getByRole("radio", { name: "Soft" });
     fireEvent.click(softBtn);
-    expect(softBtn.className).toContain("bg-primary");
-    expect(screen.getByRole("button", { name: "None" }).className).not.toContain("bg-primary");
+    expect(softBtn).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "None" })).toHaveAttribute("aria-checked", "false");
   });
 
   it("renders export format select with all options", async () => {
@@ -192,16 +192,16 @@ describe("FaviconGeneratorRoute", () => {
 
   it("defaults to none for corner rounding", () => {
     render(<FaviconGeneratorRoute />);
-    const noneBtn = screen.getByRole("button", { name: "None" });
-    expect(noneBtn.className).toContain("bg-primary");
+    const noneBtn = screen.getByRole("radio", { name: "None" });
+    expect(noneBtn).toHaveAttribute("aria-checked", "true");
   });
 
   it("circle rounding gets active state when clicked", () => {
     render(<FaviconGeneratorRoute />);
-    const circleBtn = screen.getByRole("button", { name: "Circle" });
+    const circleBtn = screen.getByRole("radio", { name: "Circle" });
     fireEvent.click(circleBtn);
-    expect(circleBtn.className).toContain("bg-primary");
-    expect(screen.getByRole("button", { name: "None" }).className).not.toContain("bg-primary");
+    expect(circleBtn).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "None" })).toHaveAttribute("aria-checked", "false");
   });
 
   it("triggers download flow after upload and click", async () => {
