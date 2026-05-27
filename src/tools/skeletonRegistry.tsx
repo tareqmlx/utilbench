@@ -185,21 +185,30 @@ function CronParserSkeleton() {
 function CsvToJsonSkeleton() {
   return (
     <ToolShell>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <SkeletonLine width="w-24" height="h-5" />
+            <SkeletonLine width="w-20" height="h-5" />
             <div className="flex gap-2">
-              <SkeletonButton width="w-24" />
+              <SkeletonButton width="w-28" />
               <SkeletonButton width="w-20" />
             </div>
           </div>
-          <SkeletonTextArea className="h-96" />
-          <SkeletonButton width="w-full" />
+          <div className="flex items-center gap-4 px-1">
+            <SkeletonLine width="w-24" height="h-5" />
+            <SkeletonLine width="w-36" height="h-8" />
+          </div>
+          <SkeletonTextArea className="min-h-[500px]" />
         </div>
-        <div className="space-y-4">
-          <SkeletonLine width="w-24" height="h-5" />
-          <SkeletonBlock className="h-96 rounded-lg bg-muted" />
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <SkeletonLine width="w-24" height="h-5" />
+            <div className="flex gap-2">
+              <SkeletonButton width="w-16" />
+              <SkeletonButton width="w-24" />
+            </div>
+          </div>
+          <SkeletonBlock className="min-h-[500px] rounded-lg bg-muted" />
         </div>
       </div>
     </ToolShell>
