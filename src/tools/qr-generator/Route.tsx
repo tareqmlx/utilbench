@@ -1,11 +1,19 @@
-import { Check, Copy, Download, Link2, Maximize, Share2, Type, Wifi } from "lucide-react";
+import {
+  Check,
+  CircleAlert,
+  Copy,
+  Download,
+  Link2,
+  Maximize,
+  Share2,
+  Type,
+  Wifi,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IconSwap } from "../../components/IconSwap";
 import { KbdHint } from "../../components/KbdHint";
-import { ToolShell } from "../../components/tool-layout";
-import { Alert, AlertDescription } from "../../components/ui/alert";
+import { PaneHeader, ToolShell } from "../../components/tool-layout";
 import { Button } from "../../components/ui/button";
-import { Card, CardContent } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import {
@@ -21,6 +29,7 @@ import { useClipboard } from "../../hooks/useClipboard";
 import { useKeyboardShortcut } from "../../hooks/useKeyboardShortcut";
 import { useToolPreferences } from "../../hooks/useToolPreferences";
 import { useUrlState } from "../../hooks/useUrlState";
+import { cn } from "../../lib/utils";
 import {
   type ContentType,
   type QrOptions,
@@ -33,8 +42,6 @@ import {
 const contentTabs: ContentType[] = ["URL", "Text", "WiFi", "vCard"];
 
 const formatTabs = ["SVG", "PNG"] as const;
-
-const trustedAvatars = ["bg-muted", "bg-muted/80", "bg-muted/60"] as const;
 
 const contentIcons: Record<ContentType, React.ComponentType<{ className?: string }>> = {
   URL: Link2,
@@ -58,6 +65,16 @@ const URL_SCHEMA = {
   text: { type: "string" as const, defaultValue: "https://utilbench.io" },
 };
 
+const tabTriggerCls = cn(
+  "wb-chip justify-center px-3 py-1.5 text-[12.5px] font-semibold sm:min-h-0",
+  "data-[state=active]:bg-ink data-[state=active]:text-paper",
+  "data-[state=active]:hover:bg-ink data-[state=active]:hover:text-paper",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato",
+  "focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
+);
+
+const metaLabelCls = "wb-meta block";
+
 export default function QrGeneratorRoute() {
   const [prefs, setPrefs] = useToolPreferences("qr-generator", DEFAULT_PREFS);
   const [urlState, setUrlState] = useUrlState(URL_SCHEMA);
@@ -69,6 +86,7 @@ export default function QrGeneratorRoute() {
   const [vcardOrg, setVcardOrg] = useState("");
   const [qrOutput, setQrOutput] = useState<string | null>(null);
   const [qrError, setQrError] = useState<string | null>(null);
+  const [status, setStatus] = useState("");
 
   const { copied, copy } = useClipboard();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -117,8 +135,10 @@ export default function QrGeneratorRoute() {
       setQrOutput(result);
       setQrError(null);
     } catch (err) {
-      setQrError(err instanceof Error ? err.message : "Failed to generate QR code");
+      const message = err instanceof Error ? err.message : "Failed to generate QR code";
+      setQrError(message);
       setQrOutput(null);
+      setStatus(`Error: ${message}`);
     }
   }, [prefs, activeContentType, textInput, wifiSsid, wifiPassword, vcardName, vcardOrg]);
 
@@ -130,13 +150,17 @@ export default function QrGeneratorRoute() {
     };
   }, [generate]);
 
-  const currentPayload = buildPayload(activeContentType, {
-    textInput,
-    wifiSsid,
-    wifiPassword,
-    vcardName,
-    vcardOrg,
-  });
+  const currentPayload = useMemo(
+    () =>
+      buildPayload(activeContentType, {
+        textInput,
+        wifiSsid,
+        wifiPassword,
+        vcardName,
+        vcardOrg,
+      }),
+    [activeContentType, textInput, wifiSsid, wifiPassword, vcardName, vcardOrg],
+  );
 
   const handleDownload = () => {
     if (!qrOutput) return;
@@ -152,6 +176,7 @@ export default function QrGeneratorRoute() {
     }
     link.click();
     URL.revokeObjectURL(link.href);
+    setStatus(`Downloaded as qrcode.${prefs.format.toLowerCase()}.`);
   };
 
   const handleCopy = async () => {
@@ -167,6 +192,7 @@ export default function QrGeneratorRoute() {
         await copy(qrOutput);
       }
     }
+    setStatus("QR code copied to clipboard.");
   };
 
   const handleShare = async () => {
@@ -208,38 +234,38 @@ export default function QrGeneratorRoute() {
     setPrefs({ backgroundColor: value });
   };
 
+  const ContentIcon = contentIcons[activeContentType];
+
   return (
     <ToolShell>
-      <div className="grid grid-cols-1 gap-12 lg:grid-cols-12">
-        <div className="space-y-8 lg:col-span-7">
-          <Card className="p-4 sm:p-8">
-            <CardContent className="space-y-6 p-0">
-              <div className="space-y-2">
-                <Tabs
-                  value={activeContentType}
-                  onValueChange={(v) => {
-                    setPrefs({ contentType: v as ContentType });
-                    setUrlState({ type: v });
-                  }}
-                >
-                  <div className="mb-4 flex items-center justify-between border-b border-border pb-2">
-                    <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                      Content Type
-                    </span>
-                    <TabsList className="h-auto bg-transparent p-0">
-                      {contentTabs.map((tab) => (
-                        <TabsTrigger
-                          key={tab}
-                          value={tab}
-                          className="rounded-none border-b-2 border-transparent px-2 py-1 text-[10px] font-bold uppercase tracking-wider shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
-                        >
-                          {tab}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </div>
-                </Tabs>
+      <output aria-live="polite" className="sr-only">
+        {status}
+      </output>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+        {/* Configure */}
+        <div className="space-y-6 lg:col-span-7">
+          <section className="wb-panel">
+            <Tabs
+              value={activeContentType}
+              onValueChange={(v) => {
+                setPrefs({ contentType: v as ContentType });
+                setUrlState({ type: v });
+              }}
+            >
+              <PaneHeader
+                label="Content"
+                trailing={
+                  <TabsList className="flex h-auto gap-1 bg-transparent p-0">
+                    {contentTabs.map((tab) => (
+                      <TabsTrigger key={tab} value={tab} className={tabTriggerCls}>
+                        {tab}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                }
+              />
 
+              <div className="space-y-5 p-5 sm:p-6">
                 {(activeContentType === "URL" || activeContentType === "Text") && (
                   <div key={activeContentType} className="wb-fade-in relative">
                     <Input
@@ -254,24 +280,18 @@ export default function QrGeneratorRoute() {
                           ? "https://yourlink.com"
                           : "Enter text content..."
                       }
-                      className="h-14 pr-12 text-lg"
+                      className="h-12 pr-11 text-base"
                     />
-                    <div className="absolute top-1/2 right-4 -translate-y-1/2 text-muted-foreground">
-                      {(() => {
-                        const IconComp = contentIcons[activeContentType];
-                        return <IconComp className="h-5 w-5" />;
-                      })()}
+                    <div className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-ink-3">
+                      <ContentIcon className="h-5 w-5" />
                     </div>
                   </div>
                 )}
 
                 {activeContentType === "WiFi" && (
-                  <div className="wb-fade-in grid grid-cols-2 gap-4">
+                  <div key="wifi" className="wb-fade-in grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label
-                        htmlFor="qr-generator-network-ssid"
-                        className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
-                      >
+                      <Label htmlFor="qr-generator-network-ssid" className={metaLabelCls}>
                         Network SSID
                       </Label>
                       <Input
@@ -283,10 +303,7 @@ export default function QrGeneratorRoute() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label
-                        htmlFor="qr-generator-network-password"
-                        className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
-                      >
+                      <Label htmlFor="qr-generator-network-password" className={metaLabelCls}>
                         Password
                       </Label>
                       <Input
@@ -301,12 +318,9 @@ export default function QrGeneratorRoute() {
                 )}
 
                 {activeContentType === "vCard" && (
-                  <div className="wb-fade-in grid grid-cols-2 gap-4">
+                  <div key="vcard" className="wb-fade-in grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label
-                        htmlFor="qr-generator-full-name"
-                        className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
-                      >
+                      <Label htmlFor="qr-generator-full-name" className={metaLabelCls}>
                         Full Name
                       </Label>
                       <Input
@@ -318,10 +332,7 @@ export default function QrGeneratorRoute() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label
-                        htmlFor="qr-generator-organization"
-                        className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
-                      >
+                      <Label htmlFor="qr-generator-organization" className={metaLabelCls}>
                         Organization
                       </Label>
                       <Input
@@ -335,258 +346,215 @@ export default function QrGeneratorRoute() {
                   </div>
                 )}
               </div>
+            </Tabs>
 
-              <div className="grid grid-cols-1 gap-6 border-t border-border pt-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Size
-                  </Label>
-                  <Select
-                    value={String(prefs.size)}
-                    onValueChange={(v) => setPrefs({ size: Number(v) })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="256">256 x 256 px</SelectItem>
-                      <SelectItem value="512">512 x 512 px</SelectItem>
-                      <SelectItem value="1024">1024 x 1024 px</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Correction
-                  </Label>
-                  <Select
-                    value={prefs.errorCorrection}
-                    onValueChange={(v) => setPrefs({ errorCorrection: v as "L" | "M" | "Q" | "H" })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="L">Low (7%)</SelectItem>
-                      <SelectItem value="M">Medium (15%)</SelectItem>
-                      <SelectItem value="Q">High (25%)</SelectItem>
-                      <SelectItem value="H">Ultra (30%)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Format
-                  </span>
-                  <Tabs
-                    value={prefs.format}
-                    onValueChange={(v) => setPrefs({ format: v as "SVG" | "PNG" })}
-                  >
-                    <TabsList className="w-full">
-                      {formatTabs.map((tab) => (
-                        <TabsTrigger key={tab} value={tab} className="flex-1 text-xs font-bold">
-                          {tab}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6 border-t border-border pt-6 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="qr-generator-foreground"
-                    className="text-xs font-bold uppercase tracking-widest text-muted-foreground"
-                  >
-                    Foreground
-                  </Label>
-                  <div
-                    className={`flex items-center gap-2 rounded-md border bg-background p-2 ${
-                      !isValidHexColor(prefs.foregroundColor)
-                        ? "border-destructive ring-2 ring-destructive/50"
-                        : "border-input"
-                    }`}
-                  >
-                    <input
-                      ref={fgPickerRef}
-                      type="color"
-                      value={
-                        isValidHexColor(prefs.foregroundColor) ? prefs.foregroundColor : "#1f1a14"
-                      }
-                      onChange={(e) => handleForegroundChange(e.target.value.toUpperCase())}
-                      className="sr-only"
-                      aria-hidden="true"
-                      tabIndex={-1}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fgPickerRef.current?.click()}
-                      className="size-6 shrink-0 rounded-sm border border-input"
-                      style={{
-                        backgroundColor: isValidHexColor(prefs.foregroundColor)
-                          ? prefs.foregroundColor
-                          : "#1f1a14",
-                      }}
-                      aria-label="Pick foreground color"
-                    />
-                    <input
-                      id="qr-generator-foreground"
-                      type="text"
-                      value={prefs.foregroundColor}
-                      onChange={(e) => handleForegroundChange(e.target.value)}
-                      className="w-full border-none bg-transparent p-0 font-mono text-sm outline-none focus:ring-0"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="qr-generator-background"
-                    className="text-xs font-bold uppercase tracking-widest text-muted-foreground"
-                  >
-                    Background
-                  </Label>
-                  <div
-                    className={`flex items-center gap-2 rounded-md border bg-background p-2 ${
-                      !isValidHexColor(prefs.backgroundColor)
-                        ? "border-destructive ring-2 ring-destructive/50"
-                        : "border-input"
-                    }`}
-                  >
-                    <input
-                      ref={bgPickerRef}
-                      type="color"
-                      value={
-                        isValidHexColor(prefs.backgroundColor) ? prefs.backgroundColor : "#fff7ec"
-                      }
-                      onChange={(e) => handleBackgroundChange(e.target.value.toUpperCase())}
-                      className="sr-only"
-                      aria-hidden="true"
-                      tabIndex={-1}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => bgPickerRef.current?.click()}
-                      className="size-6 shrink-0 rounded-sm border border-input"
-                      style={{
-                        backgroundColor: isValidHexColor(prefs.backgroundColor)
-                          ? prefs.backgroundColor
-                          : "#fff7ec",
-                      }}
-                      aria-label="Pick background color"
-                    />
-                    <input
-                      id="qr-generator-background"
-                      type="text"
-                      value={prefs.backgroundColor}
-                      onChange={(e) => handleBackgroundChange(e.target.value)}
-                      className="w-full border-none bg-transparent p-0 font-mono text-sm outline-none focus:ring-0"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="qr-generator-quiet-zone"
-                    className="text-xs font-bold uppercase tracking-widest text-muted-foreground"
-                  >
-                    Quiet Zone
-                  </Label>
-                  <div className="flex h-10.5 items-center gap-4">
-                    <Slider
-                      id="qr-generator-quiet-zone"
-                      min={0}
-                      max={10}
-                      step={1}
-                      value={[prefs.quietZone]}
-                      onValueChange={([v]) => setPrefs({ quietZone: v })}
-                      className="flex-1"
-                    />
-                    <span className="font-mono text-xs font-bold text-muted-foreground">
-                      {prefs.quietZone}px
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-6">
-                <Button
-                  className="group w-full py-4 font-bold"
-                  size="lg"
-                  disabled={!qrOutput}
-                  onClick={handleDownload}
+            {/* Size · Correction · Format */}
+            <div className="grid grid-cols-1 gap-5 border-t-2 border-ink p-5 sm:p-6 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="qr-generator-size" className={metaLabelCls}>
+                  Size
+                </Label>
+                <Select
+                  value={String(prefs.size)}
+                  onValueChange={(v) => setPrefs({ size: Number(v) })}
                 >
-                  Download {prefs.format}
-                  <Download className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
-                  <KbdHint>⌘S</KbdHint>
-                </Button>
+                  <SelectTrigger id="qr-generator-size">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="256">256 × 256 px</SelectItem>
+                    <SelectItem value="512">512 × 512 px</SelectItem>
+                    <SelectItem value="1024">1024 × 1024 px</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
+
+              <div className="space-y-2">
+                <Label htmlFor="qr-generator-correction" className={metaLabelCls}>
+                  Correction
+                </Label>
+                <Select
+                  value={prefs.errorCorrection}
+                  onValueChange={(v) => setPrefs({ errorCorrection: v as "L" | "M" | "Q" | "H" })}
+                >
+                  <SelectTrigger id="qr-generator-correction">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="L">Low · 7%</SelectItem>
+                    <SelectItem value="M">Medium · 15%</SelectItem>
+                    <SelectItem value="Q">High · 25%</SelectItem>
+                    <SelectItem value="H">Ultra · 30%</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <span className={metaLabelCls}>Format</span>
+                <Tabs
+                  value={prefs.format}
+                  onValueChange={(v) => setPrefs({ format: v as "SVG" | "PNG" })}
+                >
+                  <TabsList className="flex h-auto w-full gap-1 bg-transparent p-0">
+                    {formatTabs.map((tab) => (
+                      <TabsTrigger key={tab} value={tab} className={cn(tabTriggerCls, "flex-1")}>
+                        {tab}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              </div>
+            </div>
+
+            {/* Foreground · Background · Quiet zone */}
+            <div className="grid grid-cols-1 gap-5 border-t-2 border-ink p-5 sm:p-6 md:grid-cols-3">
+              <ColorField
+                id="qr-generator-foreground"
+                label="Foreground"
+                value={prefs.foregroundColor}
+                fallback="#1f1a14"
+                onChange={handleForegroundChange}
+                pickerRef={fgPickerRef}
+                ariaLabel="Pick foreground color"
+              />
+              <ColorField
+                id="qr-generator-background"
+                label="Background"
+                value={prefs.backgroundColor}
+                fallback="#fff7ec"
+                onChange={handleBackgroundChange}
+                pickerRef={bgPickerRef}
+                ariaLabel="Pick background color"
+              />
+
+              <div className="space-y-2">
+                <Label htmlFor="qr-generator-quiet-zone" className={metaLabelCls}>
+                  Quiet zone
+                </Label>
+                <div className="flex h-10 items-center gap-4">
+                  <Slider
+                    id="qr-generator-quiet-zone"
+                    min={0}
+                    max={10}
+                    step={1}
+                    value={[prefs.quietZone]}
+                    onValueChange={([v]) => setPrefs({ quietZone: v })}
+                    className="flex-1"
+                  />
+                  <span
+                    key={prefs.quietZone}
+                    className="wb-fade-in wb-mono-sm w-10 shrink-0 text-right font-semibold tabular-nums text-ink"
+                  >
+                    {prefs.quietZone}px
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Download */}
+            <div className="border-t-2 border-ink p-5 sm:p-6">
+              <button
+                type="button"
+                className="wb-btn group w-full justify-center"
+                disabled={!qrOutput}
+                onClick={handleDownload}
+              >
+                Download {prefs.format}
+                <Download
+                  className="h-4 w-4 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-y-0.5"
+                  aria-hidden="true"
+                />
+                <KbdHint>⌘S</KbdHint>
+              </button>
+            </div>
+          </section>
         </div>
 
-        <div className="flex flex-col items-center justify-center lg:col-span-5">
-          <Card className="group relative w-full max-w-sm overflow-hidden p-4 shadow-pop-3 sm:p-8">
-            <div className="absolute inset-0 bg-primary/5 opacity-0 transition-opacity group-hover:opacity-100" />
+        {/* Preview */}
+        <aside aria-label="Live QR preview" className="lg:col-span-5">
+          <div className="lg:sticky lg:top-24">
+            <section className="wb-panel wb-panel--out">
+              <PaneHeader
+                label="Live preview"
+                className="bg-paper-2"
+                trailing={
+                  <span
+                    key={qrError ? "err" : "ok"}
+                    className={cn(
+                      "wb-fade-in inline-flex items-center gap-1.5 rounded-md border-2 border-ink px-2 py-0.5",
+                      "font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink",
+                      qrError ? "bg-tomato" : "bg-mint",
+                    )}
+                  >
+                    {!qrError && <span className="size-1.5 rounded-full bg-grass" aria-hidden />}
+                    {qrError ? "ERROR" : "ACTIVE SYNC"}
+                  </span>
+                }
+              />
 
-            <div className="relative z-10 flex flex-col items-center">
-              <p className="mb-6 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-                Real-Time Preview
-              </p>
-
-              <div
-                ref={previewRef}
-                className="relative flex aspect-square w-full items-center justify-center rounded-lg border-4 border-muted bg-muted p-6"
-              >
-                <div className="flex h-full w-full items-center justify-center overflow-hidden rounded bg-paper p-2">
-                  {qrError ? (
-                    <p className="px-4 text-center text-sm text-destructive">{qrError}</p>
-                  ) : qrOutput && prefs.format === "SVG" ? (
-                    <div
-                      className="h-full w-full [&>svg]:h-full [&>svg]:w-full"
-                      // biome-ignore lint/security/noDangerouslySetInnerHtml: SVG output from qrcode library is trusted
-                      dangerouslySetInnerHTML={{ __html: qrOutput }}
-                    />
-                  ) : qrOutput && prefs.format === "PNG" ? (
-                    <img
-                      src={qrOutput}
-                      alt="Generated QR code"
-                      className="h-full w-full object-contain"
-                    />
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Enter content to generate QR code
-                    </p>
-                  )}
-                </div>
-
+              <div className="space-y-6 p-5 sm:p-8">
                 <div
-                  className={`absolute -bottom-3 rounded-full border-2 border-ink px-3 py-1 text-[10px] font-bold text-paper shadow-pop-1 ${
-                    qrError ? "bg-tomato" : "bg-grass"
-                  }`}
+                  ref={previewRef}
+                  className="relative rounded-lg border-2 border-ink bg-paper p-5"
                 >
-                  {qrError ? "ERROR" : "ACTIVE SYNC"}
+                  <div
+                    key={`${prefs.format}|${qrError ? "err" : qrOutput ? "ok" : "empty"}`}
+                    className="wb-fade-in flex aspect-square items-center justify-center"
+                  >
+                    {qrError ? (
+                      <div
+                        role="alert"
+                        className="flex max-w-xs flex-col items-center gap-3 px-4 text-center"
+                      >
+                        <CircleAlert
+                          className="size-7 text-tomato"
+                          strokeWidth={2}
+                          aria-hidden="true"
+                        />
+                        <p className="font-mono text-[13px] leading-relaxed text-ink">{qrError}</p>
+                      </div>
+                    ) : qrOutput && prefs.format === "SVG" ? (
+                      <div
+                        className="size-full [&>svg]:size-full"
+                        // biome-ignore lint/security/noDangerouslySetInnerHtml: SVG output from qrcode library is trusted
+                        dangerouslySetInnerHTML={{ __html: qrOutput }}
+                      />
+                    ) : qrOutput && prefs.format === "PNG" ? (
+                      <img
+                        src={qrOutput}
+                        alt="Generated QR code"
+                        className="size-full object-contain"
+                      />
+                    ) : (
+                      <p className="px-6 text-center text-sm text-ink-3">
+                        Enter content to generate QR code
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="mt-8 space-y-2 text-center">
-                <p className="max-w-50 truncate text-sm font-semibold">
-                  {currentPayload || "No content"}
-                </p>
-                <div className="flex justify-center gap-2">
+                <div className="flex justify-center">
+                  <span
+                    className="inline-flex max-w-full items-center rounded-md border-2 border-ink bg-paper px-3 py-1 shadow-pop-1"
+                    title={currentPayload || "No content"}
+                  >
+                    <span className="block max-w-[260px] truncate font-mono text-[12px] font-medium text-ink-2">
+                      {currentPayload || "No content"}
+                    </span>
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-center gap-1">
                   {canShare && (
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={handleShare}
                       disabled={!qrOutput}
-                      className="rounded-full"
+                      className="size-11 rounded-full text-ink-3 hover:bg-paper hover:text-ink sm:size-10"
                       aria-label="Share QR code"
                     >
-                      <Share2 className="h-4 w-4 text-muted-foreground" />
+                      <Share2 className="h-4 w-4" />
                     </Button>
                   )}
                   <Button
@@ -594,14 +562,14 @@ export default function QrGeneratorRoute() {
                     size="icon"
                     onClick={handleCopy}
                     disabled={!qrOutput}
-                    className="rounded-full"
+                    className="size-11 rounded-full text-ink-3 hover:bg-paper hover:text-ink sm:size-10"
                     aria-label="Copy QR code"
                   >
                     <IconSwap swapKey={copied}>
                       {copied ? (
-                        <Check className="h-4 w-4 text-muted-foreground" />
+                        <Check className="h-4 w-4 text-ink" />
                       ) : (
-                        <Copy className="h-4 w-4 text-muted-foreground" />
+                        <Copy className="h-4 w-4" />
                       )}
                     </IconSwap>
                   </Button>
@@ -611,35 +579,87 @@ export default function QrGeneratorRoute() {
                       size="icon"
                       onClick={handleFullscreen}
                       disabled={!qrOutput}
-                      className="rounded-full"
+                      className="size-11 rounded-full text-ink-3 hover:bg-paper hover:text-ink sm:size-10"
                       aria-label="Fullscreen preview"
                     >
-                      <Maximize className="h-4 w-4 text-muted-foreground" />
+                      <Maximize className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
               </div>
-            </div>
-          </Card>
-
-          <div className="mt-8 flex flex-col items-center gap-2">
-            <div className="flex -space-x-2">
-              {trustedAvatars.map((avatar) => (
-                <div
-                  key={avatar}
-                  className={`size-8 rounded-full border-2 border-background ${avatar}`}
-                />
-              ))}
-              <div className="flex size-8 items-center justify-center rounded-full border-2 border-background bg-primary text-[10px] leading-none font-bold text-primary-foreground">
-                +12k
-              </div>
-            </div>
-            <p className="text-xs font-medium text-muted-foreground">
-              Trusted by creators worldwide
-            </p>
+            </section>
           </div>
-        </div>
+        </aside>
       </div>
     </ToolShell>
+  );
+}
+
+interface ColorFieldProps {
+  id: string;
+  label: string;
+  value: string;
+  fallback: string;
+  onChange: (value: string) => void;
+  pickerRef: React.RefObject<HTMLInputElement | null>;
+  ariaLabel: string;
+}
+
+function ColorField({
+  id,
+  label,
+  value,
+  fallback,
+  onChange,
+  pickerRef,
+  ariaLabel,
+}: ColorFieldProps) {
+  const valid = isValidHexColor(value);
+  const swatchColor = valid ? value : fallback;
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id} className={metaLabelCls}>
+        {label}
+      </Label>
+      <div
+        className={cn(
+          "flex min-h-11 items-center gap-2 rounded-md border-2 bg-paper px-2.5 py-1.5 transition-colors sm:min-h-0",
+          "focus-within:ring-2 focus-within:ring-tomato focus-within:ring-offset-2 focus-within:ring-offset-paper",
+          valid ? "border-ink" : "border-destructive ring-2 ring-destructive/50",
+        )}
+      >
+        <input
+          ref={pickerRef}
+          type="color"
+          value={swatchColor}
+          onChange={(e) => onChange(e.target.value.toUpperCase())}
+          className="sr-only"
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+        <button
+          type="button"
+          onClick={() => pickerRef.current?.click()}
+          className="grid size-11 shrink-0 place-items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:size-7"
+          aria-label={ariaLabel}
+        >
+          <span
+            className="size-6 rounded-sm border-2 border-ink transition-transform hover:scale-105"
+            style={{ backgroundColor: swatchColor }}
+            aria-hidden="true"
+          />
+        </button>
+        <input
+          id={id}
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          spellCheck={false}
+          autoCorrect="off"
+          autoCapitalize="characters"
+          className="w-full border-none bg-transparent p-0 font-mono text-sm uppercase text-ink outline-none focus:ring-0 placeholder:text-ink-3"
+        />
+      </div>
+    </div>
   );
 }
