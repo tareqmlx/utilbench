@@ -6,11 +6,26 @@ interface CodePreviewProps {
   className?: string;
   emptyHint?: string;
   isEmpty?: boolean;
+  "aria-labelledby"?: string;
+  "aria-label"?: string;
 }
 
-export function CodePreview({ children, className, emptyHint, isEmpty }: CodePreviewProps) {
+export function CodePreview({
+  children,
+  className,
+  emptyHint,
+  isEmpty,
+  "aria-labelledby": ariaLabelledBy,
+  "aria-label": ariaLabel,
+}: CodePreviewProps) {
+  const regionProps =
+    ariaLabelledBy || ariaLabel
+      ? { role: "region" as const, "aria-labelledby": ariaLabelledBy, "aria-label": ariaLabel }
+      : {};
+
   return (
     <div
+      {...regionProps}
       className={cn(
         "relative overflow-auto rounded-lg border-2 border-ink bg-ink p-5 shadow-pop-3",
         className,

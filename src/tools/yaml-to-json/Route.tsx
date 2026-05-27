@@ -1,11 +1,12 @@
 import { Check, ClipboardPaste, Copy, Download, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { IconSwap } from "../../components/IconSwap";
 import { KbdHint } from "../../components/KbdHint";
 import {
   CodePreview,
   ErrorAlert,
   PaneHeader,
+  StatusBadge,
   ToolShell,
   TwoPane,
 } from "../../components/tool-layout";
@@ -19,14 +20,22 @@ import { useToolPreferences } from "../../hooks/useToolPreferences";
 import { SAMPLE_YAML, convertYamlToJson } from "./yaml";
 
 const DEFAULT_PREFS = { prettyPrint: true };
+const ERROR_ID = "yaml-error";
+const OUTPUT_LABEL_ID = "yaml-output-label";
 
 export default function YamlToJsonRoute() {
   const [input, setInput] = useState("");
-  const [output, setOutput] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const deferredInput = useDeferredValue(input);
   const [prefs, setPrefs] = useToolPreferences("yaml-to-json", DEFAULT_PREFS);
   const { copied, copy } = useClipboard();
   const [downloaded, setDownloaded] = useState(false);
+  const [status, setStatus] = useState("");
+  const prevOutputRef = useRef("");
+
+  const { output, error } = useMemo(() => {
+    const r = convertYamlToJson(deferredInput, prefs.prettyPrint);
+    return { output: r.result, error: r.error };
+  }, [deferredInput, prefs.prettyPrint]);
 
   useEffect(() => {
     if (!downloaded) return;
@@ -34,42 +43,38 @@ export default function YamlToJsonRoute() {
     return () => clearTimeout(t);
   }, [downloaded]);
 
-  const runConversion = useCallback((value: string, pretty: boolean) => {
-    if (!value) {
-      setOutput("");
-      setError(null);
-      return;
-    }
-    const { result, error: convError } = convertYamlToJson(value, pretty);
-    setOutput(result);
-    setError(convError);
-  }, []);
+  useEffect(() => {
+    if (error) return;
+    const wasEmpty = prevOutputRef.current === "";
+    const isEmpty = output === "";
+    if (wasEmpty && !isEmpty) setStatus("YAML converted to JSON.");
+    else if (!wasEmpty && isEmpty) setStatus("Output cleared.");
+    prevOutputRef.current = output;
+  }, [output, error]);
 
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const value = e.target.value;
-      setInput(value);
-      runConversion(value, prefs.prettyPrint);
-    },
-    [prefs.prettyPrint, runConversion],
-  );
+  useEffect(() => {
+    if (copied) setStatus("JSON copied to clipboard.");
+  }, [copied]);
+
+  useEffect(() => {
+    if (downloaded) setStatus("JSON downloaded as output.json.");
+  }, [downloaded]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+  }, []);
 
   const handlePasteExample = useCallback(() => {
     setInput(SAMPLE_YAML);
-    runConversion(SAMPLE_YAML, prefs.prettyPrint);
-  }, [prefs.prettyPrint, runConversion]);
+  }, []);
 
   const handleClear = useCallback(() => {
     setInput("");
-    setOutput("");
-    setError(null);
   }, []);
 
   const handlePrettyPrintToggle = useCallback(() => {
-    const next = !prefs.prettyPrint;
-    setPrefs({ prettyPrint: next });
-    runConversion(input, next);
-  }, [prefs.prettyPrint, input, setPrefs, runConversion]);
+    setPrefs({ prettyPrint: !prefs.prettyPrint });
+  }, [prefs.prettyPrint, setPrefs]);
 
   const handleCopy = useCallback(() => {
     copy(output);
@@ -96,15 +101,18 @@ export default function YamlToJsonRoute() {
     ),
   );
 
-  const inputRingClass =
-    input.trim() === ""
-      ? ""
-      : error !== null
-        ? "ring-2 ring-tomato/60 border-transparent"
-        : "ring-2 ring-grass/60 border-transparent";
+  const hasInput = input.trim() !== "";
+  const inputRingClass = !hasInput
+    ? ""
+    : error !== null
+      ? "ring-2 ring-tomato/60 border-transparent"
+      : "ring-2 ring-grass/60 border-transparent";
 
   return (
     <ToolShell>
+      <output aria-live="polite" className="sr-only">
+        {status}
+      </output>
       <TwoPane
         className="items-start"
         left={
@@ -112,15 +120,29 @@ export default function YamlToJsonRoute() {
             <PaneHeader
               label="YAML Input"
               htmlFor="yaml-input"
+              trailing={
+                hasInput ? (
+                  <StatusBadge
+                    tone={error !== null ? "invalid" : "valid"}
+                    label={error !== null ? "Error" : "Valid"}
+                  />
+                ) : null
+              }
               actions={
                 <>
-                  <Button variant="outline" size="sm" onClick={handlePasteExample}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-11 px-4 sm:h-9 sm:px-3"
+                    onClick={handlePasteExample}
+                  >
                     <ClipboardPaste className="size-4" />
                     Paste example
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
+                    className="h-11 px-4 sm:h-9 sm:px-3"
                     onClick={handleClear}
                     aria-label="Clear input"
                   >
@@ -133,6 +155,8 @@ export default function YamlToJsonRoute() {
             />
             <Textarea
               id="yaml-input"
+              aria-invalid={error !== null}
+              aria-describedby={error !== null ? ERROR_ID : undefined}
               className={`min-h-[400px] sm:min-h-[500px] resize-none font-mono text-sm leading-relaxed transition-[box-shadow,border-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${inputRingClass}`}
               placeholder={`---
 # Enter your YAML here
@@ -151,6 +175,7 @@ features:
           <div className="flex flex-col gap-3">
             <PaneHeader
               label="JSON Output"
+              labelId={OUTPUT_LABEL_ID}
               actions={
                 <>
                   <div className="mr-1 flex items-center gap-2">
@@ -163,14 +188,26 @@ features:
                       Pretty print
                     </Label>
                   </div>
-                  <Button variant="outline" size="sm" disabled={!output} onClick={handleCopy}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-11 px-4 sm:h-9 sm:px-3"
+                    disabled={!output}
+                    onClick={handleCopy}
+                  >
                     <IconSwap swapKey={copied}>
                       {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
                       {copied ? "Copied!" : "Copy"}
                     </IconSwap>
                     <KbdHint>⌘⇧C</KbdHint>
                   </Button>
-                  <Button variant="outline" size="sm" disabled={!output} onClick={handleDownload}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-11 px-4 sm:h-9 sm:px-3"
+                    disabled={!output}
+                    onClick={handleDownload}
+                  >
                     <IconSwap swapKey={downloaded}>
                       {downloaded ? <Check className="size-4" /> : <Download className="size-4" />}
                       {downloaded ? "Saved!" : "Download"}
@@ -181,7 +218,8 @@ features:
             />
             <CodePreview
               isEmpty={!output}
-              emptyHint="Waiting for input — paste YAML or hit Paste example."
+              emptyHint="Waiting for input. Paste YAML, or hit Paste example."
+              aria-labelledby={OUTPUT_LABEL_ID}
               className="min-h-[400px] sm:min-h-[500px]"
             >
               <code
@@ -195,7 +233,7 @@ features:
         }
       />
 
-      <ErrorAlert error={error} />
+      <ErrorAlert error={error} id={ERROR_ID} />
     </ToolShell>
   );
 }

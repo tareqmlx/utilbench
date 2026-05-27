@@ -22,21 +22,22 @@ export const tool: ToolDefinition = {
   route: () => import("./Route"),
   features: [
     {
-      icon: "Zap",
-      title: "Instant Conversion",
-      description:
-        "High-performance parser handles complex YAML structures in milliseconds right in your browser tab.",
-    },
-    {
       icon: "FileText",
-      title: "YAML 1.2 Compliant",
-      description: "Full spec support for anchors, aliases, and complex nested structures.",
+      title: "Anchors and aliases",
+      description:
+        "Multi-doc splits, complex nesting, comments. Whatever's in your kubernetes manifest, parsed against the YAML 1.2 spec.",
     },
     {
-      icon: "Code",
-      title: "Developer Friendly",
+      icon: "Lock",
+      title: "Nothing leaves the tab",
       description:
-        "Supports YAML 1.2 specifications and outputs clean, formatted JSON compliant with modern standards.",
+        "No upload, no round-trip, no log line. Paste a secret-laden config and close the tab; the bytes never see a server.",
+    },
+    {
+      icon: "SlidersHorizontal",
+      title: "Pretty or one-line",
+      description:
+        "Toggle two-space indent for reading or compact for shipping. Copy to clipboard, or save as output.json.",
     },
   ],
 };

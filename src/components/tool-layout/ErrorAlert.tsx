@@ -5,15 +5,17 @@ interface ErrorAlertProps {
   error: string | null;
   className?: string;
   testId?: string;
+  id?: string;
   onDismiss?: () => void;
 }
 
-export function ErrorAlert({ error, className, testId, onDismiss }: ErrorAlertProps) {
+export function ErrorAlert({ error, className, testId, id, onDismiss }: ErrorAlertProps) {
   if (error === null) return null;
 
   return (
     <div
       role="alert"
+      id={id}
       className={cn(
         "wb-fade-in mt-4 flex items-start gap-3 rounded-[14px] border-2 border-ink bg-paper px-4 py-3 shadow-pop-cta",
         className,
