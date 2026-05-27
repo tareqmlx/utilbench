@@ -173,8 +173,8 @@ export default function CaseConverterRoute() {
             trailing={
               outputMeta ? (
                 <span
-                  key={outputMeta}
-                  className="font-mono text-[11px] tabular-nums text-ink-3"
+                  key={activeCase ?? "none"}
+                  className="wb-fade-in font-mono text-[11px] tabular-nums text-ink-3"
                   aria-hidden="true"
                 >
                   {outputMeta}
@@ -198,8 +198,9 @@ export default function CaseConverterRoute() {
             }
           />
           <Textarea
+            key={activeCase ?? "none"}
             id="case-output"
-            className="min-h-[200px] w-full cursor-default resize-y bg-paper-2 p-5 text-[15px] leading-relaxed"
+            className="wb-fade-in min-h-[200px] w-full cursor-default resize-y bg-paper-2 p-5 text-[15px] leading-relaxed"
             placeholder={
               activeCase
                 ? "Result will appear here as you type."
