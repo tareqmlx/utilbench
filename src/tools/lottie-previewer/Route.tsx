@@ -1,6 +1,7 @@
 import lottie from "lottie-web";
 import type { AnimationItem } from "lottie-web";
 import {
+  Check,
   Code,
   Download,
   ImageIcon,
@@ -52,7 +53,14 @@ export default function LottiePreviewerRoute() {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [frameExported, setFrameExported] = useState(false);
   const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    if (!frameExported) return;
+    const t = setTimeout(() => setFrameExported(false), 1500);
+    return () => clearTimeout(t);
+  }, [frameExported]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -233,6 +241,7 @@ export default function LottiePreviewerRoute() {
     try {
       const blob = await exportFrameAsPng(svg as SVGSVGElement, metadata.width, metadata.height);
       downloadBlob(blob, "lottie-frame.png");
+      setFrameExported(true);
       setStatus("Frame exported as lottie-frame.png.");
     } catch {
       const message = "Failed to export frame as PNG.";
@@ -330,7 +339,7 @@ export default function LottiePreviewerRoute() {
         <div className="space-y-6 lg:col-span-8">
           {/* Upload / File info */}
           {hasFile ? (
-            <div className="flex items-center gap-4 rounded-lg border-2 border-ink bg-paper-2 px-5 py-4 shadow-pop-3">
+            <div className="wb-fade-in flex items-center gap-4 rounded-lg border-2 border-ink bg-paper-2 px-5 py-4 shadow-pop-3">
               <div className="grid size-10 shrink-0 place-items-center rounded-md border-2 border-ink bg-mint">
                 <Play className="size-5 text-ink" />
               </div>
@@ -360,7 +369,7 @@ export default function LottiePreviewerRoute() {
           ) : (
             <button
               type="button"
-              className={`group flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center transition-colors sm:p-12 ${
+              className={`group flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center transition-colors duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] sm:p-12 ${
                 isDragging ? "border-tomato bg-lemon/40" : "border-ink bg-paper-2 hover:bg-lemon/30"
               }`}
               onDragOver={handleDragOver}
@@ -368,7 +377,10 @@ export default function LottiePreviewerRoute() {
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
             >
-              <div className="mb-5 grid size-16 place-items-center rounded-md border-2 border-ink bg-pink shadow-pop-2 transition-transform group-hover:-translate-y-0.5">
+              <div
+                data-dragging={isDragging}
+                className="wb-svg-drop-icon mb-5 grid size-16 place-items-center rounded-md border-2 border-ink bg-pink shadow-pop-2"
+              >
                 <Upload className="size-7 text-ink" />
               </div>
               <span className="wb-h3 mb-2 block">Drag your animation here</span>
@@ -474,7 +486,9 @@ export default function LottiePreviewerRoute() {
                     disabled={!hasFile}
                     aria-label={isPlaying ? "Pause" : "Play"}
                   >
-                    {isPlaying ? <Pause className="size-5" /> : <Play className="size-5" />}
+                    <IconSwap swapKey={isPlaying}>
+                      {isPlaying ? <Pause className="size-5" /> : <Play className="size-5" />}
+                    </IconSwap>
                   </Button>
                   <Button
                     variant="ghost"
@@ -555,7 +569,13 @@ export default function LottiePreviewerRoute() {
                     onClick={handleExportFrame}
                     disabled={!hasFile}
                   >
-                    <ImageIcon className="size-5" />
+                    <IconSwap swapKey={frameExported}>
+                      {frameExported ? (
+                        <Check className="size-5 text-ink" />
+                      ) : (
+                        <ImageIcon className="size-5" />
+                      )}
+                    </IconSwap>
                   </Button>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -638,10 +658,11 @@ export default function LottiePreviewerRoute() {
             <h4 className="wb-meta mb-5">Features found</h4>
             {features.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {features.map((f) => (
+                {features.map((f, idx) => (
                   <span
                     key={f.tag}
-                    className={`inline-flex items-center rounded-md border-2 border-ink px-2.5 py-1 text-[11px] font-semibold tracking-[0.04em] ${
+                    style={{ animationDelay: `${idx * 40}ms` }}
+                    className={`wb-item-enter inline-flex items-center rounded-md border-2 border-ink px-2.5 py-1 text-[11px] font-semibold tracking-[0.04em] ${
                       f.level === "warning" ? "bg-lemon" : "bg-mint"
                     } text-ink`}
                   >
