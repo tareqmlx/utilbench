@@ -1,6 +1,7 @@
 import { Cron } from "croner";
 import cronstrue from "cronstrue";
 import { Calendar, Check, Clock, Copy } from "lucide-react";
+import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IconSwap } from "../../components/IconSwap";
 import { KbdHint } from "../../components/KbdHint";
@@ -125,6 +126,7 @@ export default function CronParserRoute() {
 
   const activePreset = PRESET_ENTRIES.find(([, v]) => v === expression)?.[0] ?? null;
   const trimmed = expression.trim();
+  const runsKey = nextRuns.length > 0 ? (nextRuns[0]?.toISOString() ?? "empty") : "empty";
 
   const statusTone: StatusTone = !trimmed ? "neutral" : error !== null ? "invalid" : "valid";
   const statusLabel = !trimmed ? "Empty" : error !== null ? "Error" : "Valid";
@@ -253,7 +255,10 @@ export default function CronParserRoute() {
                     </p>
                   </div>
                 ) : (
-                  <div className="rounded-lg border-2 border-dashed border-ink/30 bg-paper-2/60 p-5">
+                  <div
+                    key="placeholder"
+                    className="wb-fade-in rounded-lg border-2 border-dashed border-ink/30 bg-paper-2/60 p-5"
+                  >
                     <p className="font-mono text-[13px] italic text-ink-3">
                       Enter an expression to see the breakdown.
                     </p>
@@ -306,7 +311,7 @@ export default function CronParserRoute() {
               }
             />
 
-            <div className="flex-1 space-y-2 p-5 sm:p-7">
+            <div key={runsKey} className="flex-1 space-y-2 p-5 sm:p-7">
               {nextRuns.length > 0 ? (
                 nextRuns.map((run, i) => {
                   const fmt = formatExecution(run);
@@ -314,7 +319,8 @@ export default function CronParserRoute() {
                   return (
                     <div
                       key={run.toISOString()}
-                      className={`flex items-center justify-between rounded-md border-2 border-ink px-4 py-3 transition-shadow duration-150 ${
+                      style={{ "--wb-row-delay": `${i * 40}ms` } as CSSProperties}
+                      className={`wb-diff-row flex items-center justify-between rounded-md border-2 border-ink px-4 py-3 transition-shadow duration-150 ${
                         first ? "bg-lemon shadow-pop-1" : "bg-paper-2"
                       }`}
                     >
@@ -337,7 +343,7 @@ export default function CronParserRoute() {
               ) : (
                 <div
                   data-testid="no-executions"
-                  className="rounded-md border-2 border-dashed border-ink/30 bg-paper-2/60 px-4 py-8 text-center"
+                  className="wb-fade-in rounded-md border-2 border-dashed border-ink/30 bg-paper-2/60 px-4 py-8 text-center"
                 >
                   <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
                     No upcoming executions
