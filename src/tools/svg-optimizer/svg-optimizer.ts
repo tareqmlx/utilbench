@@ -98,6 +98,13 @@ export function validateSvgContent(content: string): ValidationResult {
   return { valid: true };
 }
 
+export function quickValidateSvgContent(content: string): ValidationResult {
+  const trimmed = content.trim();
+  if (!trimmed) return { valid: false, error: "Empty file." };
+  if (!/<svg[\s>]/i.test(trimmed)) return { valid: false, error: "No <svg> element found." };
+  return { valid: true };
+}
+
 export function validateSvgFile(file: File): ValidationResult {
   const validTypes = ["image/svg+xml"];
   const validExtension = file.name.toLowerCase().endsWith(".svg");
