@@ -518,7 +518,7 @@ export default function ImageMetadataRemovalRoute() {
                 </div>
                 <button
                   type="button"
-                  className="wb-btn wb-btn--sm wb-btn--ghost"
+                  className="wb-btn wb-btn--sm wb-btn--ghost min-h-11 sm:min-h-0"
                   onClick={handleDownloadZip}
                 >
                   <Download className="size-3.5" aria-hidden="true" />
