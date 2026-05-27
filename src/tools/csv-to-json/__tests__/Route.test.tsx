@@ -38,6 +38,10 @@ describe("CsvToJsonRoute", () => {
     return screen.getByRole("code");
   }
 
+  function queryOutput() {
+    return screen.queryByRole("code");
+  }
+
   function setInput(value: string) {
     fireEvent.change(getInput(), { target: { value } });
   }
@@ -100,7 +104,7 @@ describe("CsvToJsonRoute", () => {
     fireEvent.click(screen.getByRole("button", { name: /Clear/ }));
 
     expect(getInput()).toHaveValue("");
-    expect(getOutput().textContent).toBe("");
+    expect(queryOutput()).toBeNull();
   });
 
   it("copies output to clipboard", () => {
@@ -134,7 +138,7 @@ describe("CsvToJsonRoute", () => {
   it("empty input clears output silently", () => {
     render(<CsvToJsonRoute />);
     setInput("");
-    expect(getOutput().textContent).toBe("");
+    expect(queryOutput()).toBeNull();
   });
 
   it("handles file drop", () => {
