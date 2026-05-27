@@ -1,5 +1,5 @@
 import { Check, ClipboardPaste, Copy, Download, Trash2 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { IconSwap } from "../../components/IconSwap";
 import { KbdHint } from "../../components/KbdHint";
 import {
@@ -26,6 +26,13 @@ export default function YamlToJsonRoute() {
   const [error, setError] = useState<string | null>(null);
   const [prefs, setPrefs] = useToolPreferences("yaml-to-json", DEFAULT_PREFS);
   const { copied, copy } = useClipboard();
+  const [downloaded, setDownloaded] = useState(false);
+
+  useEffect(() => {
+    if (!downloaded) return;
+    const t = setTimeout(() => setDownloaded(false), 1500);
+    return () => clearTimeout(t);
+  }, [downloaded]);
 
   const runConversion = useCallback((value: string, pretty: boolean) => {
     if (!value) {
@@ -76,6 +83,7 @@ export default function YamlToJsonRoute() {
     a.download = "output.json";
     a.click();
     URL.revokeObjectURL(url);
+    setDownloaded(true);
   }, [output]);
 
   useKeyboardShortcut(
@@ -125,7 +133,7 @@ export default function YamlToJsonRoute() {
             />
             <Textarea
               id="yaml-input"
-              className={`min-h-[400px] sm:min-h-[500px] resize-none font-mono text-sm leading-relaxed transition-all ${inputRingClass}`}
+              className={`min-h-[400px] sm:min-h-[500px] resize-none font-mono text-sm leading-relaxed transition-[box-shadow,border-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${inputRingClass}`}
               placeholder={`---
 # Enter your YAML here
 name: Utilbench Tool
@@ -163,8 +171,10 @@ features:
                     <KbdHint>⌘⇧C</KbdHint>
                   </Button>
                   <Button variant="outline" size="sm" disabled={!output} onClick={handleDownload}>
-                    <Download className="size-4" />
-                    Download
+                    <IconSwap swapKey={downloaded}>
+                      {downloaded ? <Check className="size-4" /> : <Download className="size-4" />}
+                      {downloaded ? "Saved!" : "Download"}
+                    </IconSwap>
                   </Button>
                 </>
               }
@@ -174,7 +184,12 @@ features:
               emptyHint="Waiting for input — paste YAML or hit Paste example."
               className="min-h-[400px] sm:min-h-[500px]"
             >
-              <code>{output}</code>
+              <code
+                key={prefs.prettyPrint ? "pretty" : "compact"}
+                className="block animate-in fade-in-0 duration-200"
+              >
+                {output}
+              </code>
             </CodePreview>
           </div>
         }
