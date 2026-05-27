@@ -92,8 +92,9 @@ export default function CaseConverterRoute() {
     useMemo(
       () => [
         { key: "c", meta: true, shift: true, handler: handleCopy, enabled: output.length > 0 },
+        { key: "x", meta: true, shift: true, handler: handleClear, enabled: input.length > 0 },
       ],
-      [handleCopy, output.length],
+      [handleCopy, handleClear, input.length, output.length],
     ),
   );
 
@@ -134,6 +135,7 @@ export default function CaseConverterRoute() {
               >
                 <Trash2 className="size-4" />
                 Clear
+                <KbdHint>⌘⇧X</KbdHint>
               </Button>
             }
           />
@@ -148,7 +150,8 @@ export default function CaseConverterRoute() {
 
         <section className="flex flex-col gap-3">
           <PaneHeader label="Convert To" />
-          <div className="flex flex-wrap gap-2" aria-label="Case conversion type">
+          <fieldset className="m-0 flex flex-wrap gap-2 border-0 p-0">
+            <legend className="sr-only">Case conversion type</legend>
             {CASE_OPTIONS.map(({ type, label }) => {
               const isActive = activeCase === type;
               return (
@@ -163,7 +166,7 @@ export default function CaseConverterRoute() {
                 </button>
               );
             })}
-          </div>
+          </fieldset>
         </section>
 
         <section className="flex flex-col gap-3">
@@ -203,8 +206,8 @@ export default function CaseConverterRoute() {
             className="wb-fade-in min-h-[200px] w-full cursor-default resize-y bg-paper-2 p-5 text-[15px] leading-relaxed"
             placeholder={
               activeCase
-                ? "Result will appear here as you type."
-                : "Pick a case above to see the result."
+                ? "Type on the left to see the result here."
+                : "Type, then pick a case above to see the result."
             }
             readOnly
             value={output}
@@ -215,6 +218,10 @@ export default function CaseConverterRoute() {
       <p className="mt-6 hidden items-center gap-3 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3 lg:flex">
         <span className="inline-flex items-center gap-1.5">
           <KbdHint>⌘⇧C</KbdHint> copy result
+        </span>
+        <span aria-hidden="true">·</span>
+        <span className="inline-flex items-center gap-1.5">
+          <KbdHint>⌘⇧X</KbdHint> clear input
         </span>
       </p>
     </ToolShell>
