@@ -203,7 +203,7 @@ function DiffLine({
       {prefix !== undefined && (
         <div
           className={`w-5 flex-none text-center font-mono text-sm font-bold select-none ${
-            tone === "added" ? "text-grass" : tone === "removed" ? "text-tomato" : "text-ink-3"
+            tone === "default" ? "text-ink-3" : "text-ink"
           }`}
         >
           {prefix}
@@ -296,10 +296,8 @@ function UnifiedView({ patch }: { patch: string }) {
           let className = "text-ink";
           if (line.startsWith("+") && !line.startsWith("+++")) {
             tone = "added";
-            className = "text-grass";
           } else if (line.startsWith("-") && !line.startsWith("---")) {
             tone = "removed";
-            className = "text-tomato";
           } else if (line.startsWith("@@")) {
             className = "text-ink-3 font-bold";
           }
@@ -553,18 +551,18 @@ export default function DiffCheckerRoute() {
           </Tabs>
 
           {hasResult && (
-            <div className="wb-fade-in flex items-center gap-3 font-mono text-[12.5px] tabular-nums">
-              <span className="inline-flex items-center gap-1.5 text-grass">
-                <span aria-hidden="true" className="inline-block size-2.5 rounded-sm bg-grass" />+
-                {diffResult.stats.added}
+            <div className="wb-fade-in flex items-center gap-3 font-mono text-[12.5px] font-medium text-ink tabular-nums">
+              <span className="inline-flex items-center gap-1.5">
+                <span aria-hidden="true" className="inline-block size-2.5 rounded-sm bg-grass" />
+                <span>+{diffResult.stats.added}</span>
               </span>
-              <span className="inline-flex items-center gap-1.5 text-tomato">
-                <span aria-hidden="true" className="inline-block size-2.5 rounded-sm bg-tomato" />−
-                {diffResult.stats.removed}
+              <span className="inline-flex items-center gap-1.5">
+                <span aria-hidden="true" className="inline-block size-2.5 rounded-sm bg-tomato" />
+                <span>−{diffResult.stats.removed}</span>
               </span>
               <span className="inline-flex items-center gap-1.5 text-ink-3">
                 <span aria-hidden="true" className="inline-block size-2.5 rounded-sm bg-ink-3/40" />
-                {diffResult.stats.unchanged}
+                <span>{diffResult.stats.unchanged}</span>
               </span>
             </div>
           )}
