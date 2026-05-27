@@ -447,9 +447,10 @@ export default function ImageMetadataRemovalRoute() {
                   {/* Actions */}
                   {item.status === "done" ? (
                     <span
-                      className="wb-fade-in grid size-9 shrink-0 place-items-center rounded-md border-2 border-ink bg-paper text-grass shadow-pop-1"
+                      role="img"
                       aria-label="Cleaned"
                       title="Metadata stripped"
+                      className="wb-fade-in grid size-9 shrink-0 place-items-center rounded-md border-2 border-ink bg-paper text-grass shadow-pop-1"
                     >
                       <ShieldCheck className="size-4" strokeWidth={2.5} aria-hidden="true" />
                     </span>
