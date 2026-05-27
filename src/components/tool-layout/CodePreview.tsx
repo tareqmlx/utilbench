@@ -16,11 +16,13 @@ export function CodePreview({ children, className, emptyHint, isEmpty }: CodePre
         className,
       )}
     >
-      {isEmpty && emptyHint ? (
-        <p className="font-mono text-[12px] italic text-ink-muted">{emptyHint}</p>
-      ) : (
-        <pre className="font-mono text-sm leading-relaxed text-paper">{children}</pre>
-      )}
+      <div key={isEmpty ? "empty" : "filled"} className="animate-in fade-in-0 duration-200">
+        {isEmpty && emptyHint ? (
+          <p className="font-mono text-[12px] italic text-ink-muted">{emptyHint}</p>
+        ) : (
+          <pre className="font-mono text-sm leading-relaxed text-paper">{children}</pre>
+        )}
+      </div>
     </div>
   );
 }
