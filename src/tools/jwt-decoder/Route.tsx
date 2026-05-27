@@ -1,11 +1,15 @@
 import { Check, CircleAlert, CircleCheck, ClipboardPaste, Copy, Minus, Trash2 } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { IconSwap } from "../../components/IconSwap";
-import { ErrorAlert, StatusBadge, ToolShell } from "../../components/tool-layout";
+import { ErrorAlert, PaneHeader, StatusBadge, ToolShell } from "../../components/tool-layout";
+import { Label } from "../../components/ui/label";
 import { useClipboard } from "../../hooks/useClipboard";
+import { cn } from "../../lib/utils";
 
 const SAMPLE_TOKEN =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+
+const metaLabelCls = "wb-meta block";
 
 interface DecodedJwt {
   header: Record<string, unknown>;
@@ -94,10 +98,6 @@ function extractTimeClaims(payload: Record<string, unknown>): TimeClaim[] {
   return claims;
 }
 
-const HEADER_STICKER = { tone: "mint", text: "Algorithm & Type" } as const;
-const PAYLOAD_STICKER = { tone: "lilac", text: "Data & Claims" } as const;
-const SIGNATURE_STICKER = { tone: "sky", text: "Integrity Check" } as const;
-
 const ALGORITHM_MAP: Record<string, string> = {
   HS256: "HMACSHA256",
   HS384: "HMACSHA384",
@@ -134,7 +134,7 @@ function JsonBlock({ data }: { data: Record<string, unknown> }) {
             // biome-ignore lint/suspicious/noArrayIndexKey: static JSON lines never reorder
             <span key={i}>
               {`${indent}"`}
-              <span className="text-ink-2">{key}</span>
+              <span className="font-semibold text-ink-2">{key}</span>
               {`":${rest}`}
               {i < lines.length - 1 ? "\n" : ""}
             </span>
@@ -152,11 +152,11 @@ function JsonBlock({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-interface PanelProps {
+interface ResultPanelProps {
   label: string;
-  sticker: { tone: "mint" | "lilac" | "sky"; text: string };
   copyHandler?: (() => void) | undefined;
-  copied?: boolean;
+  copied: boolean;
+  copyLabel: string;
   children: React.ReactNode;
   empty: boolean;
   emptyHint: string;
@@ -164,53 +164,61 @@ interface PanelProps {
 
 function ResultPanel({
   label,
-  sticker,
   copyHandler,
   copied,
+  copyLabel,
   children,
   empty,
   emptyHint,
-}: PanelProps) {
+}: ResultPanelProps) {
   return (
-    <div className="rounded-lg border-2 border-ink bg-paper shadow-pop-3 overflow-hidden">
-      <div className="flex items-center justify-between border-b-2 border-ink bg-paper-2 px-[18px] py-[14px]">
-        <div className="flex items-center gap-2.5">
-          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
-            {label}
-          </span>
-          <span className={`wb-sticker wb-sticker--${sticker.tone} !py-1 !px-2 !text-[10.5px]`}>
-            {sticker.text}
-          </span>
-        </div>
-        {copyHandler && !empty && (
-          <button
-            type="button"
-            onClick={copyHandler}
-            aria-label={`Copy ${label.toLowerCase()}`}
-            className="wb-btn wb-btn--sm wb-btn--ghost"
-          >
-            <IconSwap swapKey={copied}>
-              {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-            </IconSwap>
-            <span>{copied ? "Copied" : "Copy"}</span>
-          </button>
-        )}
-      </div>
+    <section className="wb-panel">
+      <PaneHeader
+        label={label}
+        actions={
+          copyHandler && !empty ? (
+            <button
+              type="button"
+              onClick={copyHandler}
+              aria-label={copyLabel}
+              className="wb-btn wb-btn--sm wb-btn--ghost min-h-11 sm:min-h-0"
+            >
+              <IconSwap swapKey={copied}>
+                {copied ? (
+                  <Check className="size-3.5" aria-hidden="true" />
+                ) : (
+                  <Copy className="size-3.5" aria-hidden="true" />
+                )}
+              </IconSwap>
+              <span>{copied ? "Copied" : "Copy"}</span>
+            </button>
+          ) : null
+        }
+      />
       <div className="p-5">
-        {empty ? <p className="font-mono text-[12px] italic text-ink-3">{emptyHint}</p> : children}
+        {empty ? <p className="wb-mono-sm italic text-ink-3">{emptyHint}</p> : children}
       </div>
-    </div>
+    </section>
   );
 }
 
 export default function JwtDecoderRoute() {
   const [token, setToken] = useState(SAMPLE_TOKEN);
   const [decodeResult, setDecodeResult] = useState<DecodeResult>(() => decodeJwt(SAMPLE_TOKEN));
-  const [pasteFeedback, setPasteFeedback] = useState(false);
+  const [justPasted, setJustPasted] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
   const pasteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { copy: copyHeader, copied: copiedHeader } = useClipboard();
   const { copy: copyPayload, copied: copiedPayload } = useClipboard();
+  const { copy: copySignature, copied: copiedSignature } = useClipboard();
   const { readClipboard } = useClipboard();
+
+  useEffect(
+    () => () => {
+      if (pasteTimerRef.current) clearTimeout(pasteTimerRef.current);
+    },
+    [],
+  );
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -223,138 +231,204 @@ export default function JwtDecoderRoute() {
     if (text === null) return;
     setToken(text);
     setDecodeResult(decodeJwt(text));
-    setPasteFeedback(true);
+    setJustPasted(true);
+    setStatusMessage("Token pasted from clipboard.");
     if (pasteTimerRef.current) clearTimeout(pasteTimerRef.current);
-    pasteTimerRef.current = setTimeout(() => setPasteFeedback(false), 1500);
+    pasteTimerRef.current = setTimeout(() => setJustPasted(false), 1500);
   }, [readClipboard]);
 
   const handleClear = useCallback(() => {
     setToken("");
     setDecodeResult({ jwt: null, error: null });
+    setStatusMessage("Token cleared.");
   }, []);
 
   const handleCopyHeader = useCallback(() => {
     if (decodeResult.jwt) {
       copyHeader(JSON.stringify(decodeResult.jwt.header, null, 2));
+      setStatusMessage("Header copied to clipboard.");
     }
   }, [copyHeader, decodeResult.jwt]);
 
   const handleCopyPayload = useCallback(() => {
     if (decodeResult.jwt) {
       copyPayload(JSON.stringify(decodeResult.jwt.payload, null, 2));
+      setStatusMessage("Payload copied to clipboard.");
     }
   }, [copyPayload, decodeResult.jwt]);
 
+  const handleCopySignature = useCallback(() => {
+    if (decodeResult.jwt) {
+      copySignature(decodeResult.jwt.signature);
+      setStatusMessage("Signature copied to clipboard.");
+    }
+  }, [copySignature, decodeResult.jwt]);
+
   const { jwt, error } = decodeResult;
   const isIdle = token.trim() === "";
+  const statusState: "idle" | "invalid" | "valid" = isIdle
+    ? "idle"
+    : error !== null
+      ? "invalid"
+      : "valid";
 
   const timeClaims = jwt ? extractTimeClaims(jwt.payload) : [];
   const isExpired =
     jwt && typeof jwt.payload.exp === "number" && jwt.payload.exp * 1000 < Date.now();
+  const hasExp = jwt && typeof jwt.payload.exp === "number";
+  const headerKey = jwt ? JSON.stringify(jwt.header) : "empty";
+  const payloadKey = jwt ? JSON.stringify(jwt.payload) : "empty";
+  const claimsKey = jwt
+    ? `${jwt.payload.iat ?? ""}|${jwt.payload.exp ?? ""}|${jwt.payload.nbf ?? ""}|${isExpired}`
+    : "empty";
+  const signatureKey = jwt ? getAlgorithmDisplay(jwt.header) : "empty";
 
   return (
     <ToolShell variant="wide">
+      <output aria-live="polite" className="sr-only">
+        {statusMessage}
+      </output>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        <div className="space-y-6 lg:col-span-5">
-          <div className="space-y-3">
-            <label
-              htmlFor="jwt-decoder-token"
-              className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3"
-            >
-              Encoded Token
-            </label>
-            <div className="relative">
+        <div className="lg:col-span-5">
+          <div className="space-y-6 lg:sticky lg:top-24">
+            <div className="space-y-3">
+              <div className="flex items-end justify-between gap-3">
+                <Label htmlFor="jwt-decoder-token" className={metaLabelCls}>
+                  Encoded Token
+                </Label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePaste}
+                    aria-label="Paste"
+                    className="wb-btn wb-btn--sm wb-btn--ghost min-h-11 sm:min-h-0"
+                  >
+                    <IconSwap swapKey={justPasted}>
+                      {justPasted ? (
+                        <Check className="size-3.5" aria-hidden="true" strokeWidth={2.5} />
+                      ) : (
+                        <ClipboardPaste className="size-3.5" aria-hidden="true" />
+                      )}
+                    </IconSwap>
+                    <span>{justPasted ? "Pasted" : "Paste"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    aria-label="Clear"
+                    disabled={isIdle}
+                    className="wb-btn wb-btn--sm wb-btn--ghost min-h-11 sm:min-h-0"
+                  >
+                    <Trash2 className="size-3.5" aria-hidden="true" />
+                    <span>Clear</span>
+                  </button>
+                </div>
+              </div>
               <textarea
                 id="jwt-decoder-token"
                 value={token}
                 onChange={handleInputChange}
-                className="h-64 w-full resize-none rounded-lg border-2 border-ink bg-paper p-5 pr-20 font-mono text-[13px] leading-relaxed text-ink shadow-pop-3 placeholder:text-ink-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:h-96 lg:h-125"
+                spellCheck={false}
+                autoCorrect="off"
+                autoCapitalize="off"
+                className="h-64 w-full resize-none rounded-lg border-2 border-ink bg-paper p-5 font-mono text-[13px] leading-relaxed text-ink shadow-pop-3 placeholder:text-ink-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:h-96 lg:h-125"
                 placeholder="Paste your JWT here…"
+                aria-describedby={error ? "jwt-decoder-error" : undefined}
+                aria-invalid={error !== null || undefined}
               />
-              <div className="absolute right-3 bottom-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={handlePaste}
-                  aria-label="Paste"
-                  className="grid size-9 place-items-center rounded-md border-2 border-ink bg-paper text-ink shadow-pop-1 transition-transform hover:-translate-y-0.5"
-                >
-                  {pasteFeedback ? (
-                    <Check className="size-4" strokeWidth={2.5} />
-                  ) : (
-                    <ClipboardPaste className="size-4" strokeWidth={2} />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClear}
-                  aria-label="Clear"
-                  className="grid size-9 place-items-center rounded-md border-2 border-ink bg-paper text-ink shadow-pop-1 transition-transform hover:-translate-y-0.5"
-                >
-                  <Trash2 className="size-4" strokeWidth={2} />
-                </button>
-              </div>
+              <ErrorAlert error={error} id="jwt-decoder-error" />
             </div>
-            <ErrorAlert error={error} />
-          </div>
 
-          <div className="rounded-lg border-2 border-ink bg-paper-2 p-5 shadow-pop-3">
-            <span className="mb-3 block font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
-              Decoding Status
-            </span>
-            {isIdle ? (
-              <div className="flex items-center gap-2.5 text-[14px] font-medium text-ink-2">
-                <Minus className="size-4" strokeWidth={2.5} />
-                Waiting for token input
+            <section className="wb-panel wb-panel--out">
+              <PaneHeader label="Status" className="bg-paper-2" />
+              <div key={statusState} className="wb-fade-in px-5 py-4">
+                {isIdle ? (
+                  <div className="flex items-center gap-2.5 text-[14px] font-medium text-ink-2">
+                    <Minus className="size-4" strokeWidth={2.5} aria-hidden="true" />
+                    Waiting for token input
+                  </div>
+                ) : error !== null ? (
+                  <div className="flex items-center gap-2.5 text-[14px] font-medium text-ink">
+                    <CircleAlert
+                      className="size-4 text-tomato"
+                      strokeWidth={2.5}
+                      aria-hidden="true"
+                    />
+                    Invalid Token Format
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2.5 text-[14px] font-medium text-ink">
+                    <CircleCheck
+                      className="size-4 text-grass"
+                      strokeWidth={2.5}
+                      aria-hidden="true"
+                    />
+                    Valid Token Format Detected
+                  </div>
+                )}
               </div>
-            ) : error !== null ? (
-              <div className="flex items-center gap-2.5 text-[14px] font-medium text-ink">
-                <CircleAlert className="size-4 text-tomato" strokeWidth={2.5} />
-                Invalid Token Format
-              </div>
-            ) : (
-              <div className="flex items-center gap-2.5 text-[14px] font-medium text-ink">
-                <CircleCheck className="size-4 text-grass" strokeWidth={2.5} />
-                Valid Token Format Detected
-              </div>
-            )}
+            </section>
           </div>
         </div>
 
-        <div className="space-y-7 lg:col-span-7">
+        <div className="space-y-6 lg:col-span-7">
           <ResultPanel
             label="Header"
-            sticker={HEADER_STICKER}
             copyHandler={jwt ? handleCopyHeader : undefined}
             copied={copiedHeader}
+            copyLabel="Copy header"
             empty={!jwt}
-            emptyHint={isIdle ? "Enter a token to see the header" : "(empty)"}
+            emptyHint={
+              isIdle
+                ? "Enter a token to see the header"
+                : "Header unavailable until the token parses."
+            }
           >
-            {jwt && <JsonBlock data={jwt.header} />}
+            {jwt && (
+              <div key={headerKey} className="wb-fade-in">
+                <JsonBlock data={jwt.header} />
+              </div>
+            )}
           </ResultPanel>
 
           <div className="space-y-3">
             <ResultPanel
               label="Payload"
-              sticker={PAYLOAD_STICKER}
               copyHandler={jwt ? handleCopyPayload : undefined}
               copied={copiedPayload}
+              copyLabel="Copy payload"
               empty={!jwt}
-              emptyHint={isIdle ? "Enter a token to see the payload" : "(empty)"}
+              emptyHint={
+                isIdle
+                  ? "Enter a token to see the payload"
+                  : "Payload unavailable until the token parses."
+              }
             >
-              {jwt && <JsonBlock data={jwt.payload} />}
+              {jwt && (
+                <div key={payloadKey} className="wb-fade-in">
+                  <JsonBlock data={jwt.payload} />
+                </div>
+              )}
             </ResultPanel>
 
-            {jwt && timeClaims.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {timeClaims.map((claim) => (
-                  <div
-                    key={claim.key}
-                    className="rounded-full border-2 border-ink bg-paper px-3 py-1 font-mono text-[11px] text-ink-2"
-                  >
-                    {claim.label}: <span className="text-ink">{claim.date.toLocaleString()}</span>
-                  </div>
-                ))}
-                {typeof jwt.payload.exp === "number" && (
+            {jwt && (timeClaims.length > 0 || hasExp) && (
+              <div key={claimsKey} className="wb-fade-in flex flex-wrap items-center gap-2">
+                {timeClaims.map((claim) => {
+                  const formattedDate = claim.date.toLocaleString();
+                  return (
+                    <dl
+                      key={claim.key}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full border-2 border-ink bg-paper px-3 py-1",
+                        "font-mono text-[11px] text-ink-2",
+                      )}
+                    >
+                      <dt className="uppercase tracking-wider text-ink-3">{claim.label}</dt>
+                      <dd className="text-ink">{formattedDate}</dd>
+                    </dl>
+                  );
+                })}
+                {hasExp && (
                   <StatusBadge
                     tone={isExpired ? "invalid" : "valid"}
                     label={isExpired ? "Expired" : "Active"}
@@ -366,19 +440,28 @@ export default function JwtDecoderRoute() {
 
           <ResultPanel
             label="Signature"
-            sticker={SIGNATURE_STICKER}
+            copyHandler={jwt ? handleCopySignature : undefined}
+            copied={copiedSignature}
+            copyLabel="Copy signature"
             empty={!jwt}
-            emptyHint={isIdle ? "Enter a token to see the signature" : "(empty)"}
+            emptyHint={
+              isIdle
+                ? "Enter a token to see the signature"
+                : "Signature unavailable until the token parses."
+            }
           >
             {jwt && (
-              <div className="break-all font-mono text-[13px] leading-relaxed text-ink">
+              <div
+                key={signatureKey}
+                className="wb-fade-in break-all font-mono text-[13px] leading-relaxed text-ink"
+              >
                 {getAlgorithmDisplay(jwt.header)}(
                 <br />
-                {"  "}base64UrlEncode(header) + "." +
+                {"  "}base64UrlEncode(header) + "." +
                 <br />
-                {"  "}base64UrlEncode(payload),
+                {"  "}base64UrlEncode(payload),
                 <br />
-                {"  "}
+                {"  "}
                 <span className="rounded border-2 border-ink bg-lemon px-1.5 py-0.5 italic">
                   your-256-bit-secret
                 </span>
