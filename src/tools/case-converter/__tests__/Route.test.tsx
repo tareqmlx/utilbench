@@ -24,11 +24,19 @@ describe("CaseConverterRoute", () => {
   });
 
   function getInput() {
-    return screen.getByPlaceholderText(/Paste or type your text here/) as HTMLTextAreaElement;
+    return screen.getByPlaceholderText(/paste or type text/i) as HTMLTextAreaElement;
   }
 
   function getOutput() {
-    return screen.getByPlaceholderText(/Converted text will appear here/) as HTMLTextAreaElement;
+    return screen.getByPlaceholderText(/result/i) as HTMLTextAreaElement;
+  }
+
+  function getCaseChip(name: string) {
+    return screen.getByRole("button", { name });
+  }
+
+  function getCopyButton() {
+    return screen.getByRole("button", { name: /copy/i });
   }
 
   function setInput(value: string) {
@@ -54,93 +62,94 @@ describe("CaseConverterRoute", () => {
     expect(getInput()).toHaveValue("hello world");
   });
 
-  it("UPPERCASE button converts correctly", () => {
+  it("UPPERCASE chip converts correctly", () => {
     render(
       <MemoryRouter>
         <CaseConverterRoute />
       </MemoryRouter>,
     );
     setInput("hello world");
-    fireEvent.click(screen.getByRole("button", { name: "UPPERCASE" }));
+    fireEvent.click(getCaseChip("UPPERCASE"));
     expect(getOutput()).toHaveValue("HELLO WORLD");
   });
 
-  it("lowercase button converts correctly", () => {
+  it("lowercase chip converts correctly", () => {
     render(
       <MemoryRouter>
         <CaseConverterRoute />
       </MemoryRouter>,
     );
     setInput("HELLO WORLD");
-    fireEvent.click(screen.getByRole("button", { name: "lowercase" }));
+    fireEvent.click(getCaseChip("lowercase"));
     expect(getOutput()).toHaveValue("hello world");
   });
 
-  it("Title Case button converts correctly", () => {
+  it("Title Case chip converts correctly", () => {
     render(
       <MemoryRouter>
         <CaseConverterRoute />
       </MemoryRouter>,
     );
     setInput("hello world");
-    fireEvent.click(screen.getByRole("button", { name: "Title Case" }));
+    fireEvent.click(getCaseChip("Title Case"));
     expect(getOutput()).toHaveValue("Hello World");
   });
 
-  it("Sentence case button converts correctly", () => {
+  it("Sentence case chip converts correctly", () => {
     render(
       <MemoryRouter>
         <CaseConverterRoute />
       </MemoryRouter>,
     );
     setInput("hello world. foo bar");
-    fireEvent.click(screen.getByRole("button", { name: "Sentence case" }));
+    fireEvent.click(getCaseChip("Sentence case"));
     expect(getOutput()).toHaveValue("Hello world. Foo bar");
   });
 
-  it("camelCase button converts correctly", () => {
+  it("camelCase chip converts correctly", () => {
     render(
       <MemoryRouter>
         <CaseConverterRoute />
       </MemoryRouter>,
     );
     setInput("hello world");
-    fireEvent.click(screen.getByRole("button", { name: "camelCase" }));
+    fireEvent.click(getCaseChip("camelCase"));
     expect(getOutput()).toHaveValue("helloWorld");
   });
 
-  it("snake_case button converts correctly", () => {
+  it("snake_case chip converts correctly", () => {
     render(
       <MemoryRouter>
         <CaseConverterRoute />
       </MemoryRouter>,
     );
     setInput("hello world");
-    fireEvent.click(screen.getByRole("button", { name: "snake_case" }));
+    fireEvent.click(getCaseChip("snake_case"));
     expect(getOutput()).toHaveValue("hello_world");
   });
 
-  it("kebab-case button converts correctly", () => {
+  it("kebab-case chip converts correctly", () => {
     render(
       <MemoryRouter>
         <CaseConverterRoute />
       </MemoryRouter>,
     );
     setInput("hello world");
-    fireEvent.click(screen.getByRole("button", { name: "kebab-case" }));
+    fireEvent.click(getCaseChip("kebab-case"));
     expect(getOutput()).toHaveValue("hello-world");
   });
 
-  it("selected button gets active styling", () => {
+  it("selected chip reflects active state via aria-pressed", () => {
     render(
       <MemoryRouter>
         <CaseConverterRoute />
       </MemoryRouter>,
     );
-    const btn = screen.getByRole("button", { name: "UPPERCASE" });
-    fireEvent.click(btn);
-    expect(btn.className).toContain("bg-primary");
-    expect(btn.className).toContain("text-primary-foreground");
+    const chip = getCaseChip("UPPERCASE");
+    expect(chip).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(chip);
+    expect(chip).toHaveAttribute("aria-pressed", "true");
+    expect(chip.className).toContain("on");
   });
 
   it("output updates live when input changes with a case selected", () => {
@@ -150,7 +159,7 @@ describe("CaseConverterRoute", () => {
       </MemoryRouter>,
     );
     setInput("hello");
-    fireEvent.click(screen.getByRole("button", { name: "UPPERCASE" }));
+    fireEvent.click(getCaseChip("UPPERCASE"));
     expect(getOutput()).toHaveValue("HELLO");
 
     setInput("hello world");
@@ -164,8 +173,8 @@ describe("CaseConverterRoute", () => {
       </MemoryRouter>,
     );
     setInput("hello");
-    fireEvent.click(screen.getByRole("button", { name: "UPPERCASE" }));
-    fireEvent.click(screen.getByRole("button", { name: /Copy Text/ }));
+    fireEvent.click(getCaseChip("UPPERCASE"));
+    fireEvent.click(getCopyButton());
     expect(clipboardMock.writeText).toHaveBeenCalledWith("HELLO");
   });
 
@@ -175,8 +184,7 @@ describe("CaseConverterRoute", () => {
         <CaseConverterRoute />
       </MemoryRouter>,
     );
-    const copyBtn = screen.getByRole("button", { name: /Copy Text/ });
-    expect(copyBtn).toBeDisabled();
+    expect(getCopyButton()).toBeDisabled();
   });
 
   it("empty input produces empty output", () => {
@@ -185,7 +193,20 @@ describe("CaseConverterRoute", () => {
         <CaseConverterRoute />
       </MemoryRouter>,
     );
-    fireEvent.click(screen.getByRole("button", { name: "UPPERCASE" }));
+    fireEvent.click(getCaseChip("UPPERCASE"));
+    expect(getOutput()).toHaveValue("");
+  });
+
+  it("Clear button empties input", () => {
+    render(
+      <MemoryRouter>
+        <CaseConverterRoute />
+      </MemoryRouter>,
+    );
+    setInput("hello");
+    fireEvent.click(getCaseChip("UPPERCASE"));
+    fireEvent.click(screen.getByRole("button", { name: /clear input/i }));
+    expect(getInput()).toHaveValue("");
     expect(getOutput()).toHaveValue("");
   });
 });

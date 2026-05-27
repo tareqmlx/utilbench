@@ -94,21 +94,38 @@ function Base64EncoderSkeleton() {
 /* ── 4. Case Converter ───────────────────────────────────── */
 
 function CaseConverterSkeleton() {
+  const chipWidths = ["w-28", "w-24", "w-24", "w-28", "w-24", "w-28", "w-28", "w-28", "w-32"];
   return (
     <ToolShell>
-      <div className="grid grid-cols-1 gap-8">
-        <div>
-          <SkeletonLine width="w-20" height="h-4" className="mb-2" />
+      <div className="grid grid-cols-1 gap-6">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+            <SkeletonLine width="w-20" height="h-3" />
+            <SkeletonLine width="w-20" height="h-8" className="rounded-md" />
+          </div>
           <SkeletonTextArea className="min-h-[200px]" />
         </div>
-        <div className="flex flex-wrap gap-2">
-          {sk(7).map((key) => (
-            <SkeletonButton key={key} width="w-28" />
-          ))}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+            <SkeletonLine width="w-24" height="h-3" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {chipWidths.map((w, i) => (
+              <SkeletonLine
+                key={`chip-${i.toString()}`}
+                width={w}
+                height="h-9"
+                className="rounded-full"
+              />
+            ))}
+          </div>
         </div>
-        <div>
-          <SkeletonLine width="w-20" height="h-4" className="mb-2" />
-          <SkeletonTextArea className="min-h-[200px]" />
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+            <SkeletonLine width="w-16" height="h-3" />
+            <SkeletonLine width="w-24" height="h-8" className="rounded-md" />
+          </div>
+          <SkeletonBlock className="min-h-[200px] rounded-md bg-paper-2" />
         </div>
       </div>
     </ToolShell>
