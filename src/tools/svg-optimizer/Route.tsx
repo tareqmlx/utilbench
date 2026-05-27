@@ -363,7 +363,7 @@ export default function SvgOptimizerRoute() {
     }
   }, []);
 
-  const completedFiles = files.filter((f) => f.status === "done");
+  const completedFiles = useMemo(() => files.filter((f) => f.status === "done"), [files]);
   const allDownloaded = completedFiles.length > 0 && completedFiles.every((f) => f.downloaded);
   const previewFile = previewFileId ? files.find((f) => f.id === previewFileId) : null;
 
@@ -414,7 +414,7 @@ export default function SvgOptimizerRoute() {
         <div className="flex flex-col">
           <section
             aria-label="SVG drop zone"
-            className={`flex flex-col items-center gap-6 rounded-lg border-2 border-ink px-6 py-10 shadow-pop-3 transition-colors focus-within:ring-2 focus-within:ring-tomato focus-within:ring-offset-2 focus-within:ring-offset-paper sm:py-14 ${
+            className={`flex flex-col items-center gap-6 rounded-lg border-2 border-ink px-6 py-10 shadow-pop-3 transition-colors sm:py-14 ${
               isDragging ? "bg-mint" : "bg-paper-2"
             }`}
             onDragOver={handleDragOver}
@@ -516,10 +516,19 @@ export default function SvgOptimizerRoute() {
               </div>
               {completedFiles.length > 0 &&
                 (allDownloaded ? (
-                  <span className="wb-btn wb-btn--lemon" aria-disabled="true">
-                    <Check className="wb-svg-check-pop size-4" strokeWidth={2.5} />
+                  <button
+                    type="button"
+                    className="wb-btn wb-btn--lemon"
+                    disabled
+                    aria-label="All files already downloaded"
+                  >
+                    <Check
+                      aria-hidden="true"
+                      className="wb-svg-check-pop size-4"
+                      strokeWidth={2.5}
+                    />
                     <span>Downloaded</span>
-                  </span>
+                  </button>
                 ) : (
                   <button
                     type="button"
@@ -615,10 +624,19 @@ export default function SvgOptimizerRoute() {
                             <Eye className="size-5" strokeWidth={2} />
                           </button>
                           {file.downloaded ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-md border-2 border-ink bg-mint px-3 py-2 text-[12px] font-bold text-ink shadow-pop-1">
-                              <Check className="wb-svg-check-pop size-4" strokeWidth={2.5} />
+                            <button
+                              type="button"
+                              disabled
+                              aria-label={`${file.name} already downloaded`}
+                              className="inline-flex items-center gap-1.5 rounded-md border-2 border-ink bg-mint px-3 py-2 text-[12px] font-bold text-ink shadow-pop-1 disabled:opacity-100"
+                            >
+                              <Check
+                                aria-hidden="true"
+                                className="wb-svg-check-pop size-4"
+                                strokeWidth={2.5}
+                              />
                               Downloaded
-                            </span>
+                            </button>
                           ) : (
                             <button
                               type="button"
@@ -665,11 +683,14 @@ export default function SvgOptimizerRoute() {
 
         {/* Options & Presets */}
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <section className="rounded-lg border-2 border-ink bg-paper p-5 shadow-pop-3">
-            <h3 className="mb-4 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-3">
-              <Settings2 className="size-4 text-ink" strokeWidth={2.25} />
+          <section
+            aria-label="Optimization options"
+            className="rounded-lg border-2 border-ink bg-paper p-5 shadow-pop-3"
+          >
+            <div className="mb-4 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-3">
+              <Settings2 aria-hidden="true" className="size-4 text-ink" strokeWidth={2.25} />
               Options
-            </h3>
+            </div>
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               {OPTION_TOGGLES.map(({ key, label }) => (
                 <label
@@ -688,11 +709,14 @@ export default function SvgOptimizerRoute() {
             </div>
           </section>
 
-          <section className="rounded-lg border-2 border-ink bg-paper-2 p-5 shadow-pop-3">
-            <h3 className="mb-4 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-2">
-              <Wand2 className="size-4 text-ink" strokeWidth={2.25} />
+          <section
+            aria-label="Optimization presets"
+            className="rounded-lg border-2 border-ink bg-paper-2 p-5 shadow-pop-3"
+          >
+            <div className="mb-4 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-2">
+              <Wand2 aria-hidden="true" className="size-4 text-ink" strokeWidth={2.25} />
               Presets
-            </h3>
+            </div>
             <div className="flex flex-wrap gap-2">
               {(Object.keys(PRESET_LABELS) as PresetName[]).map((preset) => {
                 const active = prefs.activePreset === preset;
