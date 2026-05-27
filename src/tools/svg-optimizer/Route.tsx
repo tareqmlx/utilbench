@@ -8,14 +8,13 @@ import {
   Loader2,
   RefreshCw,
   Settings2,
-  TriangleAlert,
   Upload,
   Wand2,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KbdHint } from "../../components/KbdHint";
-import { ErrorAlert, ToolShell } from "../../components/tool-layout";
+import { ErrorAlert, ToolShell, WarningAlert } from "../../components/tool-layout";
 import {
   Dialog,
   DialogContent,
@@ -387,8 +386,7 @@ export default function SvgOptimizerRoute() {
         {/* Drop Zone */}
         <div className="flex flex-col">
           <section
-            aria-label="SVG file drop zone"
-            className={`flex flex-col items-center gap-6 rounded-lg border-2 border-ink px-6 py-10 shadow-pop-3 transition-colors focus-within:ring-2 focus-within:ring-tomato focus-within:ring-offset-2 focus-within:ring-offset-paper sm:py-14 ${
+            className={`flex flex-col items-center gap-6 rounded-lg border-2 border-ink px-6 py-10 shadow-pop-3 transition-colors sm:py-14 ${
               isDragging ? "bg-mint" : "bg-paper-2"
             }`}
             onDragOver={handleDragOver}
@@ -408,7 +406,7 @@ export default function SvgOptimizerRoute() {
                   Drop multiple SVGs here
                 </h2>
                 <p className="mt-2 text-[13.5px] leading-relaxed text-ink-2">
-                  Drop, browse, or paste. Each file is optimized in your browser.
+                  Drop, browse, or paste. SVGs are minified instantly.
                 </p>
               </div>
             </div>
@@ -447,6 +445,7 @@ export default function SvgOptimizerRoute() {
           {showPasteArea && (
             <div id="svg-paste-area" className="wb-fade-in mt-4 flex flex-col gap-3">
               <Textarea
+                aria-label="SVG markup"
                 className="h-44 w-full resize-none rounded-md border-2 border-ink bg-paper p-4 font-mono text-[13px] leading-relaxed text-ink shadow-pop-1 placeholder:text-ink-3 focus-visible:ring-tomato focus-visible:ring-offset-paper"
                 placeholder="Paste your SVG markup here…"
                 value={pasteContent}
@@ -470,21 +469,7 @@ export default function SvgOptimizerRoute() {
           )}
 
           <ErrorAlert error={error} onDismiss={() => setError(null)} />
-
-          {warning !== null && (
-            <output className="wb-fade-in mt-4 flex items-start gap-3 rounded-[14px] border-2 border-ink bg-lemon px-4 py-3 shadow-pop-2">
-              <TriangleAlert className="mt-0.5 size-5 shrink-0 text-ink" strokeWidth={2.5} />
-              <p className="flex-1 font-mono text-[13px] leading-relaxed text-ink">{warning}</p>
-              <button
-                type="button"
-                onClick={() => setWarning(null)}
-                aria-label="Dismiss warning"
-                className="-mr-2 -mt-2 grid size-11 shrink-0 place-items-center rounded-md text-ink transition-colors hover:text-tomato focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-lemon sm:-mr-1 sm:-mt-1 sm:size-7"
-              >
-                <X className="size-4" strokeWidth={2.5} />
-              </button>
-            </output>
-          )}
+          <WarningAlert warning={warning} onDismiss={() => setWarning(null)} />
         </div>
 
         {/* File Queue */}
@@ -495,7 +480,11 @@ export default function SvgOptimizerRoute() {
                 <h2 className="font-display text-[20px] font-extrabold leading-none tracking-tight text-ink">
                   Optimization Queue
                 </h2>
-                <span className="rounded-full border-2 border-ink bg-paper px-2.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink">
+                <span
+                  aria-live="polite"
+                  aria-atomic="true"
+                  className="rounded-full border-2 border-ink bg-paper px-2.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink"
+                >
                   {isProcessing
                     ? `Working ${processedCount}/${batchTotal}`
                     : `${files.length} ${files.length === 1 ? "file" : "files"}`}
@@ -540,6 +529,7 @@ export default function SvgOptimizerRoute() {
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-4">
                       <div
+                        aria-hidden="true"
                         className={`grid size-11 shrink-0 place-items-center rounded-md border-2 border-ink shadow-pop-1 transition-colors ${thumbBg}`}
                       >
                         {file.status === "processing" ? (
@@ -555,31 +545,35 @@ export default function SvgOptimizerRoute() {
                           {file.name}
                         </span>
                         {file.status === "done" && file.optimizedSize !== null && (
-                          <div className="wb-svg-done-meta flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.1em]">
-                            <span className="text-ink-3 line-through">
+                          <output className="wb-svg-done-meta flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.1em]">
+                            <span className="text-ink-2 line-through">
                               {formatFileSize(file.originalSize)}
                             </span>
-                            <ArrowRight className="size-3 text-ink-3" strokeWidth={2.5} />
+                            <ArrowRight
+                              aria-hidden="true"
+                              className="size-3 text-ink-2"
+                              strokeWidth={2.5}
+                            />
                             <span className="font-semibold text-ink">
                               {formatFileSize(file.optimizedSize)}
                             </span>
                             <span className="wb-svg-badge rounded-md border-2 border-ink bg-mint px-1.5 py-px text-[10.5px] font-bold text-ink">
                               -{calculateReduction(file.originalSize, file.optimizedSize)}%
                             </span>
-                          </div>
+                          </output>
                         )}
                         {file.status === "processing" && (
-                          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+                          <output className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-2">
                             Optimizing…
-                          </span>
+                          </output>
                         )}
                         {file.status === "pending" && (
-                          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
+                          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-2">
                             Pending · {formatFileSize(file.originalSize)}
                           </span>
                         )}
                         {file.status === "error" && (
-                          <span className="text-[12px] font-medium text-ink">{file.error}</span>
+                          <output className="text-[12px] font-medium text-ink">{file.error}</output>
                         )}
                       </div>
                     </div>
@@ -714,10 +708,10 @@ export default function SvgOptimizerRoute() {
             </DialogDescription>
             {previewFile?.optimizedSize !== null && previewFile?.optimizedSize !== undefined && (
               <div className="mt-2 flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.1em]">
-                <span className="text-ink-3 line-through">
+                <span className="text-ink-2 line-through">
                   {formatFileSize(previewFile.originalSize)}
                 </span>
-                <ArrowRight className="size-3 text-ink-3" strokeWidth={2.5} />
+                <ArrowRight aria-hidden="true" className="size-3 text-ink-2" strokeWidth={2.5} />
                 <span className="font-semibold text-ink">
                   {formatFileSize(previewFile.optimizedSize)}
                 </span>
