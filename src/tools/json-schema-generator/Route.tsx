@@ -222,7 +222,7 @@ export default function JsonSchemaGeneratorRoute() {
     return parts.join(" · ");
   }, [schema, stats.properties, stats.depth, stats.bytes]);
 
-  const outputStateKey = output ? `f|${stats.bytes}` : "e";
+  const outputStateKey = output ? "f" : "e";
 
   return (
     <ToolShell>
@@ -238,16 +238,18 @@ export default function JsonSchemaGeneratorRoute() {
               label="Input JSON"
               htmlFor="schema-input"
               trailing={
-                <StatusBadge
-                  tone={statusState === "idle" ? "neutral" : statusState}
-                  label={
-                    statusState === "idle"
-                      ? "Empty"
-                      : statusState === "invalid"
-                        ? "Invalid"
-                        : "Valid"
-                  }
-                />
+                <span key={statusState} className="wb-fade-in inline-flex">
+                  <StatusBadge
+                    tone={statusState === "idle" ? "neutral" : statusState}
+                    label={
+                      statusState === "idle"
+                        ? "Empty"
+                        : statusState === "invalid"
+                          ? "Invalid"
+                          : "Valid"
+                    }
+                  />
+                </span>
               }
               actions={
                 <>
@@ -321,8 +323,7 @@ export default function JsonSchemaGeneratorRoute() {
               trailing={
                 schema ? (
                   <span
-                    key={statsLabel}
-                    className="wb-fade-in wb-mono-sm tabular-nums text-ink-2"
+                    className="wb-mono-sm tabular-nums text-ink-2 transition-opacity duration-200"
                     aria-hidden="true"
                   >
                     {statsLabel}
