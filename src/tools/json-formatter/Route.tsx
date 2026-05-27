@@ -219,7 +219,11 @@ export default function JsonFormatterRoute() {
             className="bg-paper-2"
             trailing={
               output ? (
-                <span className="wb-mono-sm tabular-nums text-ink-2" aria-hidden="true">
+                <span
+                  key={outputSizeLabel}
+                  className="wb-fade-in wb-mono-sm tabular-nums text-ink-2"
+                  aria-hidden="true"
+                >
                   {outputSizeLabel}
                 </span>
               ) : null
@@ -245,13 +249,15 @@ export default function JsonFormatterRoute() {
             }
           />
           <div className="p-3 sm:p-4">
-            <textarea
-              readOnly
-              value={output}
-              placeholder="Your beautified JSON will appear here..."
-              spellCheck={false}
-              className="h-72 w-full resize-none rounded-md border-2 border-ink/40 bg-paper p-4 font-mono text-[13px] leading-relaxed text-ink placeholder:text-ink-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:h-96 lg:h-[460px]"
-            />
+            <div key={output ? "filled" : "empty"} className="wb-fade-in">
+              <textarea
+                readOnly
+                value={output}
+                placeholder="Your beautified JSON will appear here..."
+                spellCheck={false}
+                className="h-72 w-full resize-none rounded-md border-2 border-ink/40 bg-paper p-4 font-mono text-[13px] leading-relaxed text-ink placeholder:text-ink-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:h-96 lg:h-[460px]"
+              />
+            </div>
           </div>
         </section>
       </div>
