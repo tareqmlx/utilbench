@@ -480,11 +480,17 @@ export default function ImageResizerRoute() {
               icon={<Settings className="size-4" aria-hidden="true" />}
               actions={
                 <Tabs value={mode} onValueChange={(v) => handleModeChange(v as ResizeMode)}>
-                  <TabsList className="h-8">
-                    <TabsTrigger value="single" className="px-3 py-1 text-xs font-bold">
+                  <TabsList className="h-12 p-0.5 sm:h-8 sm:p-1">
+                    <TabsTrigger
+                      value="single"
+                      className="h-11 min-w-11 px-4 text-[13px] font-bold sm:h-6 sm:min-w-0 sm:px-3 sm:text-xs"
+                    >
                       Single
                     </TabsTrigger>
-                    <TabsTrigger value="batch" className="px-3 py-1 text-xs font-bold">
+                    <TabsTrigger
+                      value="batch"
+                      className="h-11 min-w-11 px-4 text-[13px] font-bold sm:h-6 sm:min-w-0 sm:px-3 sm:text-xs"
+                    >
                       Batch
                     </TabsTrigger>
                   </TabsList>
@@ -504,7 +510,8 @@ export default function ImageResizerRoute() {
                     max={10000}
                     value={width}
                     onChange={handleWidthChange}
-                    className="border-2 border-ink bg-paper font-mono text-[14px] tabular-nums"
+                    inputMode="numeric"
+                    className="h-11 border-2 border-ink bg-paper font-mono text-[14px] tabular-nums sm:h-10"
                   />
                 </div>
                 <div className="space-y-2">
@@ -514,23 +521,23 @@ export default function ImageResizerRoute() {
                   <div className="relative flex items-center gap-2">
                     <Input
                       id="resize-height"
-                      className="flex-1 border-2 border-ink bg-paper font-mono text-[14px] tabular-nums"
+                      className="h-11 flex-1 border-2 border-ink bg-paper font-mono text-[14px] tabular-nums sm:h-10"
                       type="number"
                       min={1}
                       max={10000}
                       value={height}
                       onChange={handleHeightChange}
+                      inputMode="numeric"
                     />
                     <button
                       type="button"
                       className={cn(
-                        "grid size-10 shrink-0 place-items-center rounded-md border-2 border-ink transition-[background,color,transform] duration-200",
+                        "grid size-11 shrink-0 place-items-center rounded-md border-2 border-ink shadow-pop-1 transition-[background,color,transform] duration-200 sm:size-10",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
                         aspectRatioLocked
-                          ? "bg-ink text-paper shadow-pop-1"
-                          : "bg-paper text-ink-2 hover:bg-lemon hover:text-ink shadow-pop-1",
+                          ? "bg-ink text-paper"
+                          : "bg-paper text-ink-2 hover:bg-lemon hover:text-ink",
                       )}
-                      title={aspectRatioLocked ? "Unlock Aspect Ratio" : "Lock Aspect Ratio"}
                       aria-label={aspectRatioLocked ? "Unlock aspect ratio" : "Lock aspect ratio"}
                       aria-pressed={aspectRatioLocked}
                       onClick={handleToggleAspectLock}
@@ -555,7 +562,7 @@ export default function ImageResizerRoute() {
                     value={prefs.format}
                     onValueChange={(v) => setPrefs({ format: v as OutputFormat })}
                   >
-                    <SelectTrigger className="border-2 border-ink bg-paper">
+                    <SelectTrigger className="h-11 border-2 border-ink bg-paper sm:h-10">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -740,8 +747,7 @@ export default function ImageResizerRoute() {
                           e.stopPropagation();
                           handleDownloadSingle(item);
                         }}
-                        className="grid size-9 shrink-0 place-items-center rounded-md border-2 border-ink bg-paper text-ink transition-[background,transform] duration-200 hover:bg-mint hover:-translate-x-px hover:-translate-y-px shadow-pop-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper-2"
-                        title="Download"
+                        className="grid size-11 shrink-0 place-items-center rounded-md border-2 border-ink bg-paper text-ink shadow-pop-1 transition-[background,transform] duration-200 hover:-translate-x-px hover:-translate-y-px hover:bg-mint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper-2 sm:size-9"
                         aria-label={`Download ${item.file.name}`}
                       >
                         <Download className="size-4" aria-hidden="true" />
@@ -753,7 +759,7 @@ export default function ImageResizerRoute() {
                         e.stopPropagation();
                         handleRemoveItem(item.id);
                       }}
-                      className="grid size-9 shrink-0 place-items-center rounded-md text-ink-3 transition-colors hover:text-tomato focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper-2"
+                      className="grid size-11 shrink-0 place-items-center rounded-md text-ink-3 transition-colors hover:text-tomato focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper-2 sm:size-9"
                       title="Remove"
                       aria-label={`Remove ${item.file.name}`}
                       data-testid={`remove-${item.id}`}
