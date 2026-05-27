@@ -288,14 +288,29 @@ describe("DiffCheckerRoute", () => {
     expect(sideBySide).toHaveAttribute("data-state", "inactive");
   });
 
-  it("settings dropdown opens and closes on gear button click", () => {
+  it("ignore-whitespace switch is inline alongside ignore-case", () => {
     renderRoute();
-    const settingsButton = screen.getByTitle("Settings");
+    expect(screen.getByLabelText("Ignore case")).toBeInTheDocument();
+    expect(screen.getByLabelText("Ignore whitespace")).toBeInTheDocument();
+  });
 
-    fireEvent.click(settingsButton);
-    expect(screen.getByText("Ignore whitespace")).toBeInTheDocument();
+  it("ignore whitespace forwards ignoreWhitespace flag to worker", async () => {
+    mockDispatch.mockReturnValue({
+      promise: Promise.resolve(makeDiffResult("a b\n", "a  b\n")),
+      cancel: vi.fn(),
+    });
 
-    fireEvent.click(settingsButton);
-    expect(screen.queryByText("Ignore whitespace")).not.toBeInTheDocument();
+    renderRoute();
+    fireEvent.change(getOriginalTextarea(), { target: { value: "a b\n" } });
+    fireEvent.change(getModifiedTextarea(), { target: { value: "a  b\n" } });
+    fireEvent.click(screen.getByLabelText("Ignore whitespace"));
+    fireEvent.click(getFindButton());
+
+    await waitFor(() => {
+      expect(mockDispatch).toHaveBeenCalledWith(
+        "compute-diff",
+        expect.objectContaining({ ignoreWhitespace: true }),
+      );
+    });
   });
 });

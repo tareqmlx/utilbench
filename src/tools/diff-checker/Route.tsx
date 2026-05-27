@@ -1,26 +1,17 @@
 import type { Change } from "diff";
-import {
-  ArrowLeftRight,
-  Check,
-  CheckCircle,
-  Copy,
-  GitCompare,
-  Loader2,
-  Settings,
-} from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeftRight, Check, CheckCircle, Copy, GitCompare, Loader2 } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 
 import { IconSwap } from "../../components/IconSwap";
 import { KbdHint } from "../../components/KbdHint";
 import { PaneHeader, ToolShell, TwoPane } from "../../components/tool-layout";
-import { Button } from "../../components/ui/button";
 import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { Textarea } from "../../components/ui/textarea";
 import { useClipboard } from "../../hooks/useClipboard";
 import { useKeyboardShortcut } from "../../hooks/useKeyboardShortcut";
 import { useToolPreferences } from "../../hooks/useToolPreferences";
+import { cn } from "../../lib/utils";
 import { workerPool } from "../../workers";
 
 type ViewMode = "side-by-side" | "inline" | "unified";
@@ -208,13 +199,19 @@ function DiffLine({
   );
 }
 
+function SubPaneLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border-b-2 border-ink bg-paper-2 px-4 py-2.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-3">
+      {children}
+    </div>
+  );
+}
+
 function SideBySideView({ result }: { result: SideBySideResult }) {
   return (
     <div className="flex flex-col lg:flex-row">
-      <div className="flex-1 border-r-2 border-ink">
-        <div className="border-b-2 border-ink bg-paper-2 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
-          Original
-        </div>
+      <div className="flex-1 border-b-2 border-ink lg:border-b-0 lg:border-r-2">
+        <SubPaneLabel>Original</SubPaneLabel>
         <div className="overflow-x-auto">
           <div className="min-w-max py-0 leading-6">
             {result.original.map((line) => (
@@ -230,9 +227,7 @@ function SideBySideView({ result }: { result: SideBySideResult }) {
         </div>
       </div>
       <div className="flex-1">
-        <div className="border-b-2 border-ink bg-paper-2 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-3">
-          Modified
-        </div>
+        <SubPaneLabel>Modified</SubPaneLabel>
         <div className="overflow-x-auto">
           <div className="min-w-max py-0 leading-6">
             {result.modified.map((line) => (
@@ -308,15 +303,30 @@ const DEFAULT_PREFS = {
   ignoreWhitespace: false,
 };
 
+const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
+  { value: "side-by-side", label: "Side-by-Side" },
+  { value: "inline", label: "Inline View" },
+  { value: "unified", label: "Unified" },
+];
+
+const PILL_TRIGGER_CLASS = cn(
+  "inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-ink bg-paper px-3.5 py-1.5 text-[13px] font-medium text-ink shadow-pop-1 transition-all",
+  "hover:bg-lemon hover:-translate-y-0.5",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
+  "data-[state=active]:bg-ink data-[state=active]:text-paper data-[state=active]:shadow-pop-2",
+);
+
+const PILL_LIST_CLASS =
+  "inline-flex h-auto min-h-0 flex-wrap items-center justify-start gap-2 rounded-none bg-transparent p-0 text-ink";
+
 export default function DiffCheckerRoute() {
   const [originalText, setOriginalText] = useState("");
   const [modifiedText, setModifiedText] = useState("");
   const [diffResult, setDiffResult] = useState<DiffResult | null>(null);
   const [prefs, setPrefs] = useToolPreferences("diff-checker", DEFAULT_PREFS);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
   const { copied, copy } = useClipboard();
-  const settingsRef = useRef<HTMLDivElement>(null);
 
   const findDifferences = useCallback(async () => {
     if (!originalText && !modifiedText) return;
@@ -332,9 +342,17 @@ export default function DiffCheckerRoute() {
         },
       );
       const { changes, unifiedPatch } = await promise;
-      setDiffResult(buildDiffResult(changes, unifiedPatch));
+      const result = buildDiffResult(changes, unifiedPatch);
+      setDiffResult(result);
+      const totalChanges = result.stats.added + result.stats.removed;
+      setStatusMessage(
+        totalChanges === 0
+          ? "No differences found."
+          : `${result.stats.added} added, ${result.stats.removed} removed.`,
+      );
     } catch {
       setDiffResult(null);
+      setStatusMessage("Comparison failed.");
     } finally {
       setLoading(false);
     }
@@ -343,17 +361,27 @@ export default function DiffCheckerRoute() {
   const clearOriginal = useCallback(() => {
     setOriginalText("");
     setDiffResult(null);
+    setStatusMessage("Original cleared.");
   }, []);
 
   const clearModified = useCallback(() => {
     setModifiedText("");
     setDiffResult(null);
+    setStatusMessage("Modified cleared.");
   }, []);
 
   const clearAll = useCallback(() => {
-    clearOriginal();
-    clearModified();
-  }, [clearOriginal, clearModified]);
+    setOriginalText("");
+    setModifiedText("");
+    setDiffResult(null);
+    setStatusMessage("All cleared.");
+  }, []);
+
+  const handleCopyResult = useCallback(() => {
+    if (!diffResult) return;
+    copy(diffResult.unifiedPatch);
+    setStatusMessage("Unified patch copied to clipboard.");
+  }, [copy, diffResult]);
 
   const shortcuts = useMemo(
     () => [
@@ -362,224 +390,224 @@ export default function DiffCheckerRoute() {
         key: "c",
         meta: true,
         shift: true,
-        handler: () => diffResult && copy(diffResult.unifiedPatch),
+        handler: handleCopyResult,
         enabled: !!diffResult,
       },
       { key: "x", meta: true, shift: true, handler: clearAll },
     ],
-    [findDifferences, loading, diffResult, copy, clearAll],
+    [findDifferences, loading, diffResult, handleCopyResult, clearAll],
   );
 
   useKeyboardShortcut(shortcuts);
 
-  useEffect(() => {
-    if (!settingsOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
-        setSettingsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [settingsOpen]);
-
   const hasNoDifferences =
     diffResult !== null && diffResult.stats.added === 0 && diffResult.stats.removed === 0;
+  const hasResult = diffResult !== null && !hasNoDifferences;
+  const isEmpty = !originalText && !modifiedText;
 
   return (
-    <ToolShell variant="wide" className="flex flex-col gap-8 py-6 sm:py-8">
-      <Tabs value={prefs.viewMode} onValueChange={(v) => setPrefs({ viewMode: v as ViewMode })}>
-        <TabsList>
-          <TabsTrigger value="side-by-side">Side-by-Side</TabsTrigger>
-          <TabsTrigger value="inline">Inline View</TabsTrigger>
-          <TabsTrigger value="unified">Unified</TabsTrigger>
-        </TabsList>
-      </Tabs>
+    <ToolShell variant="wide" className="flex flex-col gap-6 sm:gap-8">
+      <output aria-live="polite" className="sr-only">
+        {statusMessage}
+      </output>
 
       <TwoPane
         left={
-          <div className="flex flex-col gap-3">
+          <section className="wb-panel">
             <PaneHeader
               label="Original Text"
               htmlFor="diff-checker-original"
-              className="mb-0"
               actions={
-                <Button
-                  variant="link"
-                  size="sm"
+                <button
+                  type="button"
                   onClick={clearOriginal}
-                  className="text-xs font-bold"
+                  disabled={!originalText}
+                  className="wb-btn wb-btn--sm wb-btn--ghost min-h-11 sm:min-h-0"
                 >
                   Clear
-                </Button>
+                </button>
               }
             />
-            <div className="group relative">
-              <Textarea
+            <div className="p-3 sm:p-4">
+              <textarea
                 id="diff-checker-original"
                 value={originalText}
                 onChange={(e) => setOriginalText(e.target.value)}
+                spellCheck={false}
+                autoCorrect="off"
+                autoCapitalize="off"
                 placeholder="Paste original text here..."
-                className="h-48 resize-none font-mono text-sm leading-relaxed sm:h-80"
+                className="h-48 w-full resize-none rounded-md border-2 border-ink/40 bg-paper p-4 font-mono text-[13px] leading-relaxed text-ink placeholder:text-ink-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:h-80 lg:h-96"
               />
-              <div className="absolute right-3 bottom-3 opacity-0 transition-opacity group-hover:opacity-100">
-                <span className="font-mono text-[10px] text-muted-foreground">UTF-8</span>
-              </div>
             </div>
-          </div>
+          </section>
         }
         right={
-          <div className="flex flex-col gap-3">
+          <section className="wb-panel">
             <PaneHeader
               label="Modified Text"
               htmlFor="diff-checker-modified"
-              className="mb-0"
               actions={
-                <Button
-                  variant="link"
-                  size="sm"
+                <button
+                  type="button"
                   onClick={clearModified}
-                  className="text-xs font-bold"
+                  disabled={!modifiedText}
+                  className="wb-btn wb-btn--sm wb-btn--ghost min-h-11 sm:min-h-0"
                 >
                   Clear
-                </Button>
+                </button>
               }
             />
-            <div className="group relative">
-              <Textarea
+            <div className="p-3 sm:p-4">
+              <textarea
                 id="diff-checker-modified"
                 value={modifiedText}
                 onChange={(e) => setModifiedText(e.target.value)}
+                spellCheck={false}
+                autoCorrect="off"
+                autoCapitalize="off"
                 placeholder="Paste modified text here..."
-                className="h-48 resize-none font-mono text-sm leading-relaxed sm:h-80"
+                className="h-48 w-full resize-none rounded-md border-2 border-ink/40 bg-paper p-4 font-mono text-[13px] leading-relaxed text-ink placeholder:text-ink-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:h-80 lg:h-96"
               />
-              <div className="absolute right-3 bottom-3 opacity-0 transition-opacity group-hover:opacity-100">
-                <span className="font-mono text-[10px] text-muted-foreground">UTF-8</span>
-              </div>
             </div>
-          </div>
+          </section>
         }
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-border bg-card p-4">
-        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-          <Button onClick={findDifferences} disabled={loading} size="lg">
-            {loading ? (
-              <>
-                <Loader2 className="size-5 animate-spin" />
-                Comparing...
-              </>
-            ) : (
-              <>
-                <GitCompare className="size-5" />
-                Find Differences
-                <KbdHint>⌘⏎</KbdHint>
-              </>
-            )}
-          </Button>
+      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
+        <button
+          type="button"
+          onClick={findDifferences}
+          disabled={loading || isEmpty}
+          className="wb-btn min-w-44 justify-center"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              <span>Comparing</span>
+            </>
+          ) : (
+            <>
+              <GitCompare className="size-4" aria-hidden="true" />
+              <span>Find Differences</span>
+              <KbdHint>⌘⏎</KbdHint>
+            </>
+          )}
+        </button>
 
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <div className="flex items-center gap-2">
             <Switch
               id="diff-ignorecase"
               checked={prefs.ignoreCase}
               onCheckedChange={(v) => setPrefs({ ignoreCase: v })}
             />
-            <Label htmlFor="diff-ignorecase">Ignore case</Label>
+            <Label htmlFor="diff-ignorecase" className="text-sm text-ink-2">
+              Ignore case
+            </Label>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div ref={settingsRef} className="relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Settings"
-              aria-label="Settings"
-              aria-expanded={settingsOpen}
-              onClick={() => setSettingsOpen((v) => !v)}
-            >
-              <Settings className="size-5" />
-            </Button>
-            {settingsOpen && (
-              <div className="absolute right-0 z-10 mt-1 w-56 rounded-md border-2 border-ink bg-card p-3 shadow-pop-3">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="diff-ignorewhitespace"
-                    checked={prefs.ignoreWhitespace}
-                    onCheckedChange={(v) => setPrefs({ ignoreWhitespace: v })}
-                  />
-                  <Label htmlFor="diff-ignorewhitespace">Ignore whitespace</Label>
-                </div>
-              </div>
-            )}
+          <div className="flex items-center gap-2">
+            <Switch
+              id="diff-ignorewhitespace"
+              checked={prefs.ignoreWhitespace}
+              onCheckedChange={(v) => setPrefs({ ignoreWhitespace: v })}
+            />
+            <Label htmlFor="diff-ignorewhitespace" className="text-sm text-ink-2">
+              Ignore whitespace
+            </Label>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => diffResult && copy(diffResult.unifiedPatch)}
-            disabled={!diffResult}
-          >
-            <IconSwap swapKey={copied}>
-              {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
-              {copied ? "Copied!" : "Copy Result"}
-            </IconSwap>
-            <KbdHint>⌘⇧C</KbdHint>
-          </Button>
         </div>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Comparison Result</h2>
-          {diffResult && !hasNoDifferences && (
-            <div className="flex items-center gap-4 font-mono text-sm">
-              <span className="flex items-center gap-1.5 text-grass">
-                <span className="inline-block size-2.5 rounded-sm bg-grass" aria-hidden="true" />+
+      <section className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Tabs value={prefs.viewMode} onValueChange={(v) => setPrefs({ viewMode: v as ViewMode })}>
+            <TabsList className={PILL_LIST_CLASS}>
+              {VIEW_OPTIONS.map((opt) => (
+                <TabsTrigger key={opt.value} value={opt.value} className={PILL_TRIGGER_CLASS}>
+                  {opt.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          {hasResult && (
+            <div className="wb-fade-in flex items-center gap-3 font-mono text-[12.5px] tabular-nums">
+              <span className="inline-flex items-center gap-1.5 text-grass">
+                <span aria-hidden="true" className="inline-block size-2.5 rounded-sm bg-grass" />+
                 {diffResult.stats.added}
               </span>
-              <span className="flex items-center gap-1.5 text-tomato">
-                <span className="inline-block size-2.5 rounded-sm bg-tomato" aria-hidden="true" />-
+              <span className="inline-flex items-center gap-1.5 text-tomato">
+                <span aria-hidden="true" className="inline-block size-2.5 rounded-sm bg-tomato" />−
                 {diffResult.stats.removed}
               </span>
-              <span className="flex items-center gap-1.5 text-ink-3">
-                <span className="inline-block size-2.5 rounded-sm bg-ink-3/40" aria-hidden="true" />
+              <span className="inline-flex items-center gap-1.5 text-ink-3">
+                <span aria-hidden="true" className="inline-block size-2.5 rounded-sm bg-ink-3/40" />
                 {diffResult.stats.unchanged}
               </span>
             </div>
           )}
         </div>
-        <div className="overflow-hidden rounded-md border border-border bg-card">
-          {loading && (
-            <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
-              <Loader2 className="size-5 animate-spin" />
-              <span className="text-sm">Computing differences...</span>
-            </div>
-          )}
 
-          {!loading && diffResult === null && (
-            <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
-              <ArrowLeftRight className="size-10" />
-              <p className="text-sm">Enter text in both panels and click Find Differences</p>
-            </div>
-          )}
+        <div className="wb-panel wb-panel--out">
+          <PaneHeader
+            label="Comparison"
+            actions={
+              <button
+                type="button"
+                onClick={handleCopyResult}
+                disabled={!diffResult}
+                className="wb-btn wb-btn--sm wb-btn--ghost min-h-11 sm:min-h-0"
+              >
+                <IconSwap swapKey={copied}>
+                  {copied ? (
+                    <Check className="size-3.5" aria-hidden="true" strokeWidth={2.5} />
+                  ) : (
+                    <Copy className="size-3.5" aria-hidden="true" />
+                  )}
+                </IconSwap>
+                <span>{copied ? "Copied" : "Copy Result"}</span>
+                <KbdHint>⌘⇧C</KbdHint>
+              </button>
+            }
+          />
 
-          {!loading && hasNoDifferences && (
-            <div className="flex flex-col items-center justify-center gap-2 py-16 text-ink">
-              <CheckCircle className="size-10 text-grass" />
-              <p className="text-sm font-medium">No differences found</p>
-            </div>
-          )}
+          <div key={loading ? "loading" : diffResult ? "result" : "empty"} className="wb-fade-in">
+            {loading && (
+              <div className="flex items-center justify-center gap-2 py-20 text-ink-3">
+                <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+                <span className="text-sm">Computing differences...</span>
+              </div>
+            )}
 
-          {!loading && diffResult !== null && !hasNoDifferences && (
-            <>
-              {prefs.viewMode === "side-by-side" && (
-                <SideBySideView result={diffResult.sideBySide} />
-              )}
-              {prefs.viewMode === "inline" && <InlineView lines={diffResult.inlineLines} />}
-              {prefs.viewMode === "unified" && <UnifiedView patch={diffResult.unifiedPatch} />}
-            </>
-          )}
+            {!loading && diffResult === null && (
+              <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center text-ink-3">
+                <ArrowLeftRight className="size-9 text-ink-3" aria-hidden="true" />
+                <p className="font-mono text-[13px] italic">
+                  Enter text in both panels and click Find Differences
+                </p>
+              </div>
+            )}
+
+            {!loading && hasNoDifferences && (
+              <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center text-ink">
+                <CheckCircle className="size-9 text-grass" aria-hidden="true" />
+                <p className="text-sm font-medium">No differences found</p>
+              </div>
+            )}
+
+            {!loading && hasResult && (
+              <>
+                {prefs.viewMode === "side-by-side" && (
+                  <SideBySideView result={diffResult.sideBySide} />
+                )}
+                {prefs.viewMode === "inline" && <InlineView lines={diffResult.inlineLines} />}
+                {prefs.viewMode === "unified" && <UnifiedView patch={diffResult.unifiedPatch} />}
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      </section>
     </ToolShell>
   );
 }
