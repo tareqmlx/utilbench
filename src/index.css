@@ -808,6 +808,9 @@ body {
   animation: wb-svg-shimmer 1100ms cubic-bezier(0.22, 1, 0.36, 1) infinite;
   will-change: transform;
 }
+[data-doc-hidden="true"] .wb-svg-shimmer::before {
+  animation-play-state: paused;
+}
 .wb-svg-check-pop {
   display: inline-flex;
   animation: wb-svg-check-pop 320ms cubic-bezier(0.22, 1, 0.36, 1) both;

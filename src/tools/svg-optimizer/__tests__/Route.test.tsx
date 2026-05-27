@@ -40,12 +40,12 @@ afterEach(() => {
 describe("SvgOptimizerRoute", () => {
   it("renders without crashing", () => {
     render(<SvgOptimizerRoute />);
-    expect(screen.getByText("Drop multiple SVGs here")).toBeInTheDocument();
+    expect(screen.getByText("Drop SVGs to optimize")).toBeInTheDocument();
   });
 
   it("shows drop zone with buttons", () => {
     render(<SvgOptimizerRoute />);
-    expect(screen.getByText("Drop multiple SVGs here")).toBeInTheDocument();
+    expect(screen.getByText("Drop SVGs to optimize")).toBeInTheDocument();
     expect(screen.getByText("Select Files")).toBeInTheDocument();
     expect(screen.getByText("Paste Code")).toBeInTheDocument();
   });
@@ -256,7 +256,7 @@ describe("SvgOptimizerRoute", () => {
 
   it("handles drag events on drop zone", () => {
     render(<SvgOptimizerRoute />);
-    const dropZone = screen.getByText("Drop multiple SVGs here").closest("div") as HTMLElement;
+    const dropZone = screen.getByText("Drop SVGs to optimize").closest("div") as HTMLElement;
     fireEvent.dragOver(dropZone);
     fireEvent.dragLeave(dropZone);
     // Should not throw
@@ -264,7 +264,7 @@ describe("SvgOptimizerRoute", () => {
 
   it("handles drop event with valid SVG file", async () => {
     render(<SvgOptimizerRoute />);
-    const dropZone = screen.getByText("Drop multiple SVGs here").closest("div") as HTMLElement;
+    const dropZone = screen.getByText("Drop SVGs to optimize").closest("div") as HTMLElement;
     const file = new File([VALID_SVG], "dropped.svg", { type: "image/svg+xml" });
     fireEvent.drop(dropZone, { dataTransfer: { files: [file] } });
 

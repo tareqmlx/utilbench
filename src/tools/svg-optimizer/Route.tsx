@@ -77,6 +77,7 @@ export default function SvgOptimizerRoute() {
   const [isZipping, setIsZipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const filesRef = useRef(files);
@@ -94,8 +95,7 @@ export default function SvgOptimizerRoute() {
   const optionsRef = useRef(currentOptions);
   optionsRef.current = currentOptions;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: kick processor on any files mutation; reads via refs
-  useEffect(() => {
+  const processPending = useCallback(() => {
     if (processingRef.current) return;
     const pendingFiles = filesRef.current.filter((f) => f.status === "pending");
     if (pendingFiles.length === 0) return;
@@ -119,6 +119,7 @@ export default function SvgOptimizerRoute() {
         .promise.then(
           (result) => {
             const optimizedSize = new TextEncoder().encode(result).byteLength;
+            const reduction = calculateReduction(file.originalSize, optimizedSize);
             setFiles((prev) =>
               prev.map((f) =>
                 f.id === file.id
@@ -126,12 +127,14 @@ export default function SvgOptimizerRoute() {
                   : f,
               ),
             );
+            setAnnouncement(`${file.name}: optimized, ${reduction}% smaller`);
           },
           (err) => {
             const message = err instanceof Error ? err.message : "Optimization failed";
             setFiles((prev) =>
               prev.map((f) => (f.id === file.id ? { ...f, status: "error", error: message } : f)),
             );
+            setAnnouncement(`${file.name}: failed — ${message}`);
           },
         )
         .finally(() => {
@@ -142,8 +145,16 @@ export default function SvgOptimizerRoute() {
     Promise.allSettled(tasks).then(() => {
       processingRef.current = false;
       setIsProcessing(false);
+      if (filesRef.current.some((f) => f.status === "pending")) {
+        processPending();
+      }
     });
-  }, [files]);
+  }, []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: kick processor on any files mutation; reads via refs
+  useEffect(() => {
+    processPending();
+  }, [files, processPending]);
 
   const addFilesToQueue = useCallback((svgFiles: Array<{ name: string; content: string }>) => {
     const currentCount = filesRef.current.length;
@@ -366,6 +377,19 @@ export default function SvgOptimizerRoute() {
     return () => URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
+  useEffect(() => {
+    if (!isProcessing) return;
+    const sync = () => {
+      document.body.dataset.docHidden = document.hidden ? "true" : "false";
+    };
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      document.removeEventListener("visibilitychange", sync);
+      delete document.body.dataset.docHidden;
+    };
+  }, [isProcessing]);
+
   useKeyboardShortcut(
     useMemo(
       () => [
@@ -383,10 +407,14 @@ export default function SvgOptimizerRoute() {
   return (
     <ToolShell>
       <div className="flex flex-col gap-8">
+        <output aria-live="polite" className="sr-only">
+          {announcement}
+        </output>
         {/* Drop Zone */}
         <div className="flex flex-col">
           <section
-            className={`flex flex-col items-center gap-6 rounded-lg border-2 border-ink px-6 py-10 shadow-pop-3 transition-colors sm:py-14 ${
+            aria-label="SVG drop zone"
+            className={`flex flex-col items-center gap-6 rounded-lg border-2 border-ink px-6 py-10 shadow-pop-3 transition-colors focus-within:ring-2 focus-within:ring-tomato focus-within:ring-offset-2 focus-within:ring-offset-paper sm:py-14 ${
               isDragging ? "bg-mint" : "bg-paper-2"
             }`}
             onDragOver={handleDragOver}
@@ -403,10 +431,10 @@ export default function SvgOptimizerRoute() {
               </div>
               <div className="text-center">
                 <h2 className="font-display text-[24px] font-extrabold leading-tight tracking-tight text-ink sm:text-[28px]">
-                  Drop multiple SVGs here
+                  Drop SVGs to optimize
                 </h2>
                 <p className="mt-2 text-[13.5px] leading-relaxed text-ink-2">
-                  Drop, browse, or paste. SVGs are minified instantly.
+                  Or browse to select. Minified instantly.
                 </p>
               </div>
             </div>
@@ -480,36 +508,34 @@ export default function SvgOptimizerRoute() {
                 <h2 className="font-display text-[20px] font-extrabold leading-none tracking-tight text-ink">
                   Optimization Queue
                 </h2>
-                <span
-                  aria-live="polite"
-                  aria-atomic="true"
-                  className="rounded-full border-2 border-ink bg-paper px-2.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink"
-                >
+                <span className="rounded-full border-2 border-ink bg-paper px-2.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink">
                   {isProcessing
                     ? `Working ${processedCount}/${batchTotal}`
                     : `${files.length} ${files.length === 1 ? "file" : "files"}`}
                 </span>
               </div>
-              {completedFiles.length > 0 && (
-                <button
-                  type="button"
-                  className={`wb-btn ${allDownloaded ? "wb-btn--lemon" : ""}`}
-                  onClick={handleDownloadAll}
-                  disabled={isZipping || allDownloaded}
-                >
-                  {allDownloaded ? (
+              {completedFiles.length > 0 &&
+                (allDownloaded ? (
+                  <span className="wb-btn wb-btn--lemon" aria-disabled="true">
                     <Check className="wb-svg-check-pop size-4" strokeWidth={2.5} />
-                  ) : isZipping ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Download className="size-4" strokeWidth={2.25} />
-                  )}
-                  <span>
-                    {allDownloaded ? "Downloaded" : isZipping ? "Creating ZIP…" : "Download All"}
+                    <span>Downloaded</span>
                   </span>
-                  {!allDownloaded && !isZipping && <KbdHint>⌘S</KbdHint>}
-                </button>
-              )}
+                ) : (
+                  <button
+                    type="button"
+                    className="wb-btn"
+                    onClick={handleDownloadAll}
+                    disabled={isZipping}
+                  >
+                    {isZipping ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Download className="size-4" strokeWidth={2.25} />
+                    )}
+                    <span>{isZipping ? "Creating ZIP…" : "Download All"}</span>
+                    {!isZipping && <KbdHint>⌘S</KbdHint>}
+                  </button>
+                ))}
             </div>
 
             <ul className="px-5">
@@ -545,7 +571,7 @@ export default function SvgOptimizerRoute() {
                           {file.name}
                         </span>
                         {file.status === "done" && file.optimizedSize !== null && (
-                          <output className="wb-svg-done-meta flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.1em]">
+                          <span className="wb-svg-done-meta flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.1em]">
                             <span className="text-ink-2 line-through">
                               {formatFileSize(file.originalSize)}
                             </span>
@@ -560,12 +586,12 @@ export default function SvgOptimizerRoute() {
                             <span className="wb-svg-badge rounded-md border-2 border-ink bg-mint px-1.5 py-px text-[10.5px] font-bold text-ink">
                               -{calculateReduction(file.originalSize, file.optimizedSize)}%
                             </span>
-                          </output>
+                          </span>
                         )}
                         {file.status === "processing" && (
-                          <output className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-2">
+                          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-2">
                             Optimizing…
-                          </output>
+                          </span>
                         )}
                         {file.status === "pending" && (
                           <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-2">
@@ -573,7 +599,7 @@ export default function SvgOptimizerRoute() {
                           </span>
                         )}
                         {file.status === "error" && (
-                          <output className="text-[12px] font-medium text-ink">{file.error}</output>
+                          <span className="text-[12px] font-medium text-ink">{file.error}</span>
                         )}
                       </div>
                     </div>
@@ -663,7 +689,7 @@ export default function SvgOptimizerRoute() {
           </section>
 
           <section className="rounded-lg border-2 border-ink bg-paper-2 p-5 shadow-pop-3">
-            <h3 className="mb-4 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-3">
+            <h3 className="mb-4 flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-2">
               <Wand2 className="size-4 text-ink" strokeWidth={2.25} />
               Presets
             </h3>
@@ -684,7 +710,7 @@ export default function SvgOptimizerRoute() {
                 );
               })}
             </div>
-            <p className="mt-3 font-mono text-[11px] leading-relaxed text-ink-3">
+            <p className="mt-3 font-mono text-[11px] leading-relaxed text-ink-2">
               Presets overwrite the toggles above.
             </p>
           </section>
