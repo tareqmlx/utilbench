@@ -1,5 +1,5 @@
 import { Check, ClipboardPaste, Copy, Download, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { IconSwap } from "../../components/IconSwap";
 import { KbdHint } from "../../components/KbdHint";
 import { PaneHeader, StatusBadge, ToolShell } from "../../components/tool-layout";
@@ -129,7 +129,8 @@ export default function JsonSchemaGeneratorRoute() {
     [],
   );
 
-  const result = useMemo(() => tryGenerate(input, options), [input, options]);
+  const deferredInput = useDeferredValue(input);
+  const result = useMemo(() => tryGenerate(deferredInput, options), [deferredInput, options]);
   const { output, schema, error } = result;
   const isEmpty = input.trim() === "";
 
@@ -293,7 +294,7 @@ export default function JsonSchemaGeneratorRoute() {
                 aria-describedby={error ? "schema-input-error" : undefined}
                 aria-invalid={error !== null || undefined}
                 className={cn(
-                  "h-[460px] w-full resize-none rounded-md bg-paper p-4 font-mono text-[13px] leading-relaxed text-ink placeholder:text-ink-3",
+                  "h-72 w-full resize-none rounded-md bg-paper p-4 font-mono text-[13px] leading-relaxed text-ink placeholder:text-ink-3 sm:h-96 lg:h-[460px]",
                   "border-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
                   statusState === "invalid"
                     ? "border-tomato"
@@ -366,7 +367,7 @@ export default function JsonSchemaGeneratorRoute() {
             <div className="p-3 sm:p-4">
               <div
                 key={outputStateKey}
-                className="wb-fade-in h-[460px] overflow-auto rounded-md bg-ink p-4 sm:p-5"
+                className="wb-fade-in h-72 overflow-auto rounded-md bg-ink p-4 sm:h-96 sm:p-5 lg:h-[460px]"
               >
                 {output ? (
                   <pre className="font-mono text-[13px] leading-relaxed text-paper">
