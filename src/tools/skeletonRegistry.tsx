@@ -331,28 +331,43 @@ function LoremIpsumSkeleton() {
   return (
     <ToolShell>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        <div className="lg:col-span-4">
-          <div className="rounded-xl border border-border p-5">
-            <SkeletonLine width="w-32" height="h-5" className="mb-5" />
-            <div className="space-y-4">
-              <SkeletonLine width="w-20" height="h-4" />
-              <div className="flex gap-2">
+        <aside className="lg:col-span-4">
+          <div className="wb-panel">
+            <div className="border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+              <SkeletonLine width="w-20" height="h-3" />
+            </div>
+            <div className="space-y-4 p-5 sm:p-6">
+              <SkeletonLine width="w-12" height="h-3" />
+              <div className="flex gap-1">
                 <SkeletonButton width="w-1/3" />
                 <SkeletonButton width="w-1/3" />
                 <SkeletonButton width="w-1/3" />
               </div>
-              <SkeletonLine width="w-24" height="h-4" />
-              <SkeletonBlock className="h-10 rounded-lg" />
-              <SkeletonLine width="w-40" height="h-4" />
-              <SkeletonLine width="w-36" height="h-4" />
-              <SkeletonButton width="w-full" className="mt-2" />
+              <SkeletonLine width="w-16" height="h-3" />
+              <SkeletonBlock className="h-11 rounded-md" />
+              <SkeletonLine width="w-32" height="h-3" />
+            </div>
+            <div className="space-y-4 border-t-2 border-ink p-5 sm:p-6">
+              {sk(2).map((key) => (
+                <div key={key} className="flex items-start justify-between gap-4">
+                  <div className="flex-1 space-y-2">
+                    <SkeletonLine width="w-40" height="h-4" />
+                    <SkeletonLine width="w-56" height="h-3" />
+                  </div>
+                  <SkeletonBlock className="h-6 w-11 rounded-full" />
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        </aside>
         <div className="lg:col-span-8">
-          <div className="rounded-xl border border-border p-6">
-            <div className="space-y-4">
-              {sk(6).map((key) => (
+          <div className="wb-panel wb-panel--out">
+            <div className="flex items-center justify-between border-b-2 border-ink bg-paper-2 px-[18px] py-[14px]">
+              <SkeletonLine width="w-16" height="h-3" />
+              <SkeletonButton width="w-44" />
+            </div>
+            <div className="space-y-5 bg-paper p-6 sm:p-8">
+              {sk(4).map((key) => (
                 <div key={key} className="space-y-2">
                   <SkeletonLine width="w-full" height="h-3" />
                   <SkeletonLine width="w-11/12" height="h-3" />

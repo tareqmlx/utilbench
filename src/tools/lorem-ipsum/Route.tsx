@@ -1,10 +1,8 @@
-import { Check, Copy, Info } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { Check, Copy } from "lucide-react";
+import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import { IconSwap } from "../../components/IconSwap";
 import { KbdHint } from "../../components/KbdHint";
-import { ToolShell } from "../../components/tool-layout";
-import { Button } from "../../components/ui/button";
-import { Card, CardContent } from "../../components/ui/card";
+import { PaneHeader, ToolShell } from "../../components/tool-layout";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
@@ -12,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { useClipboard } from "../../hooks/useClipboard";
 import { useKeyboardShortcut } from "../../hooks/useKeyboardShortcut";
 import { useToolPreferences } from "../../hooks/useToolPreferences";
+import { cn } from "../../lib/utils";
 import type { GenerateOptions } from "./generator";
 import { generateLoremIpsum } from "./generator";
 
@@ -23,6 +22,12 @@ const AMOUNT_LIMITS: Record<Mode, { min: number; max: number; default: number }>
   bytes: { min: 1, max: 100000, default: 500 },
 };
 
+const MODE_TABS: { value: Mode; label: string }[] = [
+  { value: "paragraphs", label: "Paragraphs" },
+  { value: "words", label: "Words" },
+  { value: "bytes", label: "Bytes" },
+];
+
 const DEFAULT_PREFS = {
   mode: "paragraphs" as Mode,
   amount: 3,
@@ -30,25 +35,61 @@ const DEFAULT_PREFS = {
   htmlTags: false,
 };
 
+const tabTriggerCls = cn(
+  "wb-chip justify-center whitespace-nowrap px-3 py-1.5 text-[12.5px] font-semibold sm:min-h-0",
+  "data-[state=active]:bg-ink data-[state=active]:text-paper",
+  "data-[state=active]:hover:bg-ink data-[state=active]:hover:text-paper",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato",
+  "focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
+);
+
+const metaLabelCls = "wb-meta block";
+
+const numberFormatter = new Intl.NumberFormat("en-US");
+const textEncoder = new TextEncoder();
+
+function countBytes(text: string): number {
+  return textEncoder.encode(text).length;
+}
+
 export default function LoremIpsumRoute() {
   const [prefs, setPrefs] = useToolPreferences("lorem-ipsum", DEFAULT_PREFS);
   const { copied, copy } = useClipboard();
+  const [status, setStatus] = useState("");
 
   const clampedAmount = useMemo(() => {
     const limits = AMOUNT_LIMITS[prefs.mode];
     return Math.max(limits.min, Math.min(limits.max, prefs.amount));
   }, [prefs.mode, prefs.amount]);
 
+  const isClamped = Number.isFinite(prefs.amount) && prefs.amount !== clampedAmount;
+
+  const deferredAmount = useDeferredValue(clampedAmount);
+  const isPending = deferredAmount !== clampedAmount;
+
   const output = useMemo(() => {
     return generateLoremIpsum({
       mode: prefs.mode,
-      amount: clampedAmount,
+      amount: deferredAmount,
       startWithLorem: prefs.startWithLorem,
       htmlTags: prefs.htmlTags,
     });
-  }, [prefs.mode, clampedAmount, prefs.startWithLorem, prefs.htmlTags]);
+  }, [prefs.mode, deferredAmount, prefs.startWithLorem, prefs.htmlTags]);
 
-  const paragraphs = useMemo(() => output.split("\n\n"), [output]);
+  const paragraphs = useMemo(
+    () => (prefs.htmlTags ? [] : output.split("\n\n")),
+    [output, prefs.htmlTags],
+  );
+
+  const stats = useMemo(() => {
+    const trimmed = output.trim();
+    const words = trimmed ? trimmed.split(/\s+/).length : 0;
+    return {
+      paragraphs: paragraphs.length,
+      words,
+      bytes: countBytes(output),
+    };
+  }, [output, paragraphs.length]);
 
   const handleModeChange = useCallback(
     (value: string) => {
@@ -69,7 +110,9 @@ export default function LoremIpsumRoute() {
   );
 
   const handleCopy = useCallback(() => {
+    if (!output) return;
     copy(output);
+    setStatus("Lorem ipsum copied to clipboard.");
   }, [copy, output]);
 
   useKeyboardShortcut(
@@ -87,132 +130,196 @@ export default function LoremIpsumRoute() {
     ),
   );
 
+  const limits = AMOUNT_LIMITS[prefs.mode];
+  const statsLabel = useMemo(() => {
+    const parts: string[] = [];
+    if (prefs.mode === "paragraphs") {
+      parts.push(`${numberFormatter.format(stats.paragraphs)}p`);
+    }
+    parts.push(`${numberFormatter.format(stats.words)}w`);
+    parts.push(`${numberFormatter.format(stats.bytes)}B`);
+    return parts.join(" · ");
+  }, [prefs.mode, stats.paragraphs, stats.words, stats.bytes]);
+
   return (
-    <ToolShell className="flex-grow">
+    <ToolShell>
+      <output aria-live="polite" className="sr-only">
+        {status}
+      </output>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        <aside className="space-y-6 lg:col-span-4">
-          <Card className="p-6">
-            <h2 className="mb-6 text-sm font-bold uppercase tracking-widest text-muted-foreground">
-              Generation Settings
-            </h2>
-            <div className="space-y-4">
-              <Tabs value={prefs.mode} onValueChange={handleModeChange}>
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="paragraphs" className="text-sm whitespace-nowrap">
-                    Paragraphs
-                  </TabsTrigger>
-                  <TabsTrigger value="words" className="text-sm whitespace-nowrap">
-                    Words
-                  </TabsTrigger>
-                  <TabsTrigger value="bytes" className="text-sm whitespace-nowrap">
-                    Bytes
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+        <aside className="lg:col-span-4">
+          <section className="wb-panel lg:sticky lg:top-24">
+            <PaneHeader label="Settings" />
+
+            <div className="space-y-5 p-5 sm:p-6">
+              <div className="space-y-2">
+                <span className={metaLabelCls}>Mode</span>
+                <Tabs value={prefs.mode} onValueChange={handleModeChange}>
+                  <TabsList className="flex h-auto w-full gap-1 bg-transparent p-0">
+                    {MODE_TABS.map((tab) => (
+                      <TabsTrigger
+                        key={tab.value}
+                        value={tab.value}
+                        className={cn(tabTriggerCls, "flex-1")}
+                      >
+                        {tab.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lorem-amount">Amount</Label>
+                <Label htmlFor="lorem-amount" className={metaLabelCls}>
+                  Amount
+                </Label>
                 <Input
                   id="lorem-amount"
                   type="number"
+                  inputMode="numeric"
                   value={prefs.amount}
-                  min={AMOUNT_LIMITS[prefs.mode].min}
-                  max={AMOUNT_LIMITS[prefs.mode].max}
+                  min={limits.min}
+                  max={limits.max}
                   onChange={handleAmountChange}
+                  aria-describedby="lorem-amount-hint"
+                  aria-invalid={isClamped || undefined}
+                  className="h-11 font-mono tabular-nums"
                 />
+                <p id="lorem-amount-hint" className="wb-mono-sm text-ink-3">
+                  {isClamped ? (
+                    <span className="text-tomato">
+                      Capped at {numberFormatter.format(clampedAmount)}.
+                    </span>
+                  ) : (
+                    <>
+                      {numberFormatter.format(limits.min)}–{numberFormatter.format(limits.max)}{" "}
+                      {prefs.mode}
+                    </>
+                  )}
+                </p>
               </div>
+            </div>
 
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center gap-3">
+            <div className="border-t-2 border-ink p-5 sm:p-6">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col gap-0.5">
+                    <Label
+                      htmlFor="lorem-start"
+                      className="cursor-pointer text-sm font-semibold text-ink"
+                    >
+                      Start with Lorem ipsum…
+                    </Label>
+                    <span id="lorem-start-desc" className="text-[12.5px] text-ink-3">
+                      Open with the classic first sentence.
+                    </span>
+                  </div>
                   <Switch
                     id="lorem-start"
                     checked={prefs.startWithLorem}
                     onCheckedChange={(v) => setPrefs({ startWithLorem: v })}
+                    aria-describedby="lorem-start-desc"
                   />
-                  <Label htmlFor="lorem-start" className="cursor-pointer">
-                    Start with &quot;Lorem ipsum...&quot;
-                  </Label>
                 </div>
-                <div className="flex items-center gap-3">
+
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col gap-0.5">
+                    <Label
+                      htmlFor="lorem-html"
+                      className="cursor-pointer text-sm font-semibold text-ink"
+                    >
+                      Add HTML tags
+                    </Label>
+                    <span id="lorem-html-desc" className="text-[12.5px] text-ink-3">
+                      Wrap each paragraph in &lt;p&gt; for direct paste.
+                    </span>
+                  </div>
                   <Switch
                     id="lorem-html"
                     checked={prefs.htmlTags}
                     onCheckedChange={(v) => setPrefs({ htmlTags: v })}
+                    aria-describedby="lorem-html-desc"
                   />
-                  <Label htmlFor="lorem-html" className="cursor-pointer">
-                    Add HTML tags
-                  </Label>
                 </div>
               </div>
             </div>
-          </Card>
-
-          <Card className="border-primary/20 bg-primary/5 p-4">
-            <div className="flex gap-3">
-              <Info className="h-5 w-5 shrink-0 text-primary" />
-              <div>
-                <p className="mb-1 text-xs font-bold uppercase tracking-wider text-primary">
-                  Did you know?
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Lorem Ipsum is simply dummy text of the printing and typesetting industry.
-                </p>
-              </div>
-            </div>
-          </Card>
+          </section>
         </aside>
 
-        <div className="flex h-full flex-col lg:col-span-8">
-          <Card className="flex flex-grow flex-col overflow-hidden">
-            <div className="flex items-center justify-between border-b border-border bg-muted px-6 py-4">
-              <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                Output
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-primary hover:text-primary/80"
-                onClick={handleCopy}
-                disabled={!output}
-              >
-                <IconSwap swapKey={copied}>
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      Copy to Clipboard
-                      <KbdHint>⌘⇧C</KbdHint>
-                    </>
+        <div className="lg:col-span-8">
+          <section className="wb-panel wb-panel--out">
+            <PaneHeader
+              label="Output"
+              className="bg-paper-2"
+              trailing={
+                <span
+                  key={statsLabel}
+                  className={cn(
+                    "wb-fade-in wb-mono-sm tabular-nums text-ink-2 transition-opacity",
+                    isPending && "opacity-50",
                   )}
-                </IconSwap>
-              </Button>
-            </div>
-            <CardContent
-              className="max-h-[600px] overflow-y-auto p-4 sm:p-8"
+                  aria-hidden="true"
+                >
+                  {statsLabel}
+                </span>
+              }
+              actions={
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  disabled={!output}
+                  className="wb-btn wb-btn--sm wb-btn--ghost"
+                  aria-label="Copy to Clipboard"
+                >
+                  <IconSwap swapKey={copied}>
+                    {copied ? (
+                      <>
+                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                        Copy to Clipboard
+                        <KbdHint>⌘⇧C</KbdHint>
+                      </>
+                    )}
+                  </IconSwap>
+                </button>
+              }
+            />
+
+            <div
+              className="max-h-[70vh] overflow-y-auto bg-paper p-6 sm:p-8 lg:max-h-[640px]"
               data-testid="output-area"
             >
-              {prefs.htmlTags ? (
-                <pre className="whitespace-pre-wrap break-words font-mono text-sm leading-relaxed text-foreground">
-                  {output}
-                </pre>
-              ) : (
-                paragraphs.map((paragraph, idx) => (
-                  <p
-                    key={`${idx}-${paragraph.slice(0, 40)}`}
-                    className={`leading-relaxed text-foreground ${
-                      idx < paragraphs.length - 1 ? "mb-6" : ""
-                    }`}
-                  >
-                    {paragraph}
-                  </p>
-                ))
-              )}
-            </CardContent>
-          </Card>
+              <div
+                key={`${prefs.mode}|${prefs.startWithLorem}|${prefs.htmlTags}|${output ? "f" : "e"}`}
+                className="wb-fade-in"
+              >
+                {output ? (
+                  prefs.htmlTags ? (
+                    <pre className="whitespace-pre-wrap break-words font-mono text-[13px] leading-relaxed text-ink">
+                      {output}
+                    </pre>
+                  ) : (
+                    <div className="space-y-5 text-[15px] leading-relaxed text-ink">
+                      {paragraphs.map((paragraph, idx) => (
+                        <p
+                          key={`${idx}-${paragraph.slice(0, 32)}`}
+                          className="max-w-[72ch] text-pretty"
+                        >
+                          {paragraph}
+                        </p>
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  <p className="text-sm text-ink-3">Pick an amount to fill the page.</p>
+                )}
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </ToolShell>
