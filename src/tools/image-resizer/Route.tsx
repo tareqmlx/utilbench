@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { IconSwap } from "../../components/IconSwap";
 import { KbdHint } from "../../components/KbdHint";
 import { ErrorAlert, PaneHeader, ToolShell, WarningAlert } from "../../components/tool-layout";
 import { Input } from "../../components/ui/input";
@@ -439,14 +440,17 @@ export default function ImageResizerRoute() {
             )}
           >
             <div className="flex flex-col items-center gap-4">
-              <span className="grid size-14 place-items-center rounded-[14px] border-2 border-ink bg-paper shadow-pop-2 transition-transform duration-200 group-hover:rotate-[-4deg]">
+              <span
+                className="wb-svg-drop-icon grid size-14 place-items-center rounded-[14px] border-2 border-ink bg-paper shadow-pop-2 group-hover:rotate-[-4deg]"
+                data-dragging={isDragging}
+              >
                 <Upload className="size-6 text-ink" strokeWidth={2.5} aria-hidden="true" />
               </span>
               <div className="space-y-1">
                 <p className="font-display text-[22px] font-bold leading-tight tracking-tight text-ink">
                   Drag and drop images here
                 </p>
-                <p className="text-sm text-ink-2">
+                <p key={mode} className="wb-fade-in text-sm text-ink-2">
                   PNG, JPG, WebP{mode === "batch" ? " · Bulk upload up to 50 files" : ""}
                 </p>
               </div>
@@ -532,11 +536,13 @@ export default function ImageResizerRoute() {
                       onClick={handleToggleAspectLock}
                       data-testid="aspect-lock"
                     >
-                      {aspectRatioLocked ? (
-                        <Link2 className="size-4" aria-hidden="true" />
-                      ) : (
-                        <Link2Off className="size-4" aria-hidden="true" />
-                      )}
+                      <IconSwap swapKey={aspectRatioLocked}>
+                        {aspectRatioLocked ? (
+                          <Link2 className="size-4" aria-hidden="true" />
+                        ) : (
+                          <Link2Off className="size-4" aria-hidden="true" />
+                        )}
+                      </IconSwap>
                     </button>
                   </div>
                 </div>
@@ -568,8 +574,9 @@ export default function ImageResizerRoute() {
                       Quality
                     </Label>
                     <span
+                      key={prefs.format === "png" ? "na" : `q-${prefs.quality}`}
                       className={cn(
-                        "font-mono text-[12px] font-bold tabular-nums",
+                        "wb-fade-in font-mono text-[12px] font-bold tabular-nums",
                         prefs.format === "png" ? "text-ink-3" : "text-tomato",
                       )}
                     >
@@ -594,18 +601,20 @@ export default function ImageResizerRoute() {
                 disabled={!hasQueue || isProcessing}
                 className="wb-btn w-full justify-center py-4 text-[15px]"
               >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                    <span>Processing...</span>
-                  </>
-                ) : (
-                  <>
-                    <LayoutGrid className="size-4" aria-hidden="true" />
-                    <span>Resize {mode === "batch" ? "& Download All" : "& Download"}</span>
-                    <KbdHint>⌘⏎</KbdHint>
-                  </>
-                )}
+                <IconSwap swapKey={isProcessing}>
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <LayoutGrid className="size-4" aria-hidden="true" />
+                      <span>Resize {mode === "batch" ? "& Download All" : "& Download"}</span>
+                      <KbdHint>⌘⏎</KbdHint>
+                    </>
+                  )}
+                </IconSwap>
               </button>
             </div>
           </section>
@@ -654,7 +663,7 @@ export default function ImageResizerRoute() {
               aria-label="Processing queue"
             >
               {queue.length === 0 && (
-                <p className="py-10 text-center text-sm text-ink-3">
+                <p className="wb-fade-in py-10 text-center text-sm text-ink-3">
                   No images in queue. Upload files to get started.
                 </p>
               )}
@@ -664,7 +673,7 @@ export default function ImageResizerRoute() {
                   <div
                     key={item.id}
                     className={cn(
-                      "flex cursor-pointer items-center gap-3 rounded-md border-2 p-2.5 transition-[background,box-shadow,transform,border-color] duration-200",
+                      "wb-item-enter flex cursor-pointer items-center gap-3 rounded-md border-2 p-2.5 transition-[background,box-shadow,transform,border-color] duration-200",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper-2",
                       selected
                         ? "border-ink bg-lemon shadow-pop-2 -translate-x-px -translate-y-px"
@@ -700,17 +709,17 @@ export default function ImageResizerRoute() {
                         <p className="font-mono text-[11px] text-ink-3 tabular-nums">
                           {formatBytes(item.file.size)}
                           {item.status === "done" && item.resultSize !== undefined && (
-                            <>
-                              {" → "}
-                              <span className="text-grass font-semibold">
+                            <span className="wb-svg-done-meta inline-flex items-center gap-1">
+                              <span aria-hidden="true">→</span>
+                              <span className="wb-svg-badge font-semibold text-grass">
                                 {formatBytes(item.resultSize)}
                               </span>
-                            </>
+                            </span>
                           )}
                           {item.status === "error" && (
                             <>
                               {" · "}
-                              <span className="text-tomato font-semibold">
+                              <span className="font-semibold text-tomato">
                                 {item.error ?? "Error"}
                               </span>
                             </>
@@ -766,7 +775,10 @@ export default function ImageResizerRoute() {
               icon={<Eye className="size-4" aria-hidden="true" />}
               className="bg-paper-2"
               actions={
-                <span className="inline-flex items-center rounded-md border-2 border-ink bg-paper px-2 py-1 font-mono text-[11px] font-medium text-ink shadow-pop-1 tabular-nums">
+                <span
+                  key={`${width}x${height}`}
+                  className="wb-fade-in inline-flex items-center rounded-md border-2 border-ink bg-paper px-2 py-1 font-mono text-[11px] font-medium text-ink shadow-pop-1 tabular-nums"
+                >
                   {width} x {height}
                 </span>
               }
@@ -774,12 +786,13 @@ export default function ImageResizerRoute() {
             <div className="flex min-h-[400px] flex-1 items-center justify-center p-5 sm:p-6">
               {previewUrl ? (
                 <img
-                  className="max-h-[480px] rounded-md border-2 border-ink object-contain shadow-pop-3"
+                  key={previewUrl}
+                  className="wb-fade-in max-h-[480px] rounded-md border-2 border-ink object-contain shadow-pop-3"
                   src={previewUrl}
                   alt="Resized preview"
                 />
               ) : (
-                <div className="flex flex-col items-center gap-3 text-ink-3">
+                <div className="wb-fade-in flex flex-col items-center gap-3 text-ink-3">
                   <span className="grid size-14 place-items-center rounded-[14px] border-2 border-ink-3 bg-paper">
                     <ImageIcon className="size-6" aria-hidden="true" />
                   </span>
@@ -798,10 +811,16 @@ export default function ImageResizerRoute() {
                   </span>
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-ink-3">
+                  <span
+                    key={selectedItem.resultSize ? "output" : "estimated"}
+                    className="wb-fade-in font-mono text-[10px] font-medium uppercase tracking-wider text-ink-3"
+                  >
                     {selectedItem.resultSize ? "Output" : "Estimated"}
                   </span>
-                  <span className="font-mono text-[13px] font-bold text-tomato tabular-nums">
+                  <span
+                    key={`size-${selectedItem.resultSize ?? `${width}x${height}-${prefs.format}-${prefs.quality}`}`}
+                    className="wb-fade-in font-mono text-[13px] font-bold text-tomato tabular-nums"
+                  >
                     {selectedItem.resultSize
                       ? formatBytes(selectedItem.resultSize)
                       : formatBytes(
@@ -818,7 +837,7 @@ export default function ImageResizerRoute() {
                   </span>
                 </div>
                 {selectedItem.processingTime !== undefined && (
-                  <div className="flex flex-col gap-0.5">
+                  <div className="wb-svg-done-meta flex flex-col gap-0.5">
                     <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-ink-3">
                       Time
                     </span>
@@ -847,7 +866,7 @@ export default function ImageResizerRoute() {
               <button
                 type="button"
                 key={asset.url}
-                className="group relative aspect-square overflow-hidden rounded-md border-2 border-ink bg-paper shadow-pop-1 transition-[transform,box-shadow] duration-200 hover:-translate-x-px hover:-translate-y-px hover:shadow-pop-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+                className="wb-item-enter group relative aspect-square overflow-hidden rounded-md border-2 border-ink bg-paper shadow-pop-1 transition-[transform,box-shadow] duration-200 hover:-translate-x-px hover:-translate-y-px hover:shadow-pop-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
                 aria-label={`Download ${asset.filename}`}
                 onClick={() => downloadBlob(asset.blob, asset.filename)}
               >
