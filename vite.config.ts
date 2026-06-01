@@ -1,5 +1,4 @@
-import { readdirSync } from "node:fs";
-import { writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
@@ -9,6 +8,10 @@ import type { Plugin } from "vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 
 const SITE_URL = "https://utilbench.devandstone.com";
+
+const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8")) as {
+  version: string;
+};
 
 function sitemapPlugin(): Plugin {
   return {
@@ -45,6 +48,9 @@ ${allRoutes.map((route) => `  <url>\n    <loc>${SITE_URL}${route}</loc>\n    <la
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), sitemapPlugin(), cloudflare()],
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),

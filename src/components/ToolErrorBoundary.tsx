@@ -1,6 +1,8 @@
+import { type ScrubbedError, pushError } from "@/lib/errorReport";
 import { CircleAlert, RotateCcw } from "lucide-react";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { ReportIssueButton } from "./ReportIssueButton";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Button } from "./ui/button";
 
@@ -11,24 +13,28 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  reportError: ScrubbedError | null;
 }
 
 export class ToolErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, reportError: null };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("ToolErrorBoundary caught an error:", error, info);
+    // Capture the exact scrubbed error so a later window.onerror/rejection can't
+    // overwrite what the Report button sends.
+    this.setState({ reportError: pushError(error, { source: "ToolErrorBoundary" }) });
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: null });
+    this.setState({ hasError: false, error: null, reportError: null });
   };
 
   render() {
@@ -44,7 +50,7 @@ export class ToolErrorBoundary extends Component<Props, State> {
               </AlertDescription>
             </Alert>
           )}
-          <div className="mt-8 flex items-center justify-center gap-3">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Button onClick={this.handleRetry}>
               <RotateCcw className="size-4" />
               Retry
@@ -52,6 +58,7 @@ export class ToolErrorBoundary extends Component<Props, State> {
             <Button variant="outline" asChild>
               <Link to="/tools">Browse all tools</Link>
             </Button>
+            <ReportIssueButton variant="error" error={this.state.reportError} />
           </div>
         </div>
       );

@@ -1,9 +1,12 @@
 import { CircleAlert, Home, RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, createBrowserRouter, isRouteErrorResponse, useRouteError } from "react-router-dom";
 import { Layout } from "./components/Layout";
+import { ReportIssueButton } from "./components/ReportIssueButton";
 import { ToolErrorBoundary } from "./components/ToolErrorBoundary";
 import { Alert, AlertDescription } from "./components/ui/alert";
 import { Button } from "./components/ui/button";
+import { type ScrubbedError, pushError } from "./lib/errorReport";
 
 function HydrateFallback() {
   return (
@@ -16,13 +19,21 @@ function HydrateFallback() {
   );
 }
 
-function RouteErrorFallback() {
+export function RouteErrorFallback() {
   const error = useRouteError();
   const isResponse = isRouteErrorResponse(error);
 
   const title = isResponse ? `${error.status}: ${error.statusText}` : "Something went wrong";
   const detail =
     isResponse && error.data ? String(error.data) : error instanceof Error ? error.message : null;
+
+  // Router-level failures (lazy import / loader errors) bypass the React error
+  // boundaries, so feed the report buffer here too. Capture the exact scrubbed
+  // error so a later global error can't overwrite what the button sends.
+  const [reportError, setReportError] = useState<ScrubbedError | null>(null);
+  useEffect(() => {
+    setReportError(pushError(error, { source: "RouteErrorFallback" }));
+  }, [error]);
 
   const handleRetry = () => {
     window.location.reload();
@@ -40,7 +51,7 @@ function RouteErrorFallback() {
             </AlertDescription>
           </Alert>
         )}
-        <div className="mt-8 flex items-center justify-center gap-3">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button asChild>
             <Link to="/">
               <Home className="size-4" />
@@ -51,6 +62,7 @@ function RouteErrorFallback() {
             <RotateCcw className="size-4" />
             Retry
           </Button>
+          <ReportIssueButton variant="error" error={reportError} />
         </div>
       </div>
     </div>

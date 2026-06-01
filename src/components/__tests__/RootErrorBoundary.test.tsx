@@ -1,4 +1,5 @@
 import { RootErrorBoundary } from "@/components/RootErrorBoundary";
+import { latestError } from "@/lib/errorReport";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -49,6 +50,28 @@ describe("RootErrorBoundary", () => {
     );
 
     expect(screen.getByText("Test error")).toBeInTheDocument();
+  });
+
+  it("pushes the caught error to the report buffer", () => {
+    render(
+      <RootErrorBoundary>
+        <ProblemChild />
+      </RootErrorBoundary>,
+    );
+
+    const latest = latestError();
+    expect(latest?.message).toContain("Test error");
+    expect(latest?.source).toBe("RootErrorBoundary");
+  });
+
+  it("renders a Report issue button on the error screen", () => {
+    render(
+      <RootErrorBoundary>
+        <ProblemChild />
+      </RootErrorBoundary>,
+    );
+
+    expect(screen.getByRole("button", { name: /report an issue/i })).toBeInTheDocument();
   });
 
   it("reload button calls window.location.reload", () => {

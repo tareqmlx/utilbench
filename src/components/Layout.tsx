@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { APP_DESCRIPTION, APP_NAME } from "../config";
 import { Logo } from "./Logo";
 import { PageTransition } from "./PageTransition";
+import { ReportIssueButton } from "./ReportIssueButton";
 import { SearchModal } from "./SearchModal";
 import {
   Sheet,
@@ -104,6 +105,8 @@ export function Layout() {
               <Search className="size-4" strokeWidth={2.5} />
             </button>
 
+            <ReportIssueButton variant="header" className="hidden sm:inline-flex" />
+
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
               <SheetTrigger asChild>
                 <button
@@ -140,6 +143,7 @@ export function Layout() {
                       {link.label}
                     </Link>
                   ))}
+                  <ReportIssueButton variant="menu" />
                 </nav>
               </SheetContent>
             </Sheet>
@@ -239,6 +243,9 @@ export function Layout() {
                   >
                     MIT licensed
                   </a>
+                </li>
+                <li>
+                  <ReportIssueButton variant="footer" />
                 </li>
               </ul>
               <div className="mt-3 flex flex-wrap gap-2 font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-muted">

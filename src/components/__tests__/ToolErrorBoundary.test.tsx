@@ -1,3 +1,4 @@
+import { latestError } from "@/lib/errorReport";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -45,6 +46,20 @@ describe("ToolErrorBoundary", () => {
       "href",
       "/tools",
     );
+  });
+
+  it("pushes the caught error to the report buffer and shows a Report button", () => {
+    render(
+      <MemoryRouter>
+        <ToolErrorBoundary>
+          <Boom shouldThrow={true} />
+        </ToolErrorBoundary>
+      </MemoryRouter>,
+    );
+
+    expect(latestError()?.message).toContain("kaboom");
+    expect(latestError()?.source).toBe("ToolErrorBoundary");
+    expect(screen.getByRole("button", { name: /report an issue/i })).toBeInTheDocument();
   });
 
   it("retry resets error state", () => {

@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRight,
   Braces,
+  Bug,
   Calendar,
   CaseSensitive,
   Clock,
@@ -40,6 +41,7 @@ import {
 const iconMap: Record<string, LucideIcon> = {
   ArrowLeftRight,
   Braces,
+  Bug,
   Calendar,
   CaseSensitive,
   Clock,
