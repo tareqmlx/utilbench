@@ -51,7 +51,7 @@ export function RouteErrorFallback() {
             </AlertDescription>
           </Alert>
         )}
-        <div className="mt-8 flex items-center justify-center gap-3">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button asChild>
             <Link to="/">
               <Home className="size-4" />

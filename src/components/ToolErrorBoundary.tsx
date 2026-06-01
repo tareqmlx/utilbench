@@ -50,7 +50,7 @@ export class ToolErrorBoundary extends Component<Props, State> {
               </AlertDescription>
             </Alert>
           )}
-          <div className="mt-8 flex items-center justify-center gap-3">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Button onClick={this.handleRetry}>
               <RotateCcw className="size-4" />
               Retry

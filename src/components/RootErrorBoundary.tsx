@@ -61,7 +61,7 @@ export class RootErrorBoundary extends Component<Props, State> {
                 </AlertDescription>
               </Alert>
             )}
-            <div className="mt-8 flex items-center justify-center gap-3">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button onClick={this.handleReload}>
                 <RefreshCw className="size-4" />
                 Reload Page
