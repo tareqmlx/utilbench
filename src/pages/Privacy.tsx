@@ -36,7 +36,7 @@ const sections: Section[] = [
     id: "collection",
     label: "Collection",
     title: "We don't collect anything.",
-    body: 'No files, no input text, no name or email, no IP addresses, no device fingerprints. There is no "opt out" because there is no opt in.',
+    body: 'No files, no input text, no name or email, no IP addresses, no device fingerprints. There is no "opt out" because there is no opt in. The "Report issue" button only opens GitHub in a new tab when you click it, pre-filling anonymous diagnostics (app version, page, browser, error type and stack trace, viewport size, and timestamp) — never your input or any tool output.',
     icon: EyeOff,
     variant: "muted",
   },
