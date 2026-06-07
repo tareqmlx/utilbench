@@ -680,6 +680,54 @@ function ImageResizerSkeleton() {
   );
 }
 
+/* ── 18. Merge PDF ───────────────────────────────────────── */
+
+function MergePdfSkeleton() {
+  return (
+    <ToolShell>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="space-y-6">
+          <div className="rounded-[18px] border-2 border-dashed border-border p-10">
+            <div className="flex flex-col items-center gap-3">
+              <SkeletonBlock className="size-14 rounded-[14px]" />
+              <SkeletonLine width="w-56" height="h-5" />
+              <SkeletonLine width="w-64" height="h-4" />
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper-2 shadow-pop-3">
+            <div className="flex items-center justify-between border-b-2 border-ink bg-paper-2 px-[18px] py-[14px]">
+              <SkeletonLine width="w-16" height="h-3" />
+              <SkeletonLine width="w-16" height="h-3" />
+            </div>
+            <div className="space-y-2 p-3 sm:p-4">
+              {sk(3).map((key) => (
+                <SkeletonBlock key={key} className="h-16 rounded-md" />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+          <div className="flex items-center border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+            <SkeletonLine width="w-24" height="h-3" />
+          </div>
+          <div className="space-y-6 p-5 sm:p-6">
+            <div className="grid grid-cols-3 gap-3">
+              <SkeletonBlock className="h-16 rounded-md" />
+              <SkeletonBlock className="h-16 rounded-md" />
+              <SkeletonBlock className="h-16 rounded-md" />
+            </div>
+            <div className="space-y-2">
+              <SkeletonLine width="w-32" height="h-4" />
+              <SkeletonBlock className="h-11 rounded-md" />
+            </div>
+            <SkeletonButton width="w-full" />
+          </div>
+        </div>
+      </div>
+    </ToolShell>
+  );
+}
+
 /* ── Registry ────────────────────────────────────────────── */
 
 const skeletonMap: Record<string, ComponentType<SkeletonProps>> = {
@@ -700,6 +748,7 @@ const skeletonMap: Record<string, ComponentType<SkeletonProps>> = {
   "diff-checker": DiffCheckerSkeleton,
   "yaml-to-json": YamlToJsonSkeleton,
   "image-resizer": ImageResizerSkeleton,
+  "merge-pdf": MergePdfSkeleton,
 };
 
 export function getSkeletonForSlug(slug: string): ComponentType<SkeletonProps> | null {
