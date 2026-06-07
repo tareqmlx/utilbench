@@ -1127,6 +1127,26 @@ button[role="switch"] [data-state] {
   transform: scaleX(1) !important;
 }
 
+/* ── Merge PDF: summary totals tick when they recompute ───────── */
+@keyframes wb-stat-tick {
+  from {
+    opacity: 0.45;
+    transform: translate3d(0, 2px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+.wb-stat-tick {
+  animation: wb-stat-tick 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Merge PDF: upload-plate tilt eases in instead of snapping ─── */
+.wb-plate-tilt {
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   html {
@@ -1161,10 +1181,24 @@ button[role="switch"] [data-state] {
   .wb-tools-icon,
   .wb-tools-rise,
   .wb-tools-grid > .wb-tile,
+  .wb-stat-tick,
   .wb-chip.on {
     animation: none !important;
     transition: none !important;
     opacity: 1 !important;
+  }
+  /* Merge PDF custom hover/tilt surfaces escape the class list above. */
+  .wb-lift-hover {
+    transition: box-shadow 0.15s !important;
+  }
+  .wb-lift-hover:hover {
+    transform: none !important;
+  }
+  .wb-plate-tilt {
+    transition: none !important;
+  }
+  .group:hover .wb-plate-tilt {
+    transform: none !important;
   }
   .wb-hl::before {
     transform: scaleX(1) !important;
