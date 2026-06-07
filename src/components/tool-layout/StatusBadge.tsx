@@ -10,7 +10,7 @@ interface StatusBadgeProps {
 
 const toneClasses: Record<StatusTone, { surface: string; dot: string }> = {
   valid: { surface: "bg-mint text-ink", dot: "bg-grass" },
-  invalid: { surface: "bg-paper text-tomato", dot: "bg-tomato" },
+  invalid: { surface: "bg-paper text-ink", dot: "bg-tomato" },
   neutral: { surface: "bg-paper-2 text-ink-2", dot: "bg-ink-3" },
 };
 
