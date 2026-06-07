@@ -14,6 +14,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "./ui/sheet";
+import { Toaster } from "./ui/sonner";
 
 const primaryNavLinks = [
   { label: "Tools", to: "/tools" },
@@ -161,6 +162,8 @@ export function Layout() {
       <main id="main-content" className="flex-1">
         <PageTransition />
       </main>
+
+      <Toaster />
 
       <footer
         className="mt-16 bg-ink text-paper"
