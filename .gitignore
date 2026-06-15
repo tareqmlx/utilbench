@@ -73,3 +73,4 @@ jwt-decoder-page.html
 .wrangler
 .dev.vars*
 !.dev.vars.example
+video/
