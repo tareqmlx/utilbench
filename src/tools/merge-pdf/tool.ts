@@ -19,8 +19,8 @@ export const tool: ToolDefinition = {
     },
     {
       icon: "Layers",
-      title: "Unlimited Files",
-      description: "Combine as many PDFs as you need into a single document in one pass.",
+      title: "Batch Merge",
+      description: "Combine up to 50 PDFs into a single document in one pass.",
     },
     {
       icon: "ShieldCheck",

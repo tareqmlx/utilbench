@@ -45,6 +45,7 @@ import { useKeyboardShortcut } from "../../hooks/useKeyboardShortcut";
 import { cn } from "../../lib/utils";
 import { MAX_QUEUE_SIZE } from "../constants";
 import {
+  MAX_TOTAL_SIZE,
   type PdfMeta,
   buildMergedFilename,
   downloadBlob,
@@ -155,7 +156,7 @@ function SortableItem({ entry, index, total, onRemove, onMoveUp, onMoveDown }: S
           type="button"
           onClick={() => onMoveUp(entry.id)}
           disabled={index === 0}
-          className="wb-lift-hover hidden size-9 place-items-center rounded-md border-2 border-ink bg-paper text-ink shadow-pop-1 transition-[background,transform] duration-200 hover:-translate-x-px hover:-translate-y-px hover:bg-lemon sm:grid focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:pointer-events-none disabled:opacity-50"
+          className="wb-lift-hover grid size-11 place-items-center rounded-md border-2 border-ink bg-paper text-ink shadow-pop-1 transition-[background,transform] duration-200 hover:-translate-x-px hover:-translate-y-px hover:bg-lemon sm:size-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:pointer-events-none disabled:opacity-50"
           aria-label={`Move ${entry.file.name} up`}
           data-testid={`move-up-${entry.id}`}
         >
@@ -165,7 +166,7 @@ function SortableItem({ entry, index, total, onRemove, onMoveUp, onMoveDown }: S
           type="button"
           onClick={() => onMoveDown(entry.id)}
           disabled={index === total - 1}
-          className="wb-lift-hover hidden size-9 place-items-center rounded-md border-2 border-ink bg-paper text-ink shadow-pop-1 transition-[background,transform] duration-200 hover:-translate-x-px hover:-translate-y-px hover:bg-lemon sm:grid focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:pointer-events-none disabled:opacity-50"
+          className="wb-lift-hover grid size-11 place-items-center rounded-md border-2 border-ink bg-paper text-ink shadow-pop-1 transition-[background,transform] duration-200 hover:-translate-x-px hover:-translate-y-px hover:bg-lemon sm:size-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:pointer-events-none disabled:opacity-50"
           aria-label={`Move ${entry.file.name} down`}
           data-testid={`move-down-${entry.id}`}
         >
@@ -198,6 +199,9 @@ export default function MergePdfRoute() {
   const [statusMessage, setStatusMessage] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Seeded once from the first ready file; held stable so reordering the queue
+  // does not silently rewrite the suggested output name under the user.
+  const autoFilenameRef = useRef("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -215,10 +219,20 @@ export default function MergePdfRoute() {
     [readyEntries],
   );
   const hasEncrypted = useMemo(() => readyEntries.some((e) => e.meta?.encrypted), [readyEntries]);
+  const hasFailed = useMemo(() => entries.some((e) => e.status === "error"), [entries]);
 
   const resolvedFilename = useMemo(() => {
     if (filenameTouched) return filename;
-    return buildMergedFilename(readyEntries.map((e) => ({ name: e.file.name })));
+    if (readyEntries.length === 0) {
+      autoFilenameRef.current = "";
+      return "";
+    }
+    if (!autoFilenameRef.current) {
+      autoFilenameRef.current = buildMergedFilename(
+        readyEntries.map((e) => ({ name: e.file.name })),
+      );
+    }
+    return autoFilenameRef.current;
   }, [filenameTouched, filename, readyEntries]);
 
   const loadEntry = useCallback(async (id: string, file: File) => {
@@ -271,12 +285,27 @@ export default function MergePdfRoute() {
           setWarning(`Limit reached (max ${MAX_QUEUE_SIZE} files). Remove some files first.`);
           return prev;
         }
-        const toAdd = accepted.length > available ? accepted.slice(0, available) : accepted;
-        if (toAdd.length < accepted.length) {
+        const queueLimited = accepted.length > available ? accepted.slice(0, available) : accepted;
+        if (queueLimited.length < accepted.length) {
           setWarning(
-            `Only ${toAdd.length} of ${accepted.length} files added. Limit is ${MAX_QUEUE_SIZE}.`,
+            `Only ${queueLimited.length} of ${accepted.length} files added. Limit is ${MAX_QUEUE_SIZE}.`,
           );
         }
+
+        // Cap cumulative footprint so a stack of large PDFs can't exhaust memory.
+        let runningSize = prev.reduce((sum, e) => sum + e.file.size, 0);
+        const toAdd: FileEntry[] = [];
+        for (const entry of queueLimited) {
+          if (runningSize + entry.file.size > MAX_TOTAL_SIZE) break;
+          runningSize += entry.file.size;
+          toAdd.push(entry);
+        }
+        if (toAdd.length < queueLimited.length) {
+          const capMb = Math.round(MAX_TOTAL_SIZE / (1024 * 1024));
+          setWarning(`Total size limit reached (max ${capMb}MB). Some files were not added.`);
+        }
+        if (toAdd.length === 0) return prev;
+
         setStatusMessage(
           toAdd.length === 1 ? `Added ${toAdd[0]?.file.name}.` : `Added ${toAdd.length} files.`,
         );
@@ -324,6 +353,11 @@ export default function MergePdfRoute() {
       // Drop the bytes ref so the buffer can be garbage-collected.
       return prev.filter((e) => e.id !== id);
     });
+  }, []);
+
+  const handleClearFailed = useCallback(() => {
+    setEntries((prev) => prev.filter((e) => e.status !== "error"));
+    setStatusMessage("Removed failed files.");
   }, []);
 
   const handleMoveUp = useCallback((id: string) => {
@@ -463,9 +497,23 @@ export default function MergePdfRoute() {
           icon={<Layers className="size-4" aria-hidden="true" />}
           className="bg-paper-2"
           actions={
-            <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-ink-3 tabular-nums">
-              {entries.length} {entries.length === 1 ? "File" : "Files"}
-            </span>
+            <div className="flex items-center gap-3">
+              {hasFailed && (
+                <button
+                  type="button"
+                  onClick={handleClearFailed}
+                  className="rounded font-mono text-[11px] font-medium uppercase tracking-wider text-tomato transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato"
+                  data-testid="clear-failed"
+                >
+                  Clear failed
+                </button>
+              )}
+              <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-ink-3 tabular-nums">
+                {readyEntries.length === entries.length
+                  ? `${entries.length} ${entries.length === 1 ? "File" : "Files"}`
+                  : `${readyEntries.length}/${entries.length} Ready`}
+              </span>
+            </div>
           }
         />
         <div className="space-y-2 p-3 sm:p-4">
@@ -586,7 +634,9 @@ export default function MergePdfRoute() {
                 <>
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   <span>
-                    Merging {mergeProgress.done}/{mergeProgress.total}
+                    {mergeProgress.done > 0
+                      ? `Merging ${mergeProgress.done}/${mergeProgress.total}`
+                      : "Merging…"}
                   </span>
                 </>
               ) : (
