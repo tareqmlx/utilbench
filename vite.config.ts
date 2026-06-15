@@ -81,6 +81,8 @@ export default defineConfig({
           "vendor-cmdk": ["cmdk"],
           "vendor-marked": ["marked"],
           "vendor-dompurify": ["dompurify"],
+          "vendor-pdf": ["pdf-lib"],
+          "vendor-dnd": ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
         },
       },
     },

@@ -18,7 +18,7 @@ export const tool: ToolDefinition = {
     "claims",
     "security",
   ],
-  featured: true,
+  featured: false,
   icon: "Key",
   route: () => import("./Route"),
   features: [

@@ -45,6 +45,8 @@ pnpm-debug.log*
 .impeccable/
 .local
 skills-lock.json
+docs/
+CONTEXT.md
 
 # Test coverage
 coverage/
