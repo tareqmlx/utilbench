@@ -157,6 +157,45 @@ describe("SplitPdfRoute", () => {
     });
   });
 
+  it("allows clearing the every-N field without coercing it back to 1", async () => {
+    render(<SplitPdfRoute />);
+    await uploadFile(makePdf("report.pdf"));
+    fireEvent.click(screen.getByTestId("mode-every"));
+
+    const input = screen.getByTestId("every-input");
+    // Clear the field: it must stay empty, not snap back to 1.
+    fireEvent.change(input, { target: { value: "" } });
+    expect(input).toHaveValue(null);
+    expect(screen.getByTestId("output-preview")).toHaveTextContent(
+      "Enter how many pages per file.",
+    );
+    expect(screen.getByTestId("split-button")).toBeDisabled();
+
+    // Typing a fresh value works (10-page doc, 2 per file → 5 files).
+    fireEvent.change(input, { target: { value: "2" } });
+    expect(input).toHaveValue(2);
+    expect(screen.getByTestId("output-preview")).toHaveTextContent("→ 5 files");
+    expect(screen.getByTestId("split-button")).not.toBeDisabled();
+  });
+
+  it("shows a range validation error when every-N exceeds the page count", async () => {
+    render(<SplitPdfRoute />);
+    await uploadFile(makePdf("report.pdf"));
+    fireEvent.click(screen.getByTestId("mode-every"));
+
+    fireEvent.change(screen.getByTestId("every-input"), { target: { value: "99" } });
+    expect(screen.getByTestId("output-preview")).toHaveTextContent(
+      "Pages per file must be between 1 and 10.",
+    );
+    expect(screen.getByTestId("split-button")).toBeDisabled();
+
+    // The exact page count is the legit whole-doc case, not a validation error.
+    fireEvent.change(screen.getByTestId("every-input"), { target: { value: "10" } });
+    expect(screen.getByTestId("output-preview")).toHaveTextContent(
+      "Nothing to split — this would output the whole document unchanged.",
+    );
+  });
+
   it("splits one per page → splitPerPage, zipOutputs, downloadBlob", async () => {
     render(<SplitPdfRoute />);
     await uploadFile(makePdf("report.pdf"));

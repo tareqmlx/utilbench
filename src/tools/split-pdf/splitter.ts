@@ -242,7 +242,22 @@ export async function splitPerPage(
 /** Wrap outputs in a ZIP via fflate's async `zip()` (yields to the event loop). */
 export async function zipOutputs(outputs: SplitOutput[]): Promise<Uint8Array> {
   const entries: Record<string, Uint8Array> = {};
-  for (const o of outputs) entries[o.filename] = o.bytes;
+  // Duplicate range groups (e.g. "5, 5") yield identical filenames; suffix
+  // collisions so every output survives the zip instead of silently overwriting.
+  const seen = new Map<string, number>();
+  for (const o of outputs) {
+    const count = seen.get(o.filename) ?? 0;
+    seen.set(o.filename, count + 1);
+    let name = o.filename;
+    if (count > 0) {
+      const dot = name.lastIndexOf(".");
+      name =
+        dot === -1
+          ? `${name}-${count + 1}`
+          : `${name.slice(0, dot)}-${count + 1}${name.slice(dot)}`;
+    }
+    entries[name] = o.bytes;
+  }
   return new Promise((resolve, reject) => {
     zip(entries, (err, data) => {
       if (err) reject(err);

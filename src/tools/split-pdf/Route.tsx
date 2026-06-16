@@ -66,7 +66,7 @@ export default function SplitPdfRoute() {
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [mode, setMode] = useState<SplitMode>("ranges");
   const [rangeSpec, setRangeSpec] = useState("");
-  const [everyN, setEveryN] = useState(1);
+  const [everyN, setEveryN] = useState("1");
   const [isDragging, setIsDragging] = useState(false);
   const [isSplitting, setIsSplitting] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
@@ -86,13 +86,20 @@ export default function SplitPdfRoute() {
     [rangeSpec, pageCount],
   );
 
+  // `everyN` is the raw input string so the field can be cleared mid-edit;
+  // `everyVal` is the parsed positive integer (NaN when empty/non-numeric).
+  const everyVal = useMemo(() => {
+    const t = everyN.trim();
+    return /^\d+$/.test(t) ? Number.parseInt(t, 10) : Number.NaN;
+  }, [everyN]);
+
   // Computed output count per mode (without building any bytes).
   const outputCount = useMemo(() => {
     if (pageCount === 0) return 0;
     if (mode === "ranges") return parseResult.ranges.length;
-    if (mode === "every") return everyN >= 1 ? Math.ceil(pageCount / everyN) : 0;
+    if (mode === "every") return everyVal >= 1 ? Math.ceil(pageCount / everyVal) : 0;
     return pageCount; // perPage
-  }, [mode, pageCount, everyN, parseResult]);
+  }, [mode, pageCount, everyVal, parseResult]);
 
   // Would the single output be the whole unchanged doc? Then there's nothing to split.
   const isWholeDoc = useMemo(() => {
@@ -101,13 +108,20 @@ export default function SplitPdfRoute() {
       const r = parseResult.ranges[0];
       return !!r && r.start === 1 && r.end === pageCount;
     }
-    if (mode === "every") return everyN >= pageCount;
+    if (mode === "every") return everyVal === pageCount; // exact whole-doc; > is invalid (see everyInvalid)
     return pageCount === 1; // perPage on a 1-page doc
-  }, [mode, pageCount, outputCount, everyN, parseResult]);
+  }, [mode, pageCount, outputCount, everyVal, parseResult]);
 
   const overCap = outputCount > MAX_OUTPUT_FILES;
   const rangeError = mode === "ranges" && rangeSpec.trim() !== "" ? parseResult.error : undefined;
-  const everyInvalid = mode === "every" && (everyN < 1 || everyN > pageCount);
+  const everyInvalid =
+    mode === "every" && (!Number.isInteger(everyVal) || everyVal < 1 || everyVal > pageCount);
+  const everyError =
+    everyInvalid && pageCount > 0
+      ? everyN.trim() === ""
+        ? "Enter how many pages per file."
+        : `Pages per file must be between 1 and ${pageCount}.`
+      : undefined;
 
   const canSplit =
     status === "ready" &&
@@ -196,7 +210,7 @@ export default function SplitPdfRoute() {
       if (mode === "ranges") {
         outputs = await splitByRanges(pdf.bytes, parseResult.ranges, baseName, { onProgress });
       } else if (mode === "every") {
-        outputs = await splitEveryN(pdf.bytes, everyN, baseName, { onProgress });
+        outputs = await splitEveryN(pdf.bytes, everyVal, baseName, { onProgress });
       } else {
         outputs = await splitPerPage(pdf.bytes, baseName, { onProgress });
       }
@@ -227,7 +241,7 @@ export default function SplitPdfRoute() {
     } finally {
       setIsSplitting(false);
     }
-  }, [pdf, canSplit, mode, outputCount, parseResult, everyN, baseName]);
+  }, [pdf, canSplit, mode, outputCount, parseResult, everyVal, baseName]);
 
   useKeyboardShortcut(
     useMemo(
@@ -307,7 +321,7 @@ export default function SplitPdfRoute() {
             </p>
           )}
           {status === "ready" && pdf && (
-            <div className="flex items-center gap-2 rounded-md border-2 border-ink bg-paper p-2.5 shadow-pop-1">
+            <div className="wb-item-enter flex items-center gap-2 rounded-md border-2 border-ink bg-paper p-2.5 shadow-pop-1">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13.5px] font-semibold text-ink" title={pdf.file.name}>
                   {pdf.file.name}
@@ -348,7 +362,11 @@ export default function SplitPdfRoute() {
       />
       <div className="flex flex-col gap-6 p-5 sm:p-6">
         {/* Mode selector */}
-        <div className="grid grid-cols-3 gap-2" aria-label="Split mode" data-testid="mode-selector">
+        <fieldset
+          className="m-0 grid min-w-0 grid-cols-3 gap-2 border-0 p-0"
+          aria-label="Split mode"
+          data-testid="mode-selector"
+        >
           {MODES.map((m) => {
             const Icon = m.icon;
             const active = mode === m.id;
@@ -369,11 +387,11 @@ export default function SplitPdfRoute() {
               </button>
             );
           })}
-        </div>
+        </fieldset>
 
         {/* Mode options */}
         {mode === "ranges" && (
-          <div className="space-y-2">
+          <div className="wb-fade-in space-y-2">
             <Label htmlFor="split-ranges" className="text-ink-2">
               Page ranges
             </Label>
@@ -394,7 +412,7 @@ export default function SplitPdfRoute() {
         )}
 
         {mode === "every" && (
-          <div className="space-y-2">
+          <div className="wb-fade-in space-y-2">
             <Label htmlFor="split-every" className="text-ink-2">
               Pages per file
             </Label>
@@ -404,7 +422,7 @@ export default function SplitPdfRoute() {
               min={1}
               max={Math.max(pageCount, 1)}
               value={everyN}
-              onChange={(e) => setEveryN(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+              onChange={(e) => setEveryN(e.target.value)}
               disabled={status !== "ready"}
               className="h-11 w-32 border-2 border-ink bg-paper font-mono text-[14px] sm:h-10"
               data-testid="every-input"
@@ -416,16 +434,17 @@ export default function SplitPdfRoute() {
         )}
 
         {mode === "perPage" && (
-          <p className="text-[13px] text-ink-2">
+          <p className="wb-fade-in text-[13px] text-ink-2">
             Every page becomes its own PDF file, named in order.
           </p>
         )}
 
         {/* Output preview */}
         {status === "ready" && (
-          <div
-            className="rounded-md border-2 border-ink bg-paper-2 px-4 py-3"
+          <output
+            className="wb-fade-in block rounded-md border-2 border-ink bg-paper-2 px-4 py-3"
             data-testid="output-preview"
+            aria-atomic="true"
           >
             {overCap ? (
               <p className="flex items-start gap-2 text-[12.5px] font-semibold text-ink">
@@ -433,23 +452,31 @@ export default function SplitPdfRoute() {
                 This would produce {outputCount} files — too many (max {MAX_OUTPUT_FILES}). Use a
                 coarser page range or larger N.
               </p>
-            ) : isWholeDoc ? (
-              <p className="text-[12.5px] text-ink-2">
-                Nothing to split — this would output the whole document unchanged.
+            ) : everyError ? (
+              <p className="flex items-start gap-2 text-[12.5px] font-semibold text-ink">
+                <CircleAlert className="mt-px size-4 shrink-0 text-tomato" aria-hidden="true" />
+                {everyError}
               </p>
             ) : rangeError ? (
               <p className="flex items-start gap-2 text-[12.5px] font-semibold text-ink">
                 <CircleAlert className="mt-px size-4 shrink-0 text-tomato" aria-hidden="true" />
                 {rangeError}
               </p>
+            ) : isWholeDoc ? (
+              <p className="text-[12.5px] text-ink-2">
+                Nothing to split — this would output the whole document unchanged.
+              </p>
             ) : outputCount >= 1 ? (
-              <p className="font-mono text-[13px] font-bold text-ink tabular-nums">
+              <p
+                key={outputCount}
+                className="wb-stat-tick font-mono text-[13px] font-bold text-ink tabular-nums"
+              >
                 → {outputCount} {outputCount === 1 ? "file" : "files"}
               </p>
             ) : (
               <p className="text-[12.5px] text-ink-3">Enter a page range to preview the output.</p>
             )}
-          </div>
+          </output>
         )}
 
         {encrypted && (
