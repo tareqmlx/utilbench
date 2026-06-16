@@ -45,6 +45,7 @@ pnpm-debug.log*
 # Claude / Cursor (local overrides)
 .claude/
 .agents/
+.codex/
 .impeccable/
 .local
 skills-lock.json
