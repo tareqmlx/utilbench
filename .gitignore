@@ -16,6 +16,9 @@ Thumbs.db
 *.local
 .local/
 
+# Conductor worktree include list
+.worktreeinclude
+
 # Bun
 bun.lockb
 
