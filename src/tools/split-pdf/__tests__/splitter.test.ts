@@ -291,6 +291,20 @@ describe("zipOutputs", () => {
     expect(unzipped["a.pdf"]).toEqual(new Uint8Array([1, 2, 3]));
     expect(unzipped["b.pdf"]).toEqual(new Uint8Array([4, 5, 6, 7]));
   });
+
+  it("suffixes duplicate filenames instead of overwriting", async () => {
+    const outputs: SplitOutput[] = [
+      { filename: "doc-page-5.pdf", bytes: new Uint8Array([1]) },
+      { filename: "doc-page-5.pdf", bytes: new Uint8Array([2]) },
+      { filename: "doc-page-5.pdf", bytes: new Uint8Array([3]) },
+    ];
+    const unzipped = unzipSync(await zipOutputs(outputs));
+    const names = Object.keys(unzipped).sort();
+    expect(names).toEqual(["doc-page-5-2.pdf", "doc-page-5-3.pdf", "doc-page-5.pdf"]);
+    expect(unzipped["doc-page-5.pdf"]).toEqual(new Uint8Array([1]));
+    expect(unzipped["doc-page-5-2.pdf"]).toEqual(new Uint8Array([2]));
+    expect(unzipped["doc-page-5-3.pdf"]).toEqual(new Uint8Array([3]));
+  });
 });
 
 describe("buildBaseName", () => {

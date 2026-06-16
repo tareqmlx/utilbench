@@ -20,7 +20,8 @@ export const tool: ToolDefinition = {
     {
       icon: "Layers",
       title: "Batch Download",
-      description: "Get every output PDF in a single ZIP, named by the pages it contains.",
+      description:
+        "Download a single PDF, or every part in one ZIP named by the pages it contains.",
     },
     {
       icon: "ShieldCheck",
