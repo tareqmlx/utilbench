@@ -78,3 +78,6 @@ jwt-decoder-page.html
 .dev.vars*
 !.dev.vars.example
 video/
+
+# Local Files
+*-local-*
