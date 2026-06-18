@@ -37,10 +37,12 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Stamp,
   Star,
   Table,
   Terminal,
   Timer,
+  Type,
   Zap,
 } from "lucide-react";
 
@@ -82,10 +84,12 @@ const iconMap: Record<string, LucideIcon> = {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Stamp,
   Star,
   Table,
   Terminal,
   Timer,
+  Type,
   Zap,
 };
 
