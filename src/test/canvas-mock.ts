@@ -56,9 +56,10 @@ export function setupCanvasMock() {
   return { ctx };
 }
 
-export function setupImageMock(dims: { width?: number; height?: number } = {}) {
+export function setupImageMock(dims: { width?: number; height?: number; fail?: boolean } = {}) {
   const w = dims.width ?? 100;
   const h = dims.height ?? 100;
+  const fail = dims.fail ?? false;
 
   vi.stubGlobal(
     "Image",
@@ -77,7 +78,9 @@ export function setupImageMock(dims: { width?: number; height?: number } = {}) {
       set src(value: string) {
         this._src = value;
         if (value) {
-          queueMicrotask(() => this.onload?.());
+          queueMicrotask(() =>
+            fail ? this.onerror?.(new Error("decode failed")) : this.onload?.(),
+          );
         }
       }
     },
