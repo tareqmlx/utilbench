@@ -732,6 +732,13 @@ body {
   animation: wb-item-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Opt-in sibling stagger: pair with an enter animation and set --enter-i per
+   item (e.g. a batch-local index). No effect unless --enter-i is provided, so
+   it composes with .wb-item-enter without changing existing single-item uses. */
+.wb-stagger {
+  animation-delay: calc(var(--enter-i, 0) * 45ms);
+}
+
 /* ── Error alert + tab content fade ───────────────────────────── */
 .wb-fade-in {
   animation: wb-item-in 200ms ease-out both;

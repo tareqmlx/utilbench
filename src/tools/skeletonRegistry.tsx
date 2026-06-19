@@ -827,6 +827,46 @@ function WatermarkPdfSkeleton() {
   );
 }
 
+/* ── 21. PDF Metadata Removal ────────────────────────────── */
+
+function PdfMetadataRemovalSkeleton() {
+  return (
+    <ToolShell>
+      <div className="space-y-6">
+        <div className="rounded-[18px] border-2 border-dashed border-border p-10">
+          <div className="flex flex-col items-center gap-3">
+            <SkeletonBlock className="size-14 rounded-[14px]" />
+            <SkeletonLine width="w-56" height="h-5" />
+            <SkeletonLine width="w-64" height="h-4" />
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+          <div className="flex items-center justify-between border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+            <SkeletonLine width="w-24" height="h-3" />
+            <SkeletonLine width="w-28" height="h-3" />
+          </div>
+          <div className="space-y-3 p-4 sm:p-5">
+            {sk(3).map((key) => (
+              <div key={key} className="rounded-md border-2 border-ink bg-paper-2 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <SkeletonLine width="w-40" height="h-4" />
+                  <SkeletonLine width="w-16" height="h-3" />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <SkeletonLine width="w-20" height="h-6" className="rounded-full" />
+                  <SkeletonLine width="w-24" height="h-6" className="rounded-full" />
+                  <SkeletonLine width="w-16" height="h-6" className="rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <SkeletonButton width="w-full" />
+      </div>
+    </ToolShell>
+  );
+}
+
 /* ── Registry ────────────────────────────────────────────── */
 
 const skeletonMap: Record<string, ComponentType<SkeletonProps>> = {
@@ -850,6 +890,7 @@ const skeletonMap: Record<string, ComponentType<SkeletonProps>> = {
   "merge-pdf": MergePdfSkeleton,
   "split-pdf": SplitPdfSkeleton,
   "watermark-pdf": WatermarkPdfSkeleton,
+  "pdf-metadata-removal": PdfMetadataRemovalSkeleton,
 };
 
 export function getSkeletonForSlug(slug: string): ComponentType<SkeletonProps> | null {
