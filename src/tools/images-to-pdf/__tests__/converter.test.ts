@@ -388,6 +388,18 @@ describe("prepareImageBytes", () => {
     expect(out.width / out.height).toBeCloseTo(2, 1);
   });
 
+  it("area-cap downscale never overshoots MAX_CANVAS_AREA (rounding regression)", async () => {
+    setupRealBytesCanvas();
+    // 9000×3000: side under 8192 but area (27M) over the 16.7M cap. Rounding both
+    // sides up would yield 7094×2365 = 16,777,310 > cap; flooring must keep it under.
+    setupImageMock({ width: 9000, height: 3000 });
+    setupURLMock();
+    const out = await prepareImageBytes(makeFile("a.png", "image/png", PNG_SIG));
+    expect(out.downscaled).toBe(true);
+    expect(out.width * out.height).toBeLessThanOrEqual(16_777_216);
+    expect(out.width / out.height).toBeCloseTo(3, 1);
+  });
+
   it("decode failure → throws", async () => {
     setupRealBytesCanvas();
     setupImageMock({ fail: true });

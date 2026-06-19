@@ -16,6 +16,7 @@ export const ACCEPTED_IMAGE_EXT = [".jpg", ".jpeg", ".png", ".webp"];
 export const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50 MB per image
 export const WARN_IMAGE_SIZE = 25 * 1024 * 1024; // soft warning threshold
 export const MAX_TOTAL_SIZE = 250 * 1024 * 1024; // cumulative footprint guard
+export const LARGE_OUTPUT_WARN_SIZE = 50 * 1024 * 1024; // soft-warn when the assembled PDF exceeds this (G1)
 export const MAX_CANVAS_DIM = 8192; // px; max side
 export const MAX_CANVAS_AREA = 16_777_216; // px²; Safari/iOS canvas-area limit (~16 MP)
 export const DEFAULT_JPEG_QUALITY = 0.95; // applied to JPEG-encoded outputs at convert time
@@ -235,8 +236,11 @@ export async function prepareImageBytes(
     const over = Math.max(1, sideOver, areaOver);
     const downscaled = over > 1;
     if (downscaled) {
-      w = Math.max(1, Math.round(w / over));
-      h = Math.max(1, Math.round(h / over));
+      // Floor (not round) so the result is guaranteed to stay within BOTH caps:
+      // rounding each side up independently can push w*h back over MAX_CANVAS_AREA
+      // (e.g. 9000×3000 → 7094×2365 = 16,777,310 > 16,777,216).
+      w = Math.max(1, Math.floor(w / over));
+      h = Math.max(1, Math.floor(h / over));
     }
     const canvas = document.createElement("canvas");
     canvas.width = w;
