@@ -55,6 +55,7 @@ import {
   type ConvertOptions,
   type FitMode,
   type ImageMeta,
+  LARGE_OUTPUT_WARN_SIZE,
   MAX_QUEUE_SIZE,
   MAX_TOTAL_SIZE,
   type OrientationKey,
@@ -514,13 +515,20 @@ export default function ImagesToPdfRoute() {
       toast.success(
         `Created ${outName} (${files.length} ${files.length === 1 ? "page" : "pages"})`,
       );
+      const warnings: string[] = [];
       if (downscaledNames.length > 0) {
-        setWarning(
+        warnings.push(
           `${downscaledNames.length} image${
             downscaledNames.length === 1 ? " was" : "s were"
           } downscaled to fit canvas limits.`,
         );
       }
+      if (bytes.length > LARGE_OUTPUT_WARN_SIZE) {
+        warnings.push(
+          `The output PDF is large (${formatBytes(bytes.length)}). It may be slow to open or share.`,
+        );
+      }
+      if (warnings.length > 0) setWarning(warnings.join(" "));
     } catch (e) {
       setError(
         e instanceof Error

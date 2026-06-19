@@ -8,6 +8,7 @@ import ImagesToPdfRoute from "../Route";
 vi.mock("../converter", () => ({
   MAX_QUEUE_SIZE: 50,
   MAX_TOTAL_SIZE: 250 * 1024 * 1024,
+  LARGE_OUTPUT_WARN_SIZE: 50 * 1024 * 1024,
   validateImageFile: vi.fn(() => ({ valid: true })),
   readImageMeta: vi.fn(async () => ({ format: "png", width: 100, height: 80 })),
   imagesToPdf: vi.fn(async () => ({ bytes: new Uint8Array([1]), downscaledNames: [] })),
@@ -224,6 +225,22 @@ describe("ImagesToPdfRoute", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/downscaled to fit canvas limits/)).toBeInTheDocument();
+    });
+  });
+
+  it("warns when the assembled PDF is large", async () => {
+    vi.mocked(imagesToPdf).mockResolvedValueOnce({
+      bytes: new Uint8Array(60 * 1024 * 1024),
+      downscaledNames: [],
+    });
+
+    render(<ImagesToPdfRoute />);
+    await uploadFiles([makeImage("big.png")]);
+
+    fireEvent.click(screen.getByTestId("convert-button"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/output PDF is large/)).toBeInTheDocument();
     });
   });
 });
