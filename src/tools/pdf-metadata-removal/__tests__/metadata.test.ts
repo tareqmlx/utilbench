@@ -397,6 +397,23 @@ describe("readPdfMetadata", () => {
     expect(meta.fieldCount).toBe(0);
   });
 
+  it("treats a malformed date as absent (no Invalid Date, no inflated fieldCount)", async () => {
+    // pdf-lib parses a bad date string to `new Date(NaN)` rather than throwing. If the Info dict
+    // holds ONLY a malformed date, the summary must report no usable fields — not a NaN date chip.
+    const doc = await PDFDocument.create();
+    doc.addPage([612, 792]);
+    const infoRef = doc.context.trailerInfo.Info as PDFRef;
+    const infoDict = doc.context.lookup(infoRef, PDFDict);
+    for (const k of [...infoDict.keys()]) infoDict.delete(k);
+    infoDict.set(PDFName.of("CreationDate"), PDFString.of("D:20201309999999"));
+    const input = await doc.save({ useObjectStreams: false });
+
+    const meta = await readPdfMetadata(input);
+    expect(meta.creationDate).toBeNull();
+    expect(meta.modificationDate).toBeNull();
+    expect(meta.fieldCount).toBe(0);
+  });
+
   it("does not abort the read when a getter throws (pdf-lib #1571)", async () => {
     const input = await makePopulatedDoc();
     vi.spyOn(PDFDocument.prototype, "getProducer").mockImplementation(() => {

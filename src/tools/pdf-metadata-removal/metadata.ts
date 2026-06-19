@@ -90,6 +90,16 @@ function presentString(value: string | null): boolean {
   return value !== null && value.trim() !== "";
 }
 
+/**
+ * A date getter can return an Invalid Date when the PDF holds a malformed date string
+ * (e.g. "D:20201309999999") — pdf-lib parses it to `new Date(NaN)` rather than throwing. Treat an
+ * Invalid Date as absent so it neither inflates fieldCount nor renders as "NaN-NaN-NaN".
+ */
+function safeDate(fn: () => Date | undefined): Date | null {
+  const v = safeGet(fn);
+  return v !== null && !Number.isNaN(v.getTime()) ? v : null;
+}
+
 const EMPTY_SUMMARY: Omit<PdfMetadataSummary, "fieldCount"> = {
   title: null,
   author: null,
@@ -130,8 +140,8 @@ export async function readPdfMetadata(
   const keywords = safeGet(() => doc.getKeywords());
   const creator = safeGet(() => doc.getCreator());
   const producer = safeGet(() => doc.getProducer());
-  const creationDate = safeGet(() => doc.getCreationDate());
-  const modificationDate = safeGet(() => doc.getModificationDate());
+  const creationDate = safeDate(() => doc.getCreationDate());
+  const modificationDate = safeDate(() => doc.getModificationDate());
 
   const hasXmp = doc.catalog.get(PDFName.of("Metadata")) !== undefined;
 

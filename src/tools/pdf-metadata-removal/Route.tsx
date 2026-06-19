@@ -6,7 +6,6 @@ import {
   ListOrdered,
   Loader2,
   Lock,
-  ShieldCheck,
   Trash2,
   Wand2,
   X,
@@ -46,10 +45,11 @@ function present(value: string | null): value is string {
 }
 
 function formatDate(date: Date): string {
-  // YYYY-MM-DD, locale-independent.
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
+  // YYYY-MM-DD in UTC. The PDF stores an absolute instant; using local getters would shift the
+  // displayed calendar day for viewers west of UTC (e.g. a UTC-midnight date showing the prior day).
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
 
@@ -60,7 +60,6 @@ export default function PdfMetadataRemovalRoute() {
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
-  const [zipBlob, setZipBlob] = useState<Blob | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -70,7 +69,6 @@ export default function PdfMetadataRemovalRoute() {
   const handleFiles = useCallback(async (fileList: FileList) => {
     setError(null);
     setWarning(null);
-    setZipBlob(null);
 
     const newItems: FileItem[] = [];
     for (const file of Array.from(fileList)) {
@@ -194,7 +192,6 @@ export default function PdfMetadataRemovalRoute() {
 
   const handleRemoveFile = useCallback((id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id));
-    setZipBlob(null);
   }, []);
 
   const handleProcess = useCallback(async () => {
@@ -208,7 +205,6 @@ export default function PdfMetadataRemovalRoute() {
     }
 
     setIsProcessing(true);
-    setZipBlob(null);
     setError(null);
     setProgress({ current: 0, total: processable.length });
     setStatusMessage(
@@ -257,13 +253,9 @@ export default function PdfMetadataRemovalRoute() {
         setStatusMessage(`Done. ${only.name} downloaded.${failedNote}`);
       }
     } else if (results.length > 1) {
-      try {
-        setZipBlob(buildZip(results));
-        setStatusMessage(`Done. ${results.length} clean PDFs ready to download.${failedNote}`);
-      } catch {
-        setError("Failed to generate ZIP archive.");
-        setStatusMessage("Failed to generate ZIP archive.");
-      }
+      // The archive is built on demand in handleDownload (the single download path), so multi-file
+      // runs aren't auto-downloaded — the user clicks "Download ZIP" to fetch the combined archive.
+      setStatusMessage(`Done. ${results.length} clean PDFs ready to download.${failedNote}`);
     } else {
       setStatusMessage(
         failed > 0
@@ -280,9 +272,9 @@ export default function PdfMetadataRemovalRoute() {
   const progressPercent =
     progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
 
-  // Re-download every cleaned file: single → its cleanedBytes as .pdf; multi → a zip of all.
-  // Build the zip from the done items rather than the cached zipBlob — zipBlob only holds the LAST
-  // multi-file run's archive, so accumulated single-file runs (zipBlob null) would otherwise no-op.
+  // Download every cleaned file: single → its cleanedBytes as .pdf; multi → a zip of all.
+  // Built fresh from the current done items each click so it always reflects the live queue
+  // (e.g. after a done row is removed), rather than a cached archive that could go stale.
   const handleDownload = useCallback(() => {
     const done = filesRef.current.filter((f) => f.status === "done");
     if (done.length === 1) {
@@ -300,7 +292,13 @@ export default function PdfMetadataRemovalRoute() {
           name: buildCleanedFilename(f.file.name),
           data: f.cleanedBytes as Uint8Array,
         }));
-      if (items.length > 0) downloadBlob(buildZip(items), "cleaned-pdfs.zip");
+      if (items.length > 0) {
+        try {
+          downloadBlob(buildZip(items), "cleaned-pdfs.zip");
+        } catch {
+          setError("Failed to generate ZIP archive.");
+        }
+      }
     }
   }, []);
 
@@ -527,28 +525,19 @@ export default function PdfMetadataRemovalRoute() {
                     )}
                   </div>
 
-                  {/* Actions */}
-                  {item.status === "done" ? (
-                    <span
-                      role="img"
-                      aria-label="Cleaned"
-                      title="Metadata stripped"
-                      className="wb-fade-in grid size-9 shrink-0 place-items-center rounded-md border-2 border-ink bg-paper text-grass shadow-pop-1"
-                    >
-                      <ShieldCheck className="size-4" strokeWidth={2.5} aria-hidden="true" />
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="grid size-11 shrink-0 place-items-center rounded-md text-ink-3 transition-[color,transform] duration-200 hover:-translate-y-px hover:text-tomato focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper-2 disabled:cursor-not-allowed disabled:opacity-40 sm:size-9"
-                      onClick={() => handleRemoveFile(item.id)}
-                      disabled={isProcessing}
-                      aria-label={`Remove ${item.file.name}`}
-                      data-testid={`remove-${item.id}`}
-                    >
-                      <Trash2 className="size-4" strokeWidth={2.25} aria-hidden="true" />
-                    </button>
-                  )}
+                  {/* Actions — every row (including cleaned ones) stays removable so the user can
+                      clear it and release its retained cleanedBytes. The "Cleaned" state is shown
+                      in the info column above, so no separate done-row badge is needed. */}
+                  <button
+                    type="button"
+                    className="grid size-11 shrink-0 place-items-center rounded-md text-ink-3 transition-[color,transform] duration-200 hover:-translate-y-px hover:text-tomato focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tomato focus-visible:ring-offset-2 focus-visible:ring-offset-paper-2 disabled:cursor-not-allowed disabled:opacity-40 sm:size-9"
+                    onClick={() => handleRemoveFile(item.id)}
+                    disabled={isProcessing}
+                    aria-label={`Remove ${item.file.name}`}
+                    data-testid={`remove-${item.id}`}
+                  >
+                    <Trash2 className="size-4" strokeWidth={2.25} aria-hidden="true" />
+                  </button>
                 </li>
               ))}
             </ul>
@@ -625,7 +614,7 @@ export default function PdfMetadataRemovalRoute() {
                   onClick={handleDownload}
                 >
                   <Download className="size-3.5" aria-hidden="true" />
-                  <span>{zipBlob ? "Download ZIP" : "Download Again"}</span>
+                  <span>{doneCount > 1 ? "Download ZIP" : "Download Again"}</span>
                   <KbdHint>⌘S</KbdHint>
                 </button>
               </div>

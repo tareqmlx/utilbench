@@ -200,15 +200,15 @@ describe("PdfMetadataRemovalRoute", () => {
     if (process) fireEvent.click(process);
 
     await waitFor(() => {
-      expect(buildZip).toHaveBeenCalledTimes(1);
-    });
-    await waitFor(() => {
       expect(screen.getByText("Download ZIP")).toBeInTheDocument();
     });
 
-    // Zip is NOT auto-downloaded; only on click.
+    // The archive is built on demand — nothing is zipped or auto-downloaded after a multi-file run.
+    expect(buildZip).not.toHaveBeenCalled();
     expect(downloadBlob).not.toHaveBeenCalled();
+
     fireEvent.click(screen.getByText("Download ZIP").closest("button") as HTMLElement);
+    expect(buildZip).toHaveBeenCalledTimes(1);
     expect(downloadBlob).toHaveBeenCalledTimes(1);
     expect(vi.mocked(downloadBlob).mock.calls[0]?.[1]).toBe("cleaned-pdfs.zip");
   });
@@ -262,7 +262,7 @@ describe("PdfMetadataRemovalRoute", () => {
     });
   });
 
-  it("removes a queued file and a done file from the queue", async () => {
+  it("removes a queued file from the queue", async () => {
     render(<PdfMetadataRemovalRoute />);
     uploadFiles("removable.pdf");
 
@@ -275,6 +275,29 @@ describe("PdfMetadataRemovalRoute", () => {
       .find((b) => b.getAttribute("data-testid")?.startsWith("remove-"));
     if (removeBtn) fireEvent.click(removeBtn);
     expect(screen.queryByText("removable.pdf")).not.toBeInTheDocument();
+  });
+
+  it("removes a done file from the queue (cleaned rows stay removable)", async () => {
+    // Plan §11: a cleaned row must remain removable so the user can clear it and release its
+    // retained cleanedBytes — it is not locked behind a static "Cleaned" badge.
+    render(<PdfMetadataRemovalRoute />);
+    uploadFiles("cleanme.pdf");
+
+    await waitFor(() => {
+      expect(screen.getByText("cleanme.pdf")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Remove Metadata").closest("button") as HTMLElement);
+    await waitFor(() => {
+      expect(screen.getByText("1 PDF cleaned")).toBeInTheDocument();
+    });
+
+    const removeBtn = screen
+      .getAllByRole("button")
+      .find((b) => b.getAttribute("data-testid")?.startsWith("remove-"));
+    expect(removeBtn).toBeDefined();
+    if (removeBtn) fireEvent.click(removeBtn);
+    expect(screen.queryByText("cleanme.pdf")).not.toBeInTheDocument();
   });
 
   it("processes via ⌘⏎ and re-downloads via ⌘S", async () => {
@@ -381,8 +404,8 @@ describe("PdfMetadataRemovalRoute", () => {
   });
 
   it("re-download after two separate single runs builds a zip of all done files", async () => {
-    // Regression: two single-file runs leave doneCount=2 but zipBlob=null, so the old
-    // `else if (zipBlob)` branch made "Download Again" a silent no-op. It must now zip all done files.
+    // Regression: two single-file runs leave doneCount=2, so the button reads "Download ZIP"
+    // (label keys on doneCount, not a cached blob) and must zip ALL done files on click.
     render(<PdfMetadataRemovalRoute />);
     uploadFiles("one.pdf");
     await waitFor(() => expect(screen.getByText("Author: Jane Doe")).toBeInTheDocument());
@@ -396,7 +419,7 @@ describe("PdfMetadataRemovalRoute", () => {
 
     // Two done files, no zip was ever built during a run → re-download must build one on demand.
     expect(buildZip).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByText("Download Again").closest("button") as HTMLElement);
+    fireEvent.click(screen.getByText("Download ZIP").closest("button") as HTMLElement);
     expect(buildZip).toHaveBeenCalledTimes(1);
     expect(vi.mocked(buildZip).mock.calls[0]?.[0]).toHaveLength(2);
     expect(downloadBlob).toHaveBeenCalledTimes(3);
