@@ -50,6 +50,7 @@ interface LoadedPdf {
   pageCount: number;
   encrypted: boolean;
   pageSizes: PageSize[];
+  dimsKnown: boolean; // false ⇒ probe couldn't read sizes (encrypted); revealed at render
 }
 
 type PasswordKind = "need" | "incorrect";
@@ -95,6 +96,7 @@ export default function PdfToImageRoute() {
 
   const pageCount = pdf?.pageCount ?? 0;
   const encrypted = pdf?.encrypted ?? false;
+  const dimsKnown = pdf?.dimsKnown ?? false;
 
   // Live output px readout for page 1 (computeOutputDims is the single source).
   const firstPageDims = useMemo(() => {
@@ -137,10 +139,11 @@ export default function PdfToImageRoute() {
   const canConvert =
     status === "ready" &&
     !isConverting &&
-    pageCount > 0 &&
-    resolvedCount >= 1 &&
     !rangeError &&
-    !overCap;
+    !overCap &&
+    // Unknown dims (encrypted): page count is revealed after unlock, so allow Convert
+    // and let pdf.js drive the password prompt + render (§5.6).
+    (dimsKnown ? pageCount > 0 && resolvedCount >= 1 : true);
 
   const loadFile = useCallback(async (file: File) => {
     setError(null);
@@ -164,9 +167,14 @@ export default function PdfToImageRoute() {
         pageCount: probe.pageCount,
         encrypted: probe.encrypted,
         pageSizes: probe.pageSizes,
+        dimsKnown: probe.dimsKnown,
       });
       setStatus("ready");
-      setStatusMessage(`${file.name} ready, ${probe.pageCount} pages.`);
+      setStatusMessage(
+        probe.dimsKnown
+          ? `${file.name} ready, ${probe.pageCount} pages.`
+          : `${file.name} ready. Password-protected — you'll be asked to unlock it when you convert.`,
+      );
     } catch {
       setStatus("error");
       setError("Could not read this PDF. It may be corrupt.");
@@ -239,8 +247,12 @@ export default function PdfToImageRoute() {
     setError(null);
     setWarning(null);
     setIsConverting(true);
-    setProgress({ done: 0, total: resolvedCount });
-    setStatusMessage(`Rendering ${resolvedCount} ${resolvedCount === 1 ? "image" : "images"}.`);
+    setProgress({ done: 0, total: dimsKnown ? resolvedCount : 0 });
+    setStatusMessage(
+      dimsKnown
+        ? `Rendering ${resolvedCount} ${resolvedCount === 1 ? "image" : "images"}.`
+        : "Unlocking and rendering…",
+    );
 
     const ac = new AbortController();
     abortRef.current = ac;
@@ -305,7 +317,7 @@ export default function PdfToImageRoute() {
       setIsConverting(false);
       setProgress({ done: 0, total: 0 });
     }
-  }, [pdf, canConvert, resolvedCount, dpi, format, jpegQuality, pageRange, onPassword]);
+  }, [pdf, canConvert, dimsKnown, resolvedCount, dpi, format, jpegQuality, pageRange, onPassword]);
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort();
@@ -395,10 +407,12 @@ export default function PdfToImageRoute() {
                   {pdf.file.name}
                 </p>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <StatusBadge
-                    tone="neutral"
-                    label={`${pageCount} ${pageCount === 1 ? "page" : "pages"}`}
-                  />
+                  {dimsKnown && (
+                    <StatusBadge
+                      tone="neutral"
+                      label={`${pageCount} ${pageCount === 1 ? "page" : "pages"}`}
+                    />
+                  )}
                   {encrypted && (
                     <span className="inline-flex items-center gap-1">
                       <Lock className="size-3.5 text-tomato" aria-hidden="true" />
@@ -564,7 +578,12 @@ export default function PdfToImageRoute() {
             data-testid="output-preview"
             aria-atomic="true"
           >
-            {rangeError ? (
+            {!dimsKnown ? (
+              <p className="text-[12.5px] text-ink-3">
+                Page count is available after you unlock the PDF. Your page range applies then —
+                leave it empty to render every page.
+              </p>
+            ) : rangeError ? (
               <p className="text-[12.5px] font-semibold text-tomato">{rangeError}</p>
             ) : overCap ? (
               <p className="text-[12.5px] font-semibold text-tomato">

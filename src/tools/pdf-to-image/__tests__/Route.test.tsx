@@ -59,6 +59,7 @@ const PROBE = (over: Partial<Awaited<ReturnType<typeof probePdf>>> = {}) => ({
   pageCount: 10,
   encrypted: false,
   pageSizes: Array.from({ length: 10 }, () => ({ width: 612, height: 792 })),
+  dimsKnown: true,
   ...over,
 });
 
@@ -104,6 +105,22 @@ describe("PdfToImageRoute", () => {
     await upload("locked.pdf");
     expect(screen.getByText("Password-protected")).toBeInTheDocument();
     // Encrypted does NOT disable convert (diverges from split-pdf).
+    expect(screen.getByTestId("convert-button")).not.toBeDisabled();
+  });
+
+  it("allows converting when the probe can't read dims (unknown page count) — §5.6", async () => {
+    // pdf-lib couldn't parse (e.g. AES): unknown page count, marked encrypted.
+    vi.mocked(probePdf).mockResolvedValueOnce(
+      PROBE({ pageCount: 0, encrypted: true, pageSizes: [], dimsKnown: false }),
+    );
+    render(<PdfToImageRoute />);
+    const input = screen.getByTestId("file-input");
+    fireEvent.change(input, { target: { files: [makePdf("aes.pdf")] } });
+    await waitFor(() => expect(screen.getByText("aes.pdf")).toBeInTheDocument());
+    // No "0 pages" badge — page count is unknown until unlock.
+    expect(screen.queryByText("0 pages")).not.toBeInTheDocument();
+    expect(screen.getByText("Password-protected")).toBeInTheDocument();
+    // Convert stays enabled so pdf.js can drive the password prompt + render.
     expect(screen.getByTestId("convert-button")).not.toBeDisabled();
   });
 

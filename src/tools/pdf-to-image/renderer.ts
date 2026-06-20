@@ -75,6 +75,10 @@ export interface PdfProbe {
   pageCount: number;
   encrypted: boolean;
   pageSizes: PageSize[];
+  // false ⇒ pdf-lib could not parse the structure (commonly a strongly-encrypted
+  // PDF). Page count / sizes are unknown until pdf.js unlocks it at render time
+  // (§5.6). The pre-convert readout is skipped, but Convert stays enabled.
+  dimsKnown: boolean;
 }
 
 // ── pdf.js bootstrap (§5.2) ────────────────────────────────────────────────
@@ -123,15 +127,37 @@ export function computeOutputDims(
 // ── Page-size probe (§5.6) ─────────────────────────────────────────────────
 
 export async function probePdf(bytes: Uint8Array): Promise<PdfProbe> {
-  // pdf-lib does NOT detach the buffer (unlike pdf.js), so no slice() needed here. ONE load.
-  const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
-  const pageSizes = doc.getPages().map((p) => {
-    const { width, height } = p.getSize(); // MediaBox — rotation-AGNOSTIC
-    // pdf.js getViewport({scale:1}) SWAPS w/h for 90°/270°; match it so the readout/clamp agree.
-    const rot = ((p.getRotation().angle % 360) + 360) % 360;
-    return rot === 90 || rot === 270 ? { width: height, height: width } : { width, height };
-  });
-  return { pageCount: doc.getPageCount(), encrypted: doc.isEncrypted, pageSizes };
+  // pdf-lib does NOT detach the buffer (unlike pdf.js), so no slice() needed here.
+  try {
+    const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    const pageSizes = doc.getPages().map((p) => {
+      const { width, height } = p.getSize(); // MediaBox — rotation-AGNOSTIC
+      // pdf.js getViewport({scale:1}) SWAPS w/h for 90°/270°; match it so the readout/clamp agree.
+      const rot = ((p.getRotation().angle % 360) + 360) % 360;
+      return rot === 90 || rot === 270 ? { width: height, height: width } : { width, height };
+    });
+    return {
+      pageCount: doc.getPageCount(),
+      encrypted: doc.isEncrypted,
+      pageSizes,
+      dimsKnown: true,
+    };
+  } catch {
+    // pdf-lib failed to PARSE the structure — most often a strongly-encrypted PDF
+    // (e.g. AES-128/256) it can't read even with ignoreEncryption. Do NOT reject:
+    // pdf.js may still render it after a password (§5.6). Fall back to "dimensions
+    // available after rendering" — skip the pre-convert readout but keep Convert live.
+    // Re-load WITHOUT ignoreEncryption to tell "encrypted" apart from genuine corruption,
+    // so the lock badge is only shown when the file really is encrypted.
+    let encrypted = false;
+    try {
+      await PDFDocument.load(bytes);
+    } catch (e2) {
+      encrypted =
+        e2 instanceof Error && (/encrypt/i.test(e2.message) || e2.name === "EncryptedPDFError");
+    }
+    return { pageCount: 0, encrypted, pageSizes: [], dimsKnown: false };
+  }
 }
 
 // ── Page-list resolution (§5.4) ────────────────────────────────────────────

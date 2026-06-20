@@ -1,4 +1,5 @@
 import { unzipSync } from "fflate";
+import { PDFDocument } from "pdf-lib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The renderer imports the pdf.js worker via a `?url` query that Vitest cannot
@@ -262,6 +263,28 @@ describe("probePdf", () => {
       { width: 792, height: 612 },
       { width: 792, height: 612 },
     ]);
+  });
+
+  it("falls back to unknown dims (encrypted) when pdf-lib can't parse — does NOT throw", async () => {
+    // 1st load (ignoreEncryption) fails to parse; 2nd load (no ignoreEncryption)
+    // throws an "encrypted" error ⇒ a strongly-encrypted (e.g. AES) PDF. §5.6.
+    vi.mocked(PDFDocument.load)
+      .mockRejectedValueOnce(
+        new Error("Expected instance of PDFDict, but got instance of undefined"),
+      )
+      .mockRejectedValueOnce(new Error("Input document to `PDFDocument.load` is encrypted."));
+    const r = await probePdf(new Uint8Array([1]));
+    expect(r).toEqual({ pageCount: 0, encrypted: true, pageSizes: [], dimsKnown: false });
+  });
+
+  it("falls back to unknown dims WITHOUT the lock when the parse error isn't encryption", async () => {
+    // 1st load fails; 2nd load (no ignoreEncryption) succeeds ⇒ not encrypted, just
+    // unreadable by pdf-lib. Still allow Convert (pdf.js may handle it), no lock badge.
+    pdfLibPages = [];
+    pdfLibEncrypted = false;
+    vi.mocked(PDFDocument.load).mockRejectedValueOnce(new Error("malformed xref"));
+    const r = await probePdf(new Uint8Array([1]));
+    expect(r).toEqual({ pageCount: 0, encrypted: false, pageSizes: [], dimsKnown: false });
   });
 });
 
