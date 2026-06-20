@@ -355,8 +355,14 @@ export async function renderPdfToImages(
           }
         } catch (e) {
           const name = (e as { name?: string })?.name;
-          // Abort + render-cancel are FATAL (a Cancel press stops the batch).
-          if (name === "AbortError" || name === "RenderingCancelledException") throw e;
+          // Cancel is FATAL (a Cancel press stops the batch). onAbort is the ONLY
+          // caller of renderTask.cancel(), so a RenderingCancelledException here is
+          // always a user cancel — normalize it to AbortError so the UI shows the
+          // quiet "Cancelled." status (§6.4) instead of a red "Rendering cancelled,
+          // page N" error alert leaking pdf.js's exception message.
+          if (name === "AbortError") throw e;
+          if (name === "RenderingCancelledException")
+            throw new DOMException("Aborted", "AbortError");
           failures.push({ pageNumber, message: e instanceof Error ? e.message : String(e) });
         }
         // Honor an abort that landed while currentRenderTask was null — during

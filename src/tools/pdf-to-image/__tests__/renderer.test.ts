@@ -403,6 +403,22 @@ describe("renderPdfToImages", () => {
     expect(rendered).toBe(1); // stopped — pages 2 and 3 never fetched
   });
 
+  it("normalizes a mid-render RenderingCancelledException into AbortError (quiet cancel, no leaked message)", async () => {
+    // A Cancel pressed WHILE a page renders → onAbort calls renderTask.cancel()
+    // → pdf.js rejects with RenderingCancelledException ("Rendering cancelled,
+    // page N"). The renderer must surface this as AbortError so the UI shows the
+    // quiet "Cancelled." status, not a red error alert with pdf.js's message.
+    const cancelled = Object.assign(new Error("Rendering cancelled, page 1"), {
+      name: "RenderingCancelledException",
+    });
+    const page = makeFakePage(612, 792, () => Promise.reject(cancelled));
+    const doc = makeFakeDoc(1, () => page);
+    getDocumentImpl = () => makeFakeLoadingTask({ doc });
+    await expect(renderPdfToImages(new Uint8Array([1]), "f.pdf", baseOpts)).rejects.toMatchObject({
+      name: "AbortError",
+    });
+  });
+
   it("reports progress for each page", async () => {
     const doc = makeFakeDoc(2, () => makeFakePage());
     getDocumentImpl = () => makeFakeLoadingTask({ doc });
