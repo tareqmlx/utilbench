@@ -359,6 +359,11 @@ export async function renderPdfToImages(
           if (name === "AbortError" || name === "RenderingCancelledException") throw e;
           failures.push({ pageNumber, message: e instanceof Error ? e.message : String(e) });
         }
+        // Honor an abort that landed while currentRenderTask was null — during
+        // getPage, dims compute, canvasToBlob, or the inter-page reset — when
+        // onAbort's cancel() was a no-op. Without this, a Cancel pressed in that
+        // window lets the finished (only/last) page download despite the press.
+        if (hooks?.signal?.aborted) throw new DOMException("Aborted", "AbortError");
         hooks?.onProgress?.(i + 1, pages.length);
         if (i + 1 < pages.length) await new Promise((r) => setTimeout(r, 0)); // yield so the UI repaints
       }

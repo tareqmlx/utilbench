@@ -371,6 +371,38 @@ describe("renderPdfToImages", () => {
     expect(result.pages[0]?.filename).toBe("My-Report-page-1.png");
   });
 
+  it("honors an abort that lands while currentRenderTask is null (the cancel race) — throws AbortError, does NOT return the finished page", async () => {
+    // Repro of the #1 race: abort fires AFTER the top-of-loop aborted check but
+    // BEFORE currentRenderTask is assigned (here: during getPage). onAbort's
+    // cancel() is a no-op then, so the page renders to completion. Without a
+    // post-page abort check the only/last page would be returned (→ downloaded)
+    // despite the Cancel press. The renderer must instead throw AbortError.
+    const ac = new AbortController();
+    const doc = makeFakeDoc(1, () => {
+      ac.abort(); // lands in the null-currentRenderTask window
+      return makeFakePage();
+    });
+    getDocumentImpl = () => makeFakeLoadingTask({ doc });
+    await expect(
+      renderPdfToImages(new Uint8Array([1]), "f.pdf", baseOpts, { signal: ac.signal }),
+    ).rejects.toThrow(/abort/i);
+  });
+
+  it("aborts between pages (top-of-loop check) before rendering further pages", async () => {
+    const ac = new AbortController();
+    let rendered = 0;
+    const doc = makeFakeDoc(3, () => {
+      rendered++;
+      if (rendered === 1) ac.abort(); // abort after the first page is fetched
+      return makeFakePage();
+    });
+    getDocumentImpl = () => makeFakeLoadingTask({ doc });
+    await expect(
+      renderPdfToImages(new Uint8Array([1]), "f.pdf", baseOpts, { signal: ac.signal }),
+    ).rejects.toThrow(/abort/i);
+    expect(rendered).toBe(1); // stopped — pages 2 and 3 never fetched
+  });
+
   it("reports progress for each page", async () => {
     const doc = makeFakeDoc(2, () => makeFakePage());
     getDocumentImpl = () => makeFakeLoadingTask({ doc });
