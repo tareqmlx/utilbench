@@ -82,6 +82,7 @@ export default defineConfig({
           "vendor-marked": ["marked"],
           "vendor-dompurify": ["dompurify"],
           "vendor-pdf": ["pdf-lib"],
+          "vendor-pdfjs": ["pdfjs-dist"],
           "vendor-dnd": ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
         },
       },

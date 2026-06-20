@@ -82,3 +82,6 @@ video/
 
 # Local Files
 *-local-*
+
+# pdfjs runtime assets (staged from node_modules, never committed)
+public/pdfjs/
