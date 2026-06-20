@@ -230,6 +230,34 @@ describe("PdfToImageRoute", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Rendered 2 images"));
   });
 
+  it("does NOT download the ZIP when Cancel is pressed while zipping (§6.4)", async () => {
+    // The render loop honors Cancel up to the last page, but zipping is a further
+    // await. Cancel pressed WHILE the ZIP builds must suppress the download.
+    vi.mocked(renderPdfToImages).mockResolvedValueOnce({
+      pages: [fakePage(1, "report-page-01.png"), fakePage(2, "report-page-02.png")],
+      failures: [],
+    });
+    // Hold the ZIP build open so we can press Cancel mid-zip, then resolve it.
+    let resolveZip!: (b: Blob) => void;
+    vi.mocked(zipImages).mockReturnValueOnce(
+      new Promise<Blob>((res) => {
+        resolveZip = res;
+      }),
+    );
+    render(<PdfToImageRoute />);
+    await upload();
+    fireEvent.click(screen.getByTestId("convert-button"));
+
+    // Render resolved → now awaiting the still-pending ZIP; Cancel is live.
+    await waitFor(() => expect(zipImages).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByTestId("cancel-button"));
+    resolveZip(new Blob(["zip"], { type: "application/zip" }));
+
+    await waitFor(() => expect(screen.getByText("Cancelled.")).toBeInTheDocument());
+    expect(downloadBlob).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
   it("warns when some pages are clamped", async () => {
     vi.mocked(renderPdfToImages).mockResolvedValueOnce({
       pages: [fakePage(1, "report-page-01.png", true), fakePage(2, "report-page-02.png")],

@@ -280,6 +280,13 @@ export default function PdfToImageRoute() {
       } else {
         const zipName = `${buildBaseName(pdf.file.name)}-images.zip`;
         const zipBlob = await zipImages(pages);
+        // The render loop honors Cancel up to the last page, but zipping is a
+        // further await — a Cancel pressed while the ZIP is being built would
+        // otherwise still download it. Re-check here so Cancel means no output (§6.4).
+        if (ac.signal.aborted) {
+          setStatusMessage("Cancelled.");
+          return;
+        }
         downloadBlob(zipBlob, zipName);
         setStatusMessage(`Rendered ${pages.length} images → ${zipName}.`);
       }
