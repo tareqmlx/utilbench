@@ -134,6 +134,21 @@ describe("PdfToImageRoute", () => {
     expect(screen.getByTestId("dims-readout")).toHaveTextContent("2550×3300 px at 300 DPI");
   });
 
+  it("reports the reduced effective DPI in the readout when a page is clamped (§5.3)", async () => {
+    // A 2000×3000 pt page at 300 DPI blows past the canvas area cap → clamped.
+    vi.mocked(probePdf).mockResolvedValueOnce(
+      PROBE({ pageCount: 1, pageSizes: [{ width: 2000, height: 3000 }] }),
+    );
+    render(<PdfToImageRoute />);
+    const input = screen.getByTestId("file-input");
+    fireEvent.change(input, { target: { files: [makePdf("big.pdf")] } });
+    await waitFor(() => expect(screen.getByText("big.pdf")).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("dpi-300"));
+    // Readout must surface the reduced effective DPI, not the requested 300.
+    expect(screen.getByTestId("dims-readout")).toHaveTextContent(/reduced from 300/);
+    expect(screen.getByTestId("clamp-chip")).toBeInTheDocument();
+  });
+
   it("shows the JPEG quality slider only when JPEG is selected", async () => {
     render(<PdfToImageRoute />);
     await upload();
@@ -239,7 +254,9 @@ describe("PdfToImageRoute", () => {
     const dialog = await screen.findByTestId("password-dialog");
     fireEvent.click(within(dialog).getByTestId("password-cancel"));
 
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Cancelled."));
+    // Quiet cancel (§6.4): sr-only status updates, no success toast, no download.
+    await waitFor(() => expect(screen.getByText("Cancelled.")).toBeInTheDocument());
+    expect(toast.success).not.toHaveBeenCalledWith("Cancelled.");
     expect(downloadBlob).not.toHaveBeenCalled();
   });
 

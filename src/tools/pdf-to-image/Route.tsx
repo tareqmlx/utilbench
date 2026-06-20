@@ -299,8 +299,8 @@ export default function PdfToImageRoute() {
     } catch (e) {
       const name = (e as { name?: string })?.name;
       if (name === "AbortError") {
+        // Quiet cancel (§6.4): sr-only status only, no success toast.
         setStatusMessage("Cancelled.");
-        toast.success("Cancelled.");
       } else if (e instanceof Error && e.message) {
         setError(e.message);
       } else {
@@ -481,7 +481,10 @@ export default function PdfToImageRoute() {
           </p>
           {status === "ready" && firstPageDims && (
             <p className="font-mono text-[12px] text-ink-2 tabular-nums" data-testid="dims-readout">
-              Page 1 → {firstPageDims.width}×{firstPageDims.height} px at {dpi} DPI
+              Page 1 → {firstPageDims.width}×{firstPageDims.height} px at{" "}
+              {firstPageDims.clamped
+                ? `~${Math.round(firstPageDims.effectiveDpi)} DPI (reduced from ${dpi})`
+                : `${dpi} DPI`}
             </p>
           )}
           {anyClamped && (
