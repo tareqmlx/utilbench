@@ -1,21 +1,14 @@
-import { MAX_CANVAS_AREA, MAX_CANVAS_DIM, clampToCanvasLimits } from "@/lib/image";
-import {
-  downloadBlob,
-  getPdfMeta,
-  parsePageRanges,
-  readFileBytes,
-  validatePdfFile,
-} from "@/lib/pdf";
+import { MAX_CANVAS_AREA, clampToCanvasLimits } from "@/lib/image";
+import { downloadBlob, parsePageRanges, readFileBytes, validatePdfFile } from "@/lib/pdf";
 import type { ValidationResult } from "@/lib/pdf";
 import { PDFDocument } from "pdf-lib";
 // Vite emits a hashed asset URL for the pdf.js ES-module worker.
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-// Re-export the shared PDF helpers so Route.tsx imports from one module and
-// tests mock a single path.
-export { downloadBlob, getPdfMeta, parsePageRanges, readFileBytes, validatePdfFile };
+// Re-export the shared PDF helpers Route.tsx actually consumes so it imports
+// from one module and tests mock a single path.
+export { downloadBlob, parsePageRanges, readFileBytes, validatePdfFile };
 export type { ValidationResult };
-export { MAX_CANVAS_AREA, MAX_CANVAS_DIM, clampToCanvasLimits };
 
 // ── Constants & types (§5.1) ──────────────────────────────────────────────
 
@@ -24,7 +17,6 @@ export const DPI_PRESETS = [72, 96, 150, 300] as const;
 export type DpiPreset = (typeof DPI_PRESETS)[number];
 export const DEFAULT_DPI: DpiPreset = 150;
 export const DEFAULT_JPEG_QUALITY = 0.9; // document-scan sweet spot (0.8–0.92); JPEG only
-export const MAX_OUTPUT_DIMENSION = MAX_CANVAS_DIM; // re-export for the UI readout
 
 // DPI-aware output-page cap: bitmap AREA is the real cost, so the cap shrinks
 // as DPI rises to keep peak memory/time roughly constant across presets.
@@ -219,7 +211,7 @@ export function canvasToBlob(
 
 // ── ZIP assembly (§5.5) ────────────────────────────────────────────────────
 
-export async function zipImages(pages: RenderedPage[], _zipName: string): Promise<Blob> {
+export async function zipImages(pages: RenderedPage[]): Promise<Blob> {
   // fflate async zip, level 0 (images already PNG/JPEG-compressed; re-deflating is wasted CPU).
   const entries: Record<string, Uint8Array> = {};
   for (const p of pages) {
@@ -309,6 +301,9 @@ export async function renderPdfToImages(
         // COLLECT-AND-CONTINUE: one bad page is recorded, not fatal.
         try {
           const page = await doc.getPage(pageNumber);
+          // Hoisted so the finally can release the backing store on BOTH the
+          // success path AND the collect-and-continue failure path.
+          let canvas: HTMLCanvasElement | null = null;
           try {
             const baseVp = page.getViewport({ scale: 1 }); // intrinsic oriented size
             const { width, height, clamped } = computeOutputDims(
@@ -319,7 +314,7 @@ export async function renderPdfToImages(
             const effScale = width / baseVp.width; // honor the area clamp
             const viewport = page.getViewport({ scale: effScale });
 
-            const canvas = document.createElement("canvas");
+            canvas = document.createElement("canvas");
             canvas.width = width; // integer dims FROM computeOutputDims (single source)
             canvas.height = height;
             // ALWAYS opaque white for v1. THREE belt-and-suspenders layers:
@@ -348,19 +343,15 @@ export async function renderPdfToImages(
               opts.format === "jpeg" ? opts.jpegQuality : undefined,
             );
             const filename = buildImageFilename(base, pageNumber, pad, opts.format);
-            out.push({
-              pageNumber,
-              blob,
-              filename,
-              width: canvas.width,
-              height: canvas.height,
-              clamped,
-            });
-
-            canvas.width = 0; // RELEASE (Safari frees the bitmap on width/height = 0)
-            canvas.height = 0;
+            out.push({ pageNumber, blob, filename, width, height, clamped });
           } finally {
-            page.cleanup(); // free page-level intermediates
+            // RELEASE the bitmap (Safari/iOS frees it on width/height = 0) even
+            // when render/encode threw, then free page-level intermediates.
+            if (canvas) {
+              canvas.width = 0;
+              canvas.height = 0;
+            }
+            page.cleanup();
           }
         } catch (e) {
           const name = (e as { name?: string })?.name;

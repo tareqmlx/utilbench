@@ -348,7 +348,7 @@ describe("zipImages", () => {
         clamped: false,
       },
     ];
-    const blob = await zipImages(pages, "doc-images.zip");
+    const blob = await zipImages(pages);
     expect(blob.type).toBe("application/zip");
     const buf = new Uint8Array(await blob.arrayBuffer());
     const unzipped = unzipSync(buf);

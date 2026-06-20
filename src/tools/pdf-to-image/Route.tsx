@@ -172,7 +172,7 @@ export default function PdfToImageRoute() {
       setStatus("ready");
       setStatusMessage(
         probe.dimsKnown
-          ? `${file.name} ready, ${probe.pageCount} pages.`
+          ? `${file.name} ready, ${probe.pageCount} ${probe.pageCount === 1 ? "page" : "pages"}.`
           : `${file.name} ready. Password-protected — you'll be asked to unlock it when you convert.`,
       );
     } catch {
@@ -192,10 +192,11 @@ export default function PdfToImageRoute() {
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
-      if (files && files.length > 0) handleFiles(files);
+      // Match handleDrop's guard: don't swap the file out from under an active render.
+      if (!isConverting && files && files.length > 0) handleFiles(files);
       if (fileInputRef.current) fileInputRef.current.value = "";
     },
-    [handleFiles],
+    [handleFiles, isConverting],
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -278,7 +279,7 @@ export default function PdfToImageRoute() {
         setStatusMessage(`Saved ${only.filename}.`);
       } else {
         const zipName = `${buildBaseName(pdf.file.name)}-images.zip`;
-        const zipBlob = await zipImages(pages, zipName);
+        const zipBlob = await zipImages(pages);
         downloadBlob(zipBlob, zipName);
         setStatusMessage(`Rendered ${pages.length} images → ${zipName}.`);
       }
@@ -338,6 +339,7 @@ export default function PdfToImageRoute() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        disabled={isConverting}
         aria-label="Add a PDF: drop here, or click to browse"
         className={cn(
           "wb-lift-hover group block w-full rounded-[18px] border-2 border-ink p-6 text-center transition-[background,box-shadow,transform] duration-200 sm:p-10",
@@ -586,6 +588,8 @@ export default function PdfToImageRoute() {
                 Page count is available after you unlock the PDF. Your page range applies then —
                 leave it empty to render every page.
               </p>
+            ) : pageCount === 0 ? (
+              <p className="text-[12.5px] font-semibold text-tomato">This PDF has no pages.</p>
             ) : rangeError ? (
               <p className="text-[12.5px] font-semibold text-tomato">{rangeError}</p>
             ) : overCap ? (

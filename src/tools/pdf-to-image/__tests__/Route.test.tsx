@@ -124,6 +124,46 @@ describe("PdfToImageRoute", () => {
     expect(screen.getByTestId("convert-button")).not.toBeDisabled();
   });
 
+  it("uses singular 'page' in the ready status for a one-page PDF", async () => {
+    vi.mocked(probePdf).mockResolvedValueOnce(
+      PROBE({ pageCount: 1, pageSizes: [{ width: 612, height: 792 }] }),
+    );
+    render(<PdfToImageRoute />);
+    fireEvent.change(screen.getByTestId("file-input"), { target: { files: [makePdf("one.pdf")] } });
+    await waitFor(() => expect(screen.getByText("one.pdf")).toBeInTheDocument());
+    // sr-only aria-live status pluralizes correctly (not "1 pages").
+    expect(screen.getByText("one.pdf ready, 1 page.")).toBeInTheDocument();
+  });
+
+  it("shows 'This PDF has no pages.' and blocks Convert for a 0-page PDF (§10.1)", async () => {
+    vi.mocked(probePdf).mockResolvedValueOnce(PROBE({ pageCount: 0, pageSizes: [] }));
+    render(<PdfToImageRoute />);
+    fireEvent.change(screen.getByTestId("file-input"), {
+      target: { files: [makePdf("empty.pdf")] },
+    });
+    await waitFor(() => expect(screen.getByText("empty.pdf")).toBeInTheDocument());
+    expect(screen.getByText("This PDF has no pages.")).toBeInTheDocument();
+    expect(screen.getByTestId("convert-button")).toBeDisabled();
+  });
+
+  it("disables the browse dropzone while a render is in flight (no mid-render swap)", async () => {
+    let resolveRender: (v: { pages: ReturnType<typeof fakePage>[]; failures: [] }) => void =
+      () => {};
+    vi.mocked(renderPdfToImages).mockImplementationOnce(
+      () =>
+        new Promise((r) => {
+          resolveRender = r;
+        }),
+    );
+    render(<PdfToImageRoute />);
+    await upload();
+    fireEvent.click(screen.getByTestId("convert-button"));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Add a PDF: drop here, or click to browse")).toBeDisabled(),
+    );
+    resolveRender({ pages: [fakePage(1, "report-page-1.png")], failures: [] });
+  });
+
   it("shows the live output-dims readout and updates with DPI", async () => {
     render(<PdfToImageRoute />);
     await upload();
