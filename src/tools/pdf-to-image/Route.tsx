@@ -206,6 +206,10 @@ export default function PdfToImageRoute() {
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    // Ignore leave events fired while the pointer crosses between child
+    // elements still inside the dropzone — otherwise the lemon drag state
+    // flickers as the cursor passes over the icon plate and labels.
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
     setIsDragging(false);
   }, []);
 
@@ -399,7 +403,7 @@ export default function PdfToImageRoute() {
         />
         <div className="space-y-3 p-3 sm:p-4">
           {status === "idle" && (
-            <p className="wb-fade-in py-10 text-center text-sm text-ink-3">
+            <p className="wb-fade-in py-10 text-center text-sm text-ink-2">
               No PDF yet. Upload a file to get started.
             </p>
           )}
@@ -440,7 +444,7 @@ export default function PdfToImageRoute() {
               </div>
             </div>
           )}
-          <p className="px-1 pt-2 text-[12px] leading-relaxed text-ink-3">
+          <p className="px-1 pt-2 text-[12px] leading-relaxed text-ink-2">
             Each selected page becomes its own image. Multiple pages download as a ZIP.
           </p>
         </div>
@@ -498,7 +502,7 @@ export default function PdfToImageRoute() {
           )}
           {anyClamped && (
             <p
-              className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink bg-lemon px-3 py-1 text-[12px] font-semibold text-ink shadow-pop-1"
+              className="wb-fade-in inline-flex items-center gap-1.5 rounded-full border-2 border-ink bg-lemon px-3 py-1 text-[12px] font-semibold text-ink shadow-pop-1"
               data-testid="clamp-chip"
             >
               DPI reduced for the largest page (canvas limit).
@@ -591,7 +595,7 @@ export default function PdfToImageRoute() {
             aria-atomic="true"
           >
             {!dimsKnown ? (
-              <p className="text-[12.5px] text-ink-3">
+              <p className="text-[12.5px] text-ink-2">
                 Page count is available after you unlock the PDF. Your page range applies then —
                 leave it empty to render every page.
               </p>
@@ -612,7 +616,7 @@ export default function PdfToImageRoute() {
                 → {resolvedCount} {resolvedCount === 1 ? "image" : "images"}
               </p>
             ) : (
-              <p className="text-[12.5px] text-ink-3">Enter a page range to preview the output.</p>
+              <p className="text-[12.5px] text-ink-2">Enter a page range to preview the output.</p>
             )}
           </output>
         )}
@@ -644,6 +648,33 @@ export default function PdfToImageRoute() {
               )}
             </IconSwap>
           </button>
+          {isConverting &&
+            (progress.total > 0 ? (
+              // Determinate: expose render progress to assistive tech. progressbar
+              // is a status role (not a keyboard widget), so it is intentionally
+              // not a tab stop.
+              // biome-ignore lint/a11y/useFocusableInteractive: progressbar is a status role, must not be focusable
+              <div
+                className="wb-progress-track"
+                data-testid="progress-bar"
+                role="progressbar"
+                aria-label="Rendering pages"
+                aria-valuemin={0}
+                aria-valuemax={progress.total}
+                aria-valuenow={progress.done}
+              >
+                <div
+                  className="wb-progress-fill"
+                  style={{ transform: `scaleX(${progress.done / progress.total})` }}
+                />
+              </div>
+            ) : (
+              // Indeterminate (page count not yet known): decorative — the sr-only
+              // live region announces "Unlocking and rendering…" for screen readers.
+              <div className="wb-progress-track" data-testid="progress-bar" aria-hidden="true">
+                <div className="wb-progress-fill" data-indeterminate="true" />
+              </div>
+            ))}
           {isConverting && (
             <button
               type="button"
