@@ -51,7 +51,10 @@ export function buildPrintStylesheet(opts: PrintOptions): string {
   return `
     @page { size: ${size}; margin: ${margin}; }
     html, body { background: #fff; color: #111; }
-    body { font-family: ${body}; font-size: 12pt; line-height: 1.5; margin: 0; }
+    /* break-word mirrors the on-screen preview (preview.css: word-wrap:break-word) so long
+       unbreakable tokens (300+ char URLs, bare links) WRAP instead of overflowing the fixed-width
+       @page box and clipping silently in the PDF. overflow-wrap is inherited by all text descendants. */
+    body { font-family: ${body}; font-size: 12pt; line-height: 1.5; margin: 0; overflow-wrap: break-word; }
     /* Headings */
     h1,h2,h3,h4,h5,h6 { color: #111; line-height: 1.25; margin: 1.2em 0 0.5em; page-break-after: avoid; break-after: avoid; }
     h1 { font-size: 22pt; } h2 { font-size: 17pt; } h3 { font-size: 14pt; }

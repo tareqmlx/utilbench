@@ -92,6 +92,16 @@ describe("buildPrintStylesheet", () => {
     expect(theadBody).toContain("display: table-header-group");
   });
 
+  it("wraps long unbreakable tokens via overflow-wrap so they don't clip off the @page box", () => {
+    // Mirrors the on-screen preview (preview.css word-wrap:break-word). Without this a 300+ char
+    // URL/token overflows the fixed-width PDF page and clips silently — the preview scrolls so the
+    // user never sees the loss. Inherited by all text descendants (p, a, li, td).
+    // Anchor on font-family so we match the `body { font-family … }` rule, not the earlier
+    // `html, body { … }` reset (which shares the "body {" prefix).
+    const css = buildPrintStylesheet(baseOpts);
+    expect(css).toMatch(/body\s*\{[^}]*font-family:[^}]*overflow-wrap:\s*break-word/);
+  });
+
   it("is a plain document stylesheet, not wrapped in @media print", () => {
     const css = buildPrintStylesheet(baseOpts);
     expect(css).not.toContain("@media print");
