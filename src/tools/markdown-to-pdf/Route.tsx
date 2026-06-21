@@ -1,4 +1,4 @@
-import { Download, Eraser, FileText, Sparkles, Upload } from "lucide-react";
+import { Download, Eraser, FileText, Loader2, Sparkles, Upload } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KbdHint } from "../../components/KbdHint";
@@ -245,7 +245,10 @@ export default function MarkdownToPdfRoute() {
   );
 
   const left = (
-    <div className="flex flex-col rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+    // focus-within ring on the editor surface: the textarea zeroes its own ring, so the panel
+    // carries the system tomato --ring on keyboard focus (Principle 4). has-[:focus-visible] (not
+    // focus-within) keeps it off mouse clicks, matching the focus-visible convention used elsewhere.
+    <div className="flex flex-col rounded-lg border-2 border-ink bg-paper shadow-pop-3 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background">
       <PaneHeader
         label="Markdown"
         htmlFor="md-input"
@@ -311,7 +314,7 @@ export default function MarkdownToPdfRoute() {
 
   const right = (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+      <div className="flex flex-col rounded-lg border-2 border-ink bg-paper shadow-pop-3 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background">
         <PaneHeader
           label="Preview"
           icon={<FileText className="size-4" aria-hidden="true" />}
@@ -319,15 +322,28 @@ export default function MarkdownToPdfRoute() {
         />
         {html ? (
           <div
+            // Distinct key from the empty branch → React remounts on the empty→filled edge, so
+            // wb-fade-in plays once when content first renders. Stable across keystrokes (key stays
+            // "filled"), so the reveal doesn't re-flap on every debounced re-render.
+            key="preview-filled"
+            // Labeled landmark + tabindex so keyboard users can focus and arrow-scroll the
+            // overflowing preview (WCAG 2.1.1); the region also scopes the rendered document's own
+            // heading outline. focus shows on the panel wrapper's tomato ring (no inner outline).
+            role="region"
             aria-label="Rendered Markdown preview"
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: scrollable region — tabIndex=0 lets keyboard users focus and arrow-scroll the overflow (WCAG 2.1.1)
+            tabIndex={0}
             style={{ height: PANE_HEIGHT }}
-            className="markdown-preview overflow-y-auto p-6"
+            className="markdown-preview wb-fade-in overflow-y-auto p-6 focus-visible:outline-none"
             data-testid="preview-pane"
             // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is sanitized via DOMPurify
             dangerouslySetInnerHTML={{ __html: html }}
           />
         ) : (
           <div
+            // Intentionally no enter animation: clearing should feel instant, and we avoid a
+            // page-load fade on the default empty state (product register: no load choreography).
+            key="preview-empty"
             aria-label="Rendered Markdown preview"
             style={{ height: PANE_HEIGHT }}
             className="flex flex-col items-center justify-center gap-3 text-ink-3"
@@ -486,7 +502,15 @@ export default function MarkdownToPdfRoute() {
           className="wb-btn w-full justify-center py-4 text-[15px]"
           data-testid="download-pdf"
         >
-          <Download className="size-4" aria-hidden="true" />
+          {status === "preparing" ? (
+            // Spinner conveys the (brief) render+font-load work; motion-reduce keeps it a static glyph.
+            <Loader2
+              className="size-4 animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+          ) : (
+            <Download className="size-4" aria-hidden="true" />
+          )}
           {status === "preparing" ? "Preparing…" : "Download PDF"}
           <KbdHint>⌘⏎</KbdHint>
         </Button>
