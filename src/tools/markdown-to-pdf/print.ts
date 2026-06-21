@@ -118,6 +118,14 @@ export function buildPrintDocument(bodyHtml: string, opts: PrintOptions): string
 
 export const SRCDOC_MAX = 1_500_000; // ~1.5 MB — below the conservative srcdoc ceiling; exported for tests
 let isPrinting = false; // module-level mutex (§2.1 trap 8)
+let activeCleanup: (() => void) | null = null; // current print's cleanup, for cancelPrint()
+
+// Force-cleanup the in-flight print. Used when print() fails silently (§2.1 trap 7): no dialog opens
+// and no matchMedia/afterprint fires, so the UI would otherwise stay pinned until the 60s backstop.
+// Lets the user dismiss the hint and retry immediately. No-op if nothing is printing.
+export function cancelPrint(): void {
+  activeCleanup?.();
+}
 
 export async function printHtml(
   bodyHtml: string,
@@ -166,9 +174,11 @@ export async function printHtml(
     mql?.removeEventListener?.("change", onMql);
     iframe.remove();
     if (blobUrl) URL.revokeObjectURL(blobUrl);
+    activeCleanup = null;
     isPrinting = false;
     hooks?.onStatus?.("done");
   };
+  activeCleanup = cleanup; // expose to cancelPrint() for the silent-failure path
 
   const MIN_HOLD = 1500; // ms the iframe must stay alive after the print signal before removal
   const scheduleCleanup = () => {
@@ -241,8 +251,15 @@ export async function printHtml(
   backstop = setTimeout(cleanup, hooks?.timeoutMs ?? 60_000);
 
   hooks?.onStatus?.("dialog-open");
-  win.focus(); // some browsers require focus before print()
-  win.print(); // opens the native dialog; returns immediately, no reliable success/failure signal
+  try {
+    win.focus(); // some browsers require focus before print()
+    win.print(); // opens the native dialog; returns immediately, no reliable success/failure signal
+  } catch (err) {
+    // print()/focus() rarely throws (it usually fails silently — §2.1 trap 7), but if it does, the
+    // backstop would otherwise hold isPrinting for 60 s and leak the iframe. Clean up now and rethrow.
+    cleanup();
+    throw err;
+  }
 }
 
 // Convenience wrapper used by Route: render markdown then print.

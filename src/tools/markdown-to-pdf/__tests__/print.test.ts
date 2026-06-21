@@ -8,6 +8,7 @@ import {
   SRCDOC_MAX,
   buildPrintDocument,
   buildPrintStylesheet,
+  cancelPrint,
   printHtml,
 } from "../print";
 
@@ -467,6 +468,77 @@ describe("printHtml lifecycle", () => {
     const p = printHtml("<p>ok</p>", baseOpts);
     await vi.runAllTimersAsync();
     await p;
+    expect(fake.contentWindow?.print).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects and clears the mutex when the iframe load never fires", async () => {
+    const fakeIframe = buildFakeIframe();
+    fake = fakeIframe;
+    const realCreate = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation(((tag: string, ...rest: unknown[]) => {
+      if (tag === "iframe") return fakeIframe as unknown as HTMLElement;
+      // @ts-expect-error pass-through for non-iframe tags
+      return realCreate(tag, ...rest);
+    }) as typeof document.createElement);
+    // appendChild that never fires the load event → the 10s load race times out.
+    vi.spyOn(document.body, "appendChild").mockImplementation(
+      ((node: Node) => node) as typeof document.body.appendChild,
+    );
+
+    const p = printHtml("<p>x</p>", baseOpts);
+    const rejection = expect(p).rejects.toThrow("Could not open a print frame.");
+    await vi.advanceTimersByTimeAsync(10_000);
+    await rejection;
+    expect(fakeIframe.remove).toHaveBeenCalled();
+    expect(fakeIframe.contentWindow?.print).not.toHaveBeenCalled();
+
+    // Mutex cleared — a subsequent (valid) call proceeds.
+    install(buildFakeIframe());
+    const p2 = printHtml("<p>ok</p>", baseOpts);
+    await vi.runAllTimersAsync();
+    await p2;
+    expect(fake.contentWindow?.print).toHaveBeenCalledTimes(1);
+  });
+
+  it("cleans up and rethrows when print() throws, clearing the mutex", async () => {
+    const fakeIframe = buildFakeIframe();
+    (fakeIframe.contentWindow as FakeWindow).print = vi.fn(() => {
+      throw new Error("blocked");
+    });
+    install(fakeIframe);
+
+    const p = printHtml("<p>x</p>", baseOpts);
+    const rejection = expect(p).rejects.toThrow("blocked");
+    await vi.runAllTimersAsync();
+    await rejection;
+    expect(fakeIframe.remove).toHaveBeenCalled();
+
+    // Mutex cleared — a subsequent (valid) call proceeds and prints.
+    install(buildFakeIframe());
+    const p2 = printHtml("<p>ok</p>", baseOpts);
+    await vi.runAllTimersAsync();
+    await p2;
+    expect(fake.contentWindow?.print).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancelPrint() force-cleans the in-flight print and clears the mutex", async () => {
+    install(buildFakeIframe());
+    const onStatus = vi.fn();
+    // Resolve printHtml without advancing to the 60s backstop, so the print is still "in flight".
+    const p = printHtml("<p>x</p>", baseOpts, { onStatus });
+    await p;
+    expect(fake.contentWindow?.print).toHaveBeenCalledTimes(1);
+    expect(fake.remove).not.toHaveBeenCalled(); // iframe still alive, awaiting a cleanup signal
+
+    cancelPrint();
+    expect(fake.remove).toHaveBeenCalledTimes(1);
+    expect(onStatus).toHaveBeenLastCalledWith("done");
+
+    // Mutex cleared — a subsequent print proceeds.
+    install(buildFakeIframe());
+    const p2 = printHtml("<p>ok</p>", baseOpts);
+    await vi.runAllTimersAsync();
+    await p2;
     expect(fake.contentWindow?.print).toHaveBeenCalledTimes(1);
   });
 });
