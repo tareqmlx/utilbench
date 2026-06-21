@@ -980,6 +980,44 @@ function PdfToImageSkeleton() {
   );
 }
 
+/* ── 24. Markdown to PDF ─────────────────────────────────── */
+
+function MarkdownToPdfSkeleton() {
+  return (
+    <ToolShell>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+            <SkeletonLine width="w-24" height="h-3" />
+            <div className="flex gap-2">
+              <SkeletonButton width="w-20" />
+              <SkeletonButton width="w-20" />
+            </div>
+          </div>
+          <SkeletonTextArea className="min-h-[480px]" />
+        </div>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+            <SkeletonLine width="w-24" height="h-3" />
+            <div className="flex gap-2">
+              <SkeletonButton width="w-20" />
+              <SkeletonButton width="w-20" />
+            </div>
+          </div>
+          <SkeletonBlock className="min-h-[300px] rounded-md bg-paper-2" />
+          <div className="grid grid-cols-2 gap-2">
+            <SkeletonBlock className="h-11 rounded-md" />
+            <SkeletonBlock className="h-11 rounded-md" />
+            <SkeletonBlock className="h-11 rounded-md" />
+            <SkeletonBlock className="h-11 rounded-md" />
+          </div>
+          <SkeletonButton width="w-full" />
+        </div>
+      </div>
+    </ToolShell>
+  );
+}
+
 /* ── Registry ────────────────────────────────────────────── */
 
 const skeletonMap: Record<string, ComponentType<SkeletonProps>> = {
@@ -1006,6 +1044,7 @@ const skeletonMap: Record<string, ComponentType<SkeletonProps>> = {
   "pdf-metadata-removal": PdfMetadataRemovalSkeleton,
   "images-to-pdf": ImagesToPdfSkeleton,
   "pdf-to-image": PdfToImageSkeleton,
+  "markdown-to-pdf": MarkdownToPdfSkeleton,
 };
 
 export function getSkeletonForSlug(slug: string): ComponentType<SkeletonProps> | null {
