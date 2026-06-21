@@ -173,7 +173,9 @@ export default function PdfToImageRoute() {
       setStatusMessage(
         probe.dimsKnown
           ? `${file.name} ready, ${probe.pageCount} ${probe.pageCount === 1 ? "page" : "pages"}.`
-          : `${file.name} ready. Password-protected — you'll be asked to unlock it when you convert.`,
+          : probe.encrypted
+            ? `${file.name} ready. Password-protected — you'll be asked to unlock it when you convert.`
+            : `${file.name} ready. Couldn't read this PDF up front — converting will try to render it.`,
       );
     } catch {
       setStatus("error");
@@ -256,7 +258,9 @@ export default function PdfToImageRoute() {
     setStatusMessage(
       dimsKnown
         ? `Rendering ${resolvedCount} ${resolvedCount === 1 ? "image" : "images"}.`
-        : "Unlocking and rendering…",
+        : encrypted
+          ? "Unlocking and rendering…"
+          : "Rendering…",
     );
 
     const ac = new AbortController();
@@ -329,7 +333,18 @@ export default function PdfToImageRoute() {
       setIsConverting(false);
       setProgress({ done: 0, total: 0 });
     }
-  }, [pdf, canConvert, dimsKnown, resolvedCount, dpi, format, jpegQuality, pageRange, onPassword]);
+  }, [
+    pdf,
+    canConvert,
+    dimsKnown,
+    encrypted,
+    resolvedCount,
+    dpi,
+    format,
+    jpegQuality,
+    pageRange,
+    onPassword,
+  ]);
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort();
@@ -596,8 +611,9 @@ export default function PdfToImageRoute() {
           >
             {!dimsKnown ? (
               <p className="text-[12.5px] text-ink-2">
-                Page count is available after you unlock the PDF. Your page range applies then —
-                leave it empty to render every page.
+                {encrypted
+                  ? "Page count is available after you unlock the PDF. Your page range applies then — leave it empty to render every page."
+                  : "Page count is available after rendering. Your page range applies then — leave it empty to render every page."}
               </p>
             ) : pageCount === 0 ? (
               <p className="text-[12.5px] font-semibold text-tomato">This PDF has no pages.</p>
@@ -670,7 +686,8 @@ export default function PdfToImageRoute() {
               </div>
             ) : (
               // Indeterminate (page count not yet known): decorative — the sr-only
-              // live region announces "Unlocking and rendering…" for screen readers.
+              // live region announces the render status ("Unlocking and rendering…"
+              // for encrypted PDFs, "Rendering…" otherwise) for screen readers.
               <div className="wb-progress-track" data-testid="progress-bar" aria-hidden="true">
                 <div className="wb-progress-fill" data-indeterminate="true" />
               </div>

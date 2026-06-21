@@ -124,6 +124,24 @@ describe("PdfToImageRoute", () => {
     expect(screen.getByTestId("convert-button")).not.toBeDisabled();
   });
 
+  it("does NOT claim password/unlock when dims are unknown but the file isn't encrypted — §5.6", async () => {
+    // pdf-lib couldn't parse AND the file is not encrypted (corrupt / unsupported).
+    // dimsKnown:false must NOT be presented as password-protected.
+    vi.mocked(probePdf).mockResolvedValueOnce(
+      PROBE({ pageCount: 0, encrypted: false, pageSizes: [], dimsKnown: false }),
+    );
+    render(<PdfToImageRoute />);
+    const input = screen.getByTestId("file-input");
+    fireEvent.change(input, { target: { files: [makePdf("corrupt.pdf")] } });
+    await waitFor(() => expect(screen.getByText("corrupt.pdf")).toBeInTheDocument());
+    // No lock badge, no "unlock" copy in the output preview.
+    expect(screen.queryByText("Password-protected")).not.toBeInTheDocument();
+    expect(screen.getByTestId("output-preview").textContent).not.toMatch(/unlock/i);
+    expect(screen.getByTestId("output-preview").textContent).toMatch(/after rendering/i);
+    // pdf.js is still the authority — Convert stays enabled so it can try.
+    expect(screen.getByTestId("convert-button")).not.toBeDisabled();
+  });
+
   it("uses singular 'page' in the ready status for a one-page PDF", async () => {
     vi.mocked(probePdf).mockResolvedValueOnce(
       PROBE({ pageCount: 1, pageSizes: [{ width: 612, height: 792 }] }),
