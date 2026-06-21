@@ -986,32 +986,40 @@ function MarkdownToPdfSkeleton() {
   return (
     <ToolShell>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+        {/* Editor pane — matches the real rounded/bordered/shadow-pop chrome (plan §8) */}
+        <div className="flex flex-col rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+          <div className="flex items-center justify-between border-b-2 border-ink bg-paper-2 px-[18px] py-[14px]">
             <SkeletonLine width="w-24" height="h-3" />
             <div className="flex gap-2">
               <SkeletonButton width="w-20" />
-              <SkeletonButton width="w-20" />
+              <SkeletonButton width="w-28" />
+              <SkeletonButton width="w-16" />
             </div>
           </div>
-          <SkeletonTextArea className="min-h-[480px]" />
+          <div className="p-6">
+            <SkeletonTextArea className="min-h-[480px]" />
+          </div>
         </div>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between border-b-2 border-ink bg-paper px-[18px] py-[14px]">
-            <SkeletonLine width="w-24" height="h-3" />
-            <div className="flex gap-2">
-              <SkeletonButton width="w-20" />
-              <SkeletonButton width="w-20" />
+        {/* Preview + page setup */}
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+            <div className="flex items-center border-b-2 border-ink bg-paper-2 px-[18px] py-[14px]">
+              <SkeletonLine width="w-24" height="h-3" />
+            </div>
+            <div className="p-6">
+              <SkeletonBlock className="min-h-[320px] rounded-md bg-paper-2" />
             </div>
           </div>
-          <SkeletonBlock className="min-h-[300px] rounded-md bg-paper-2" />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col gap-5 rounded-lg border-2 border-ink bg-paper p-5 shadow-pop-2 sm:p-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <SkeletonBlock className="h-11 rounded-md" />
+              <SkeletonBlock className="h-11 rounded-md" />
+              <SkeletonBlock className="h-11 rounded-md" />
+              <SkeletonBlock className="h-11 rounded-md" />
+            </div>
             <SkeletonBlock className="h-11 rounded-md" />
-            <SkeletonBlock className="h-11 rounded-md" />
-            <SkeletonBlock className="h-11 rounded-md" />
-            <SkeletonBlock className="h-11 rounded-md" />
+            <SkeletonButton width="w-full" />
           </div>
-          <SkeletonButton width="w-full" />
         </div>
       </div>
     </ToolShell>
