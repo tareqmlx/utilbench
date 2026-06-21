@@ -29,6 +29,7 @@ import {
   type Orientation,
   type PageSizeKey,
   type PrintOptions,
+  cancelPrint,
   printMarkdown,
   renderMarkdown,
 } from "./print";
@@ -102,6 +103,16 @@ function stripExtension(filename: string): string {
   return dot > 0 ? filename.slice(0, dot) : filename;
 }
 
+// Hidden-iframe print() is unreliable on narrow/touch UAs (plan §10.2 / §14 A11).
+function computeNarrowUa(): boolean {
+  if (typeof window === "undefined") return false;
+  // Touch-PRIMARY device (phones/tablets). (hover: none) and (pointer: coarse) excludes
+  // touchscreen laptops/desktops, which report a fine pointer + hover and are desktop-class.
+  const coarse = window.matchMedia?.("(hover: none) and (pointer: coarse)")?.matches ?? false;
+  const narrow = window.matchMedia?.("(max-width: 640px)")?.matches ?? false;
+  return coarse || narrow;
+}
+
 export default function MarkdownToPdfRoute() {
   const [markdown, setMarkdown] = useState("");
   const [html, setHtml] = useState("");
@@ -114,7 +125,19 @@ export default function MarkdownToPdfRoute() {
   const [docTitle, setDocTitle] = useState("");
   const [status, setStatus] = useState<"idle" | "preparing" | "dialog-open">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  // Tracks an explicit dismiss of the large-doc warning so it doesn't re-flap on every keystroke.
+  const warningDismissedRef = useRef(false);
+  // Reactive so resizing/rotating below 640px after load toggles the desktop note (plan §10.2 / §14 A11).
+  const [isNarrowUa, setIsNarrowUa] = useState(computeNarrowUa);
+  useEffect(() => {
+    const mql = window.matchMedia?.("(max-width: 640px)");
+    if (!mql) return;
+    const update = () => setIsNarrowUa(computeNarrowUa());
+    mql.addEventListener?.("change", update);
+    return () => mql.removeEventListener?.("change", update);
+  }, []);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -127,6 +150,15 @@ export default function MarkdownToPdfRoute() {
       } catch {
         setError("Failed to render markdown. Please check your input.");
       }
+      // Large-document warning for ANY input — typed, pasted, or imported (plan §7 / §6.2).
+      // Byte count (not UTF-16 length) so it matches LARGE_DOC_BYTES and imported UTF-8 file sizes.
+      const isLarge = new TextEncoder().encode(markdown).length > LARGE_DOC_BYTES;
+      if (!isLarge) warningDismissedRef.current = false; // re-arm once back under the threshold
+      setWarning(
+        isLarge && !warningDismissedRef.current
+          ? "Large document — the preview and print may be slow."
+          : null,
+      );
     }, 200);
     return () => clearTimeout(timer);
   }, [markdown]);
@@ -142,10 +174,9 @@ export default function MarkdownToPdfRoute() {
     if (!file) return;
 
     setError(null);
-    setWarning(null);
-    if (file.size > LARGE_DOC_BYTES) {
-      setWarning("Large document — the preview and print may be slow.");
-    }
+    // A freshly imported file is new content → re-arm the large-doc warning even if a prior one was
+    // dismissed. The warning itself is derived from the loaded text in the debounced effect (plan §7).
+    warningDismissedRef.current = false;
     try {
       const text = await file.text();
       setMarkdown(text);
@@ -165,16 +196,17 @@ export default function MarkdownToPdfRoute() {
   const handleClear = useCallback(() => {
     setMarkdown("");
     setHtml("");
+    setDocTitle("");
     setError(null);
+    setDownloadError(null);
     setWarning(null);
   }, []);
 
   const handleDownload = useCallback(async () => {
-    setError(null);
-    setWarning(null);
+    setDownloadError(null);
     if (status !== "idle") return;
     if (!markdown.trim()) {
-      setError("Add some Markdown first.");
+      setDownloadError("Add some Markdown first.");
       return;
     }
 
@@ -193,7 +225,7 @@ export default function MarkdownToPdfRoute() {
       });
     } catch (e) {
       setStatus("idle");
-      setError(
+      setDownloadError(
         e instanceof Error
           ? e.message
           : "Could not open the print dialog. Check your browser's popup/print settings.",
@@ -308,7 +340,9 @@ export default function MarkdownToPdfRoute() {
               <FileText className="h-6 w-6 text-ink" strokeWidth={2.25} />
             </span>
             <p className="text-sm font-medium text-ink-2">
-              Start typing to see the preview, then download as PDF
+              {markdown
+                ? "Nothing to preview yet — add some Markdown content."
+                : "Start typing to see the preview, then download as PDF"}
             </p>
           </div>
         )}
@@ -434,29 +468,66 @@ export default function MarkdownToPdfRoute() {
           />
         </div>
 
+        {isNarrowUa && (
+          <p
+            className="rounded-[14px] border-2 border-ink bg-lemon px-4 py-3 text-[13px] leading-relaxed text-ink"
+            data-testid="desktop-note"
+          >
+            PDF export works best on desktop. On mobile, your browser may not offer a "Save as PDF"
+            option.
+          </p>
+        )}
+
         <Button
           type="button"
           onClick={() => void handleDownload()}
           disabled={!canDownload}
+          aria-busy={status === "preparing"}
           className="wb-btn w-full justify-center py-4 text-[15px]"
           data-testid="download-pdf"
         >
           <Download className="size-4" aria-hidden="true" />
-          Download PDF
+          {status === "preparing" ? "Preparing…" : "Download PDF"}
           <KbdHint>⌘⏎</KbdHint>
         </Button>
 
+        <ErrorAlert
+          error={downloadError}
+          className="mt-0"
+          onDismiss={() => setDownloadError(null)}
+        />
+
         {status === "dialog-open" && (
-          <p
-            className="wb-fade-in rounded-[14px] border-2 border-ink bg-paper-2 px-4 py-3 font-mono text-[13px] leading-relaxed text-ink"
+          <output
+            className="wb-fade-in flex items-start gap-3 rounded-[14px] border-2 border-ink bg-paper-2 px-4 py-3"
             data-testid="dialog-hint"
           >
-            Your browser's print dialog should open — choose "Save as PDF". If you don't see it,
-            check your browser's popup/print settings.
-          </p>
+            <span className="flex-1 font-mono text-[13px] leading-relaxed text-ink">
+              Your browser's print dialog should open — choose "Save as PDF". If you don't see it,
+              check your browser's popup/print settings.
+            </span>
+            <button
+              type="button"
+              // If print() failed silently, no dialog/event fires — let the user dismiss now and retry
+              // instead of waiting out the 60s backstop. cancelPrint() force-cleans the in-flight print
+              // (its onStatus "done" maps status back to idle, hiding this hint and re-enabling Download).
+              onClick={() => cancelPrint()}
+              className="shrink-0 font-mono text-[13px] text-ink-2 underline underline-offset-2 hover:text-ink"
+              data-testid="dialog-hint-dismiss"
+            >
+              Dismiss
+            </button>
+          </output>
         )}
 
-        <WarningAlert warning={warning} className="mt-0" onDismiss={() => setWarning(null)} />
+        <WarningAlert
+          warning={warning}
+          className="mt-0"
+          onDismiss={() => {
+            warningDismissedRef.current = true;
+            setWarning(null);
+          }}
+        />
       </section>
     </div>
   );
