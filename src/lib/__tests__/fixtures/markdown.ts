@@ -1,0 +1,17 @@
+export const MARKDOWN_FIXTURES = {
+  heading: "# Heading 1\n## Heading 2\n### Heading 3",
+  bold: "**bold**",
+  italic: "*italic*",
+  link: "[link](https://example.com)",
+  unorderedList: "- item 1\n- item 2",
+  orderedList: "1. first\n2. second",
+  table: "| A | B |\n|---|---|\n| 1 | 2 |",
+  taskList: "- [x] done\n- [ ] todo",
+  strikethrough: "~~deleted~~",
+  autolink: "https://example.com",
+  blockquote: "> a quote",
+  codeBlock: "```ts\nconst x = 1;\n```",
+  rawHtmlScript: '<script>alert("xss")</script>',
+  imgOnerror: '<img src="x" onerror="alert(1)">',
+  empty: "",
+} as const;
