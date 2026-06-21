@@ -11,9 +11,16 @@ function sanitize(raw: string): string {
   });
 
   // Task-list checkboxes are decorative reflections of `[x]` syntax; hide from assistive tech.
-  return sanitized.replace(
+  const withCheckboxes = sanitized.replace(
     /<input([^>]*?)type="checkbox"([^>]*?)>/g,
     '<input$1type="checkbox"$2 aria-hidden="true" tabindex="-1">',
+  );
+
+  // External links open in a new tab so clicking a link inside the preview never navigates the SPA
+  // away and discards the user's unsaved Markdown. rel hardens against reverse-tabnabbing.
+  return withCheckboxes.replace(
+    /<a\s+href="(https?:\/\/[^"]*)"/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer"',
   );
 }
 
