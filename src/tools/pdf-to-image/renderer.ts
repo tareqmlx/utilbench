@@ -1,18 +1,28 @@
-import { MAX_CANVAS_AREA, clampToCanvasLimits } from "@/lib/image";
 import { downloadBlob, parsePageRanges, readFileBytes, validatePdfFile } from "@/lib/pdf";
 import type { ValidationResult } from "@/lib/pdf";
-import { PDFDocument } from "pdf-lib";
-// Vite emits a hashed asset URL for the pdf.js ES-module worker.
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import {
+  PDFJS_ASSETS,
+  buildBaseName,
+  canvasToBlob,
+  computeOutputDims,
+  getPdfjs,
+  probePdf,
+  renderPageToBlob,
+} from "@/lib/pdfjs-render";
+import type { ImageFormat, PageSize, PdfProbe } from "@/lib/pdfjs-render";
 
 // Re-export the shared PDF helpers Route.tsx actually consumes so it imports
 // from one module and tests mock a single path.
 export { downloadBlob, parsePageRanges, readFileBytes, validatePdfFile };
 export type { ValidationResult };
 
+// Re-export the moved pdf.js render-core pieces that Route.tsx / the tests still
+// import from "./renderer".
+export { buildBaseName, canvasToBlob, computeOutputDims, getPdfjs, probePdf };
+export type { ImageFormat, PageSize, PdfProbe };
+
 // ── Constants & types (§5.1) ──────────────────────────────────────────────
 
-export type ImageFormat = "png" | "jpeg";
 export const DPI_PRESETS = [72, 96, 150, 300] as const;
 export type DpiPreset = (typeof DPI_PRESETS)[number];
 export const DEFAULT_DPI: DpiPreset = 150;
@@ -58,100 +68,6 @@ export interface RenderResult {
   failures: PageFailure[];
 }
 
-export interface PageSize {
-  width: number;
-  height: number;
-} // points; from the upload-time probe (§5.6)
-
-export interface PdfProbe {
-  pageCount: number;
-  encrypted: boolean;
-  pageSizes: PageSize[];
-  // false ⇒ pdf-lib could not parse the structure (commonly a strongly-encrypted
-  // PDF). Page count / sizes are unknown until pdf.js unlocks it at render time
-  // (§5.6). The pre-convert readout is skipped, but Convert stays enabled.
-  dimsKnown: boolean;
-}
-
-// ── pdf.js bootstrap (§5.2) ────────────────────────────────────────────────
-
-let pdfjs: typeof import("pdfjs-dist") | null = null;
-
-export async function getPdfjs(): Promise<typeof import("pdfjs-dist")> {
-  if (pdfjs) return pdfjs;
-  const lib = await import("pdfjs-dist"); // dynamic → lands in the vendor-pdfjs chunk
-  // Set workerSrc BEFORE the first getDocument, or pdf.js throws.
-  lib.GlobalWorkerOptions.workerSrc = workerUrl;
-  pdfjs = lib;
-  return lib;
-}
-
-// Runtime assets fetched by URL (NOT imports) — staged into public/pdfjs/.
-// Absolute paths are mandatory: the worker thread fetches these, and a relative
-// URL would resolve against the worker script's URL, not the page.
-const PDFJS_ASSETS = {
-  cMapUrl: "/pdfjs/cmaps/", // trailing slash REQUIRED — pdf.js concatenates the filename
-  cMapPacked: true,
-  standardFontDataUrl: "/pdfjs/standard_fonts/",
-  wasmUrl: "/pdfjs/wasm/",
-  iccUrl: "/pdfjs/iccs/",
-  // Tell pdf.js the SAME canvas ceiling the tool clamps to. canvasMaxAreaInBytes
-  // is in BYTES — an RGBA px is 4 bytes → MAX_CANVAS_AREA px² × 4.
-  canvasMaxAreaInBytes: MAX_CANVAS_AREA * 4,
-} as const;
-
-// ── Output dimensions & the DPI↔scale math (§5.3) ──────────────────────────
-
-export function computeOutputDims(
-  pageWidthPt: number,
-  pageHeightPt: number,
-  dpi: number,
-): { width: number; height: number; effectiveDpi: number; clamped: boolean } {
-  const scale = dpi / 72; // a PDF point is 1/72 in. — NOT /96, NOT devicePixelRatio
-  const w = Math.max(1, Math.round(pageWidthPt * scale));
-  const h = Math.max(1, Math.round(pageHeightPt * scale));
-  const c = clampToCanvasLimits(w, h); // clamps by BOTH max side and max area, preserving aspect
-  // If clamped, the effective DPI is lower than requested; report it for the warning + readout.
-  const effectiveDpi = c.downscaled ? dpi * (c.width / w) : dpi;
-  return { width: c.width, height: c.height, effectiveDpi, clamped: c.downscaled };
-}
-
-// ── Page-size probe (§5.6) ─────────────────────────────────────────────────
-
-export async function probePdf(bytes: Uint8Array): Promise<PdfProbe> {
-  // pdf-lib does NOT detach the buffer (unlike pdf.js), so no slice() needed here.
-  try {
-    const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
-    const pageSizes = doc.getPages().map((p) => {
-      const { width, height } = p.getSize(); // MediaBox — rotation-AGNOSTIC
-      // pdf.js getViewport({scale:1}) SWAPS w/h for 90°/270°; match it so the readout/clamp agree.
-      const rot = ((p.getRotation().angle % 360) + 360) % 360;
-      return rot === 90 || rot === 270 ? { width: height, height: width } : { width, height };
-    });
-    return {
-      pageCount: doc.getPageCount(),
-      encrypted: doc.isEncrypted,
-      pageSizes,
-      dimsKnown: true,
-    };
-  } catch {
-    // pdf-lib failed to PARSE the structure — most often a strongly-encrypted PDF
-    // (e.g. AES-128/256) it can't read even with ignoreEncryption. Do NOT reject:
-    // pdf.js may still render it after a password (§5.6). Fall back to "dimensions
-    // available after rendering" — skip the pre-convert readout but keep Convert live.
-    // Re-load WITHOUT ignoreEncryption to tell "encrypted" apart from genuine corruption,
-    // so the lock badge is only shown when the file really is encrypted.
-    let encrypted = false;
-    try {
-      await PDFDocument.load(bytes);
-    } catch (e2) {
-      encrypted =
-        e2 instanceof Error && (/encrypt/i.test(e2.message) || e2.name === "EncryptedPDFError");
-    }
-    return { pageCount: 0, encrypted, pageSizes: [], dimsKnown: false };
-  }
-}
-
 // ── Page-list resolution (§5.4) ────────────────────────────────────────────
 
 export function resolvePageList(pageRange: string, numPages: number): number[] {
@@ -180,33 +96,6 @@ export function buildImageFilename(
 ): string {
   const ext = format === "png" ? "png" : "jpg";
   return `${base || "page"}-page-${String(pageNumber).padStart(pad, "0")}.${ext}`;
-}
-
-// Local replica of split-pdf's tested sanitizer (see split-pdf/splitter.ts:140).
-// Replicated rather than cross-imported to avoid the repo's only cross-tool logic import.
-export function buildBaseName(originalName: string): string {
-  const base = originalName.replace(/\.[^.]+$/, "");
-  const sanitized = base
-    .replace(/[^A-Za-z0-9-_]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return sanitized || "document";
-}
-
-// ── Canvas → Blob ──────────────────────────────────────────────────────────
-
-export function canvasToBlob(
-  canvas: HTMLCanvasElement,
-  type: string,
-  quality?: number,
-): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error("Failed to encode canvas to image."))),
-      type,
-      quality,
-    );
-  });
 }
 
 // ── ZIP assembly (§5.5) ────────────────────────────────────────────────────
@@ -284,104 +173,54 @@ export async function renderPdfToImages(
     }
     const pad = String(doc.numPages).length; // zero-pad width from total page count
     const base = buildBaseName(fileName);
-    const annotationMode = lib.AnnotationMode.DISABLE; // clean page images, no link/widget overlays
     const out: RenderedPage[] = [];
     const failures: PageFailure[] = [];
 
-    // Cancel: interrupt the IN-FLIGHT page, not just between pages.
-    let currentRenderTask: import("pdfjs-dist").RenderTask | null = null;
-    const onAbort = () => currentRenderTask?.cancel(); // → RenderingCancelledException (fatal)
-    hooks?.signal?.addEventListener("abort", onAbort);
-    try {
-      for (let i = 0; i < pages.length; i++) {
-        if (hooks?.signal?.aborted) throw new DOMException("Aborted", "AbortError");
-        const pageNumber = pages[i];
-        if (pageNumber === undefined) continue; // noUncheckedIndexedAccess guard
+    for (let i = 0; i < pages.length; i++) {
+      if (hooks?.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+      const pageNumber = pages[i];
+      if (pageNumber === undefined) continue; // noUncheckedIndexedAccess guard
 
-        // COLLECT-AND-CONTINUE: one bad page is recorded, not fatal.
+      // COLLECT-AND-CONTINUE: one bad page is recorded, not fatal.
+      try {
+        const page = await doc.getPage(pageNumber);
         try {
-          const page = await doc.getPage(pageNumber);
-          // Hoisted so the finally can release the backing store on BOTH the
-          // success path AND the collect-and-continue failure path.
-          let canvas: HTMLCanvasElement | null = null;
-          try {
-            const baseVp = page.getViewport({ scale: 1 }); // intrinsic oriented size
-            const { width, height, clamped } = computeOutputDims(
-              baseVp.width,
-              baseVp.height,
-              opts.dpi,
-            );
-            const effScale = width / baseVp.width; // honor the area clamp
-            const viewport = page.getViewport({ scale: effScale });
-
-            canvas = document.createElement("canvas");
-            canvas.width = width; // integer dims FROM computeOutputDims (single source)
-            canvas.height = height;
-            // ALWAYS opaque white for v1. THREE belt-and-suspenders layers:
-            //   (a) alpha:false       — opaque output (kills the JPEG black-page trap)
-            //   (b) ctx.fillRect white — guarantees a white base under transparent regions
-            //   (c) background arg     — pdf.js's OWN documented white-paint mechanism
-            const ctx = canvas.getContext("2d", { alpha: false });
-            if (!ctx) throw new Error("Failed to get 2d canvas context.");
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(0, 0, width, height); // (b) explicit white base
-
-            const renderTask = page.render({
-              canvas,
-              viewport,
-              annotationMode,
-              background: "rgb(255,255,255)", // (c) pdf.js documented white paint
-            });
-            currentRenderTask = renderTask; // expose to onAbort so Cancel interrupts THIS page
-            await renderTask.promise; // RenderingCancelledException if cancelled
-            currentRenderTask = null;
-
-            const type = opts.format === "png" ? "image/png" : "image/jpeg";
-            const blob = await canvasToBlob(
-              canvas,
-              type,
-              opts.format === "jpeg" ? opts.jpegQuality : undefined,
-            );
-            const filename = buildImageFilename(base, pageNumber, pad, opts.format);
-            out.push({ pageNumber, blob, filename, width, height, clamped });
-          } finally {
-            // RELEASE the bitmap (Safari/iOS frees it on width/height = 0) even
-            // when render/encode threw, then free page-level intermediates.
-            if (canvas) {
-              canvas.width = 0;
-              canvas.height = 0;
-            }
-            page.cleanup();
-          }
-        } catch (e) {
-          const name = (e as { name?: string })?.name;
-          // Cancel is FATAL (a Cancel press stops the batch). onAbort is the ONLY
-          // caller of renderTask.cancel(), so a RenderingCancelledException here is
-          // always a user cancel — normalize it to AbortError so the UI shows the
-          // quiet "Cancelled." status (§6.4) instead of a red "Rendering cancelled,
-          // page N" error alert leaking pdf.js's exception message.
-          if (name === "AbortError") throw e;
-          if (name === "RenderingCancelledException")
-            throw new DOMException("Aborted", "AbortError");
-          failures.push({ pageNumber, message: e instanceof Error ? e.message : String(e) });
+          const { blob, clamped, width, height } = await renderPageToBlob(page, {
+            dpi: opts.dpi,
+            format: opts.format,
+            jpegQuality: opts.jpegQuality,
+            signal: hooks?.signal,
+          });
+          const filename = buildImageFilename(base, pageNumber, pad, opts.format);
+          out.push({ pageNumber, blob, filename, width, height, clamped });
+        } finally {
+          page.cleanup(); // page-level intermediates — caller-owned lifecycle
         }
-        // Honor an abort that landed while currentRenderTask was null — during
-        // getPage, dims compute, canvasToBlob, or the inter-page reset — when
-        // onAbort's cancel() was a no-op. Without this, a Cancel pressed in that
-        // window lets the finished (only/last) page download despite the press.
-        if (hooks?.signal?.aborted) throw new DOMException("Aborted", "AbortError");
-        hooks?.onProgress?.(i + 1, pages.length);
-        if (i + 1 < pages.length) await new Promise((r) => setTimeout(r, 0)); // yield so the UI repaints
+      } catch (e) {
+        const name = (e as { name?: string })?.name;
+        // Cancel is FATAL (a Cancel press stops the batch). The primitive wires
+        // renderTask.cancel() to our signal, so a RenderingCancelledException here is
+        // always a user cancel — normalize it to AbortError so the UI shows the
+        // quiet "Cancelled." status (§6.4) instead of a red "Rendering cancelled,
+        // page N" error alert leaking pdf.js's exception message.
+        if (name === "AbortError") throw e;
+        if (name === "RenderingCancelledException") throw new DOMException("Aborted", "AbortError");
+        failures.push({ pageNumber, message: e instanceof Error ? e.message : String(e) });
       }
-      if (out.length === 0) {
-        throw new Error(
-          `No pages could be rendered${failures.length ? ` (${failures.length} failed)` : ""}.`,
-        );
-      }
-      return { pages: out, failures };
-    } finally {
-      hooks?.signal?.removeEventListener("abort", onAbort);
+      // Honor an abort that landed while no render was in flight — during getPage,
+      // dims compute, canvasToBlob, or the inter-page reset — when the primitive's
+      // cancel() was a no-op. Without this, a Cancel pressed in that window lets the
+      // finished (only/last) page download despite the press.
+      if (hooks?.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+      hooks?.onProgress?.(i + 1, pages.length);
+      if (i + 1 < pages.length) await new Promise((r) => setTimeout(r, 0)); // yield so the UI repaints
     }
+    if (out.length === 0) {
+      throw new Error(
+        `No pages could be rendered${failures.length ? ` (${failures.length} failed)` : ""}.`,
+      );
+    }
+    return { pages: out, failures };
   } finally {
     await loadingTask.destroy(); // v6: teardown via the loading task (worker + doc)
   }

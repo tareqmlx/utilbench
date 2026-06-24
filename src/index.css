@@ -374,6 +374,9 @@ body {
 .wb-btn[aria-disabled="true"] {
   opacity: 0.5;
   pointer-events: none;
+  /* One Voice Rule: an inert control must not radiate the reserved tomato accent.
+     Drop the disabled halo to the neutral ink offset (same geometry as --pop-cta). */
+  box-shadow: var(--pop-4);
 }
 
 /* Chip */
