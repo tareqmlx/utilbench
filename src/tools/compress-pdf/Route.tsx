@@ -92,7 +92,9 @@ export default function CompressPdfRoute() {
     const validation = validatePdfFile(file);
     if (!validation.valid) {
       setStatus("error");
-      setError(validation.error ?? "Invalid file.");
+      const msg = validation.error ?? "Invalid file.";
+      setError(msg);
+      setStatusMessage(msg); // keep the sr-only live region in sync with the visible alert
       return;
     }
     if (validation.warning) setWarning(validation.warning);
@@ -118,7 +120,9 @@ export default function CompressPdfRoute() {
       );
     } catch {
       setStatus("error");
-      setError("Could not read this PDF. It may be corrupt.");
+      const msg = "Could not read this PDF. It may be corrupt.";
+      setError(msg);
+      setStatusMessage(msg); // keep the sr-only live region in sync with the visible alert
     }
   }, []);
 
@@ -278,6 +282,19 @@ export default function CompressPdfRoute() {
     abortRef.current?.abort();
   }, []);
 
+  // Changing a compression option (mode/DPI/quality) invalidates the last result's
+  // readout — a strong −90% left on screen after switching to Lossless would mislead.
+  // Clear it so the preview reverts to "choose a mode and compress". Guard on `result`:
+  // when none exists nothing is stale, and clearing `warning` then would wipe the
+  // load-time large-file notice (handleCompress nulls that before producing a result,
+  // so the only warning present alongside a result is the clamp notice — safe to drop).
+  const clearStaleResult = useCallback(() => {
+    if (result) {
+      setResult(null);
+      setWarning(null);
+    }
+  }, [result]);
+
   useKeyboardShortcut(
     useMemo(
       () => [{ key: "Enter", meta: true, handler: () => handleCompress(), enabled: canCompress }],
@@ -414,7 +431,10 @@ export default function CompressPdfRoute() {
           >
             <button
               type="button"
-              onClick={() => setMode("lossless")}
+              onClick={() => {
+                setMode("lossless");
+                clearStaleResult();
+              }}
               aria-pressed={mode === "lossless"}
               disabled={encrypted}
               data-testid="mode-lossless"
@@ -427,7 +447,10 @@ export default function CompressPdfRoute() {
             </button>
             <button
               type="button"
-              onClick={() => setMode("strong")}
+              onClick={() => {
+                setMode("strong");
+                clearStaleResult();
+              }}
               aria-pressed={mode === "strong"}
               data-testid="mode-strong"
               className={cn(
@@ -472,7 +495,10 @@ export default function CompressPdfRoute() {
                     <button
                       key={preset}
                       type="button"
-                      onClick={() => setDpi(preset)}
+                      onClick={() => {
+                        setDpi(preset);
+                        clearStaleResult();
+                      }}
                       aria-pressed={active}
                       data-testid={`dpi-${preset}`}
                       className={cn(
@@ -507,7 +533,10 @@ export default function CompressPdfRoute() {
                 value={[qualityPct]}
                 onValueChange={(v) => {
                   const pct = v[0];
-                  if (pct !== undefined) setQuality(pct / 100);
+                  if (pct !== undefined) {
+                    setQuality(pct / 100);
+                    clearStaleResult();
+                  }
                 }}
               />
             </div>
