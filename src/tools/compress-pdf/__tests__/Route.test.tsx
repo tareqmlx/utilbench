@@ -188,6 +188,22 @@ describe("CompressPdfRoute", () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
+  it("re-opens the dialog with the incorrect-password message on a wrong password", async () => {
+    vi.mocked(probePdf).mockResolvedValueOnce(PROBE({ encrypted: true }));
+    vi.mocked(compressPdf).mockImplementationOnce(async (_b, _m, _s, hooks?: CompressHooks) => {
+      // pdf.js calls onPassword again with "incorrect" after a wrong attempt.
+      await hooks?.onPassword?.("incorrect");
+      return RESULT({ mode: "strong", rasterized: true });
+    });
+    render(<CompressPdfRoute />);
+    await upload("locked.pdf");
+    fireEvent.click(screen.getByTestId("compress-button"));
+
+    const dialog = await screen.findByTestId("password-dialog");
+    expect(within(dialog).getByTestId("password-error")).toBeInTheDocument();
+    expect(within(dialog).getByText(/That password was incorrect/i)).toBeInTheDocument();
+  });
+
   it("compresses with the chosen mode/dpi/quality and downloads a -compressed.pdf", async () => {
     render(<CompressPdfRoute />);
     await upload();
@@ -240,6 +256,31 @@ describe("CompressPdfRoute", () => {
         screen.getByText(/2 large pages were rendered below the target DPI/i),
       ).toBeInTheDocument(),
     );
+  });
+
+  it("does NOT show the clamp warning when the rasterized output was discarded (keptOriginal)", async () => {
+    vi.mocked(compressPdf).mockResolvedValueOnce(
+      RESULT({ mode: "strong", rasterized: true, clampedPages: 2, keptOriginal: true, ratio: 0 }),
+    );
+    render(<CompressPdfRoute />);
+    await upload();
+    fireEvent.click(screen.getByTestId("mode-strong"));
+    fireEvent.click(screen.getByTestId("compress-button"));
+    await waitFor(() => expect(screen.getByTestId("kept-original-notice")).toBeInTheDocument());
+    expect(screen.queryByText(/rendered below the target DPI/i)).not.toBeInTheDocument();
+  });
+
+  it("resets mode to Lossless when a fresh non-encrypted PDF follows an encrypted one", async () => {
+    vi.mocked(probePdf).mockResolvedValueOnce(PROBE({ encrypted: true }));
+    render(<CompressPdfRoute />);
+    await upload("locked.pdf");
+    expect(screen.getByTestId("mode-strong")).toHaveAttribute("aria-pressed", "true");
+
+    // A subsequent normal PDF must NOT silently stay on lossy Strong.
+    vi.mocked(probePdf).mockResolvedValueOnce(PROBE({ encrypted: false }));
+    await upload("normal.pdf");
+    expect(screen.getByTestId("mode-lossless")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByTestId("strong-controls")).not.toBeInTheDocument();
   });
 
   it("cancels an in-flight Strong run via the Cancel button", async () => {
