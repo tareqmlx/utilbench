@@ -184,6 +184,29 @@ describe("compressLossless", () => {
     expect(setCreator).toHaveBeenCalledWith("");
   });
 
+  it("maps a corrupt input to a friendly message (no raw pdf-lib parse error)", async () => {
+    vi.spyOn(PDFDocument, "load").mockRejectedValueOnce(
+      new Error('Failed to parse number (line:0 col:5 offset=5): ""'),
+    );
+    await expect(compressLossless(new Uint8Array([1, 2, 3]))).rejects.toThrow(
+      /not a valid PDF or is corrupt/,
+    );
+  });
+
+  it("maps a load-ok-but-broken-catalog PDF to the friendly message", async () => {
+    // A PDF can load yet throw later (e.g. catalog missing /Pages → getPageCount
+    // throws "Expected instance of PDFDict…"). That raw error must not leak.
+    vi.spyOn(PDFDocument, "load").mockResolvedValueOnce({
+      isEncrypted: false,
+      getPageCount: () => {
+        throw new Error("Expected instance of PDFDict, but got instance of undefined");
+      },
+    } as unknown as PDFDocument);
+    await expect(compressLossless(new Uint8Array([1, 2, 3]))).rejects.toThrow(
+      /not a valid PDF or is corrupt/,
+    );
+  });
+
   it("throws when the input is encrypted", async () => {
     vi.spyOn(PDFDocument, "load").mockResolvedValueOnce({
       isEncrypted: true,
@@ -281,7 +304,10 @@ describe("compressStrong", () => {
       if (rendered === 3) return Promise.reject(new Error("boom on page 3"));
       return defaultRenderImpl(page);
     };
-    await expect(compressStrong(new Uint8Array([1]), STRONG)).rejects.toThrow(/boom on page 3/);
+    // The raw "boom" is wrapped with plan-mandated page context (§11.3).
+    await expect(compressStrong(new Uint8Array([1]), STRONG)).rejects.toThrow(
+      /Couldn't compress page 3/,
+    );
     // No "collect-and-continue": it stopped at the failing page, didn't finish all 10.
     expect(rendered).toBe(3);
   });
