@@ -68,19 +68,41 @@ interface StrongResult {
 // raster, no quality loss. Encrypted input is rejected (Route disables lossless
 // for encrypted; defend here too — pdf-lib can't faithfully re-save encrypted).
 export async function compressLossless(input: Uint8Array): Promise<LosslessResult> {
-  const doc = await PDFDocument.load(input, { ignoreEncryption: true });
+  let doc: PDFDocument;
+  try {
+    doc = await PDFDocument.load(input, { ignoreEncryption: true });
+  } catch {
+    // pdf-lib raises low-level parse errors ("Failed to parse number…") on a
+    // corrupt/truncated PDF. Map them to the plan §11.3 friendly message so the
+    // raw internal never reaches the UI — mirrors compressStrong's
+    // InvalidPDFException handling.
+    throw new Error("This file is not a valid PDF or is corrupt.");
+  }
   if (doc.isEncrypted) {
     throw new Error("This PDF is encrypted. Use Strong mode to compress it.");
   }
-  const pageCount = doc.getPageCount();
-  doc.setProducer("");
-  doc.setCreator("");
-  const bytes = await doc.save({ useObjectStreams: true });
-  // Cheap symmetry check: a lossless re-save must preserve every page.
-  if (pageCount !== doc.getPageCount()) {
-    throw new Error("Internal error: page count mismatch.");
+  try {
+    const pageCount = doc.getPageCount();
+    doc.setProducer("");
+    doc.setCreator("");
+    const bytes = await doc.save({ useObjectStreams: true });
+    // Real symmetry check (§5.2 / L4): re-parse the SAVED bytes and confirm the page
+    // count survived the re-serialize. Comparing doc.getPageCount() to itself after
+    // save() is tautological — it can never fire; loading the output actually can.
+    const verify = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    if (verify.getPageCount() !== pageCount) {
+      throw new Error("Internal error: page count mismatch.");
+    }
+    return { bytes, pageCount };
+  } catch (e) {
+    // A PDF can LOAD yet still throw a raw pdf-lib error later — e.g. a broken
+    // catalog/Pages tree makes getPageCount()/save() throw "Expected instance of
+    // PDFDict…" / "catalog.Pages". Keep our deliberate integrity assert; map every
+    // other processing failure to the §11.3 friendly message so no raw internal
+    // (which Route now surfaces) reaches the UI.
+    if (e instanceof Error && e.message.startsWith("Internal")) throw e;
+    throw new Error("This file is not a valid PDF or is corrupt.");
   }
-  return { bytes, pageCount };
 }
 
 // ── Strong (raster) ─────────────────────────────────────────────────────────
@@ -110,7 +132,9 @@ export async function compressStrong(
         .then(updatePassword)
         .catch(() => {
           passwordCancelled = true;
-          void loadingTask.destroy();
+          // Swallow a rejecting destroy() — fire-and-forget must not surface as
+          // an unhandled promise rejection.
+          void loadingTask.destroy().catch(() => {});
         });
     };
   }
@@ -162,13 +186,15 @@ export async function compressStrong(
         pg.drawRectangle({ x: 0, y: 0, width: ptW, height: ptH, color: rgb(1, 1, 1) });
         pg.drawImage(embedded, { x: 0, y: 0, width: ptW, height: ptH });
       } catch (e) {
-        // FATAL: normalize cancel to AbortError, otherwise rethrow as-is.
+        // FATAL (Crit#1 / §11.3): normalize cancel to AbortError, otherwise
+        // rethrow with the plan-mandated page context so the user knows WHICH
+        // page failed ("Couldn't compress page N — the PDF may be damaged…").
         const name = (e as { name?: string })?.name;
         if (name === "AbortError") throw e;
         if (name === "RenderingCancelledException") {
           throw new DOMException("Aborted", "AbortError");
         }
-        throw e;
+        throw new Error(`Couldn't compress page ${i + 1} — the PDF may be damaged on that page.`);
       } finally {
         page.cleanup();
       }
@@ -206,7 +232,7 @@ async function getPageFatal(
     const name = (e as { name?: string })?.name;
     if (name === "AbortError") throw e;
     if (name === "RenderingCancelledException") throw new DOMException("Aborted", "AbortError");
-    throw e;
+    throw new Error(`Couldn't compress page ${pageNumber} — the PDF may be damaged on that page.`);
   }
 }
 
