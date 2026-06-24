@@ -103,8 +103,11 @@ export default function CompressPdfRoute() {
       const bytes = await readFileBytes(file);
       const probe = await probePdf(bytes);
       setPdf({ file, bytes, probe });
-      // Lossless can't faithfully re-save an encrypted PDF — force Strong.
-      if (probe.encrypted) setMode("strong");
+      // Encrypted PDFs must use Strong (pdf-lib can't decrypt for lossless). A
+      // fresh non-encrypted file resets to the lossless default, so a previous
+      // encrypted upload's forced Strong doesn't silently rasterize the next
+      // normal PDF the user only meant to losslessly compress.
+      setMode(probe.encrypted ? "strong" : "lossless");
       setStatus("ready");
       setStatusMessage(
         probe.dimsKnown
@@ -214,8 +217,13 @@ export default function CompressPdfRoute() {
           new Blob([compressed.bytes as BlobPart], { type: "application/pdf" }),
           pdf.file.name,
         );
-        setStatusMessage("Already optimized — your original was kept.");
-        toast.success("Already optimized — your original was kept.");
+        // Encrypted source ⇒ the kept original is still password-protected; say
+        // so, or the user who just unlocked it is surprised it's still locked.
+        const keptMsg = encrypted
+          ? "Already optimized — your original (still password-protected) was kept."
+          : "Already optimized — your original was kept.";
+        setStatusMessage(keptMsg);
+        toast.success(keptMsg);
       } else {
         downloadBlob(
           new Blob([compressed.bytes as BlobPart], { type: "application/pdf" }),
@@ -226,7 +234,9 @@ export default function CompressPdfRoute() {
         toast.success(`Compressed → −${pct}%`);
       }
 
-      if (compressed.clampedPages > 0) {
+      // Clamp warning is meaningless when the rasterized output was discarded by
+      // the regression guard (keptOriginal) — only surface it for a real result.
+      if (!compressed.keptOriginal && compressed.clampedPages > 0) {
         setWarning(
           `${compressed.clampedPages} large page${
             compressed.clampedPages === 1 ? " was" : "s were"
@@ -239,7 +249,17 @@ export default function CompressPdfRoute() {
         // Quiet cancel: sr-only status only, no red alert, no success toast.
         setStatusMessage("Cancelled.");
       } else {
-        setError("Compression failed. The PDF may be corrupt or unreadable.");
+        // Surface the compressor's user-facing message (e.g. "Too many pages…",
+        // "Couldn't compress page N…", "This file is not a valid PDF or is
+        // corrupt.") instead of masking every failure behind one generic line.
+        // Internal asserts and non-Error throws fall back to the generic copy,
+        // and the live region is updated too (it must not stay on "Compressing…").
+        const message =
+          e instanceof Error && e.message && !e.message.startsWith("Internal")
+            ? e.message
+            : "Compression failed. The PDF may be corrupt or unreadable.";
+        setError(message);
+        setStatusMessage(message);
       }
     } finally {
       // Reject any password prompt left dangling (e.g. on abort).
@@ -252,7 +272,7 @@ export default function CompressPdfRoute() {
       setIsCompressing(false);
       setProgress({ done: 0, total: 0 });
     }
-  }, [pdf, canCompress, mode, dpi, quality, onPassword]);
+  }, [pdf, canCompress, mode, dpi, quality, onPassword, encrypted]);
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort();
@@ -480,6 +500,7 @@ export default function CompressPdfRoute() {
               </div>
               <Slider
                 aria-labelledby="quality-label"
+                className="[&_[role=slider]]:size-6"
                 min={30}
                 max={95}
                 step={1}
@@ -521,12 +542,18 @@ export default function CompressPdfRoute() {
               result.
             </p>
           ) : result.keptOriginal ? (
-            <p className="text-[12.5px] font-semibold text-ink" data-testid="kept-original-notice">
+            <p
+              className="wb-fade-in text-[12.5px] font-semibold text-ink"
+              data-testid="kept-original-notice"
+            >
               This PDF is already well-optimized — no smaller version was produced; your original
               was kept.
             </p>
           ) : (
-            <div className="flex flex-wrap items-center gap-2" data-testid="result-readout">
+            <div
+              className="wb-success-pop flex flex-wrap items-center gap-2"
+              data-testid="result-readout"
+            >
               <span className="font-mono text-[13px] font-bold text-ink tabular-nums">
                 {formatBytes(result.inputSize)} → {formatBytes(result.outputSize)}
               </span>
@@ -588,7 +615,7 @@ export default function CompressPdfRoute() {
             <button
               type="button"
               onClick={handleCancel}
-              className="wb-btn w-full justify-center py-3 text-[14px]"
+              className="wb-btn wb-btn--ghost w-full justify-center py-3 text-[14px]"
               data-testid="cancel-button"
             >
               Cancel
