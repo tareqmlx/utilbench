@@ -221,6 +221,20 @@ describe("CompressPdfRoute", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Compressed → −42%"));
   });
 
+  it("clears the stale result readout when a compression option changes", async () => {
+    render(<CompressPdfRoute />);
+    await upload();
+    fireEvent.click(screen.getByTestId("compress-button"));
+    // A successful compress shows the −42% readout…
+    await waitFor(() => expect(screen.getByTestId("result-readout")).toBeInTheDocument());
+
+    // …but switching mode invalidates it — a strong/lossless toggle must not leave the
+    // old percentage on screen implying it applies to the new settings.
+    fireEvent.click(screen.getByTestId("mode-strong"));
+    expect(screen.queryByTestId("result-readout")).not.toBeInTheDocument();
+    expect(screen.getByTestId("result-preview")).toHaveTextContent(/choose a mode and compress/i);
+  });
+
   it("shows the already-optimized notice and downloads under the ORIGINAL name when kept", async () => {
     vi.mocked(compressPdf).mockResolvedValueOnce(
       RESULT({
@@ -333,7 +347,12 @@ describe("CompressPdfRoute", () => {
     });
     render(<CompressPdfRoute />);
     fireEvent.change(screen.getByTestId("file-input"), { target: { files: [makePdf("bad.pdf")] } });
-    await waitFor(() => expect(screen.getByText("That's not a valid PDF.")).toBeInTheDocument());
+    // Visible destructive alert carries the validation message…
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("That's not a valid PDF."),
+    );
+    // …and the polite sr-only live region mirrors it for screen-reader users.
+    expect(document.querySelector("output.sr-only")).toHaveTextContent("That's not a valid PDF.");
     expect(probePdf).not.toHaveBeenCalled();
   });
 
