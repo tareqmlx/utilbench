@@ -335,6 +335,21 @@ export async function convertImage(file: File, opts: ConvertOptions): Promise<Co
     throw new Error("Unsupported or unrecognized image. Use PNG, JPG, WebP, GIF, BMP, or AVIF.");
   }
 
+  // Decode-validate with createImageBitmap before drawing. A truncated/corrupt image (e.g. a PNG cut
+  // off mid-stream) keeps a valid header, so the <img> below still fires `load` with non-zero
+  // naturalWidth and silently paints a blank canvas — producing a "successful" all-transparent output.
+  // createImageBitmap actually decodes the pixel data and rejects when it can't, catching that case
+  // (and unsupported AVIF) here instead. The probe is closed immediately; drawing still uses the <img>
+  // path below to preserve its EXIF auto-orientation behavior.
+  try {
+    (await createImageBitmap(file)).close();
+  } catch {
+    if (sniffed === "avif") {
+      throw new Error("AVIF isn't supported in this browser.");
+    }
+    throw new Error("Could not read this image. It may be corrupt.");
+  }
+
   const url = URL.createObjectURL(file);
   try {
     const img = await loadImage(url).catch(() => {

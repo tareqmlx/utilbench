@@ -390,6 +390,20 @@ describe("convertImage", () => {
     await expect(convertImage(pngFile(), makeOpts())).rejects.toThrow();
   });
 
+  it("rejects a truncated image even when <img> would load it blank (createImageBitmap guard)", async () => {
+    // Regression: a truncated PNG keeps a valid header, so <img> fires `load` with non-zero
+    // naturalWidth and paints a blank canvas — silently producing a "successful" empty output.
+    // createImageBitmap actually decodes pixels and rejects, which convertImage must surface.
+    setupCanvas();
+    setupImageMock({ width: 200, height: 200 }); // <img> loads fine (header parsed)
+    setupURLMock();
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn(() => Promise.reject(new Error("The source image could not be decoded."))),
+    );
+    await expect(convertImage(pngFile(), makeOpts())).rejects.toThrow(/corrupt/i);
+  });
+
   it("throws for a mislabeled file (PNG name, non-image/HEIC bytes)", async () => {
     setupCanvas();
     setupImageMock({ width: 10, height: 10 });
