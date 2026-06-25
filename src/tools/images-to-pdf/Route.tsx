@@ -358,7 +358,7 @@ export default function ImagesToPdfRoute() {
 
       const accepted: ImageEntry[] = [];
       for (const file of Array.from(fileList)) {
-        const validation = validateImageFile(file);
+        const validation = validateImageFile(file, ["png", "jpeg", "webp"]);
         if (!validation.valid) {
           setError(validation.error ?? "Invalid file.");
           continue;

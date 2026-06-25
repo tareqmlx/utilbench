@@ -1,4 +1,13 @@
-import type { ValidationResult } from "@/lib/pdf";
+import {
+  MAX_CANVAS_AREA,
+  MAX_CANVAS_DIM,
+  MAX_IMAGE_SIZE,
+  MAX_TOTAL_SIZE,
+  WARN_IMAGE_SIZE,
+  classifyImageFormat,
+  sniffImageMeta,
+  validateImageFile,
+} from "@/lib/image";
 import { PDFDocument, PageSizes, rgb } from "pdf-lib";
 import { MAX_QUEUE_SIZE } from "../constants";
 
@@ -10,17 +19,38 @@ export type { ValidationResult } from "@/lib/pdf";
 // Re-export the shared queue cap (Route imports it from here).
 export { MAX_QUEUE_SIZE };
 
+// Re-export the shared format/validation helpers + size caps from @/lib/image so
+// Route.tsx and the converter test keep importing them from this module (§5.5).
+// `classifyImageFormat` is re-exported as-is (now also recognizes AVIF, but this
+// tool only ACCEPTS png/jpeg/webp via the `accept` list it passes — recognition
+// ≠ acceptance). `validateImageFile` now takes an explicit `accept` allow-list.
+export {
+  MAX_CANVAS_AREA,
+  MAX_CANVAS_DIM,
+  MAX_IMAGE_SIZE,
+  MAX_TOTAL_SIZE,
+  WARN_IMAGE_SIZE,
+  classifyImageFormat,
+  validateImageFile,
+};
+
 // ── Constants (kept local — see plan §3.1) ──
 export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export const ACCEPTED_IMAGE_EXT = [".jpg", ".jpeg", ".png", ".webp"];
-export const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50 MB per image
-export const WARN_IMAGE_SIZE = 25 * 1024 * 1024; // soft warning threshold
-export const MAX_TOTAL_SIZE = 250 * 1024 * 1024; // cumulative footprint guard
 export const LARGE_OUTPUT_WARN_SIZE = 50 * 1024 * 1024; // soft-warn when the assembled PDF exceeds this (G1)
-export const MAX_CANVAS_DIM = 8192; // px; max side
-export const MAX_CANVAS_AREA = 16_777_216; // px²; Safari/iOS canvas-area limit (~16 MP)
 export const DEFAULT_JPEG_QUALITY = 0.95; // applied to JPEG-encoded outputs at convert time
 export const PT_PER_PX = 72 / 96; // px→pt @96 DPI for "match" + "actual" sizing
+
+/**
+ * Compatibility shim for the old `sniffRasterFormat` (now `sniffImageMeta` in
+ * @/lib/image). Returns the bare format and — since images-to-pdf only handles
+ * PNG/JPEG/WebP — narrows a recognized AVIF back to `null` so `ImageMeta.format`
+ * stays constrained to the three supported formats.
+ */
+export function sniffRasterFormat(bytes: Uint8Array): "png" | "jpeg" | "webp" | null {
+  const f = sniffImageMeta(bytes).format;
+  return f === "png" || f === "jpeg" || f === "webp" ? f : null;
+}
 
 export type PageSizeKey = "match" | "A4" | "Letter" | "Legal" | "A3" | "A5";
 export type OrientationKey = "auto" | "portrait" | "landscape";
@@ -58,98 +88,6 @@ const PAGE_SIZE_PT: Record<Exclude<PageSizeKey, "match">, [number, number]> = {
   A3: PageSizes.A3,
   A5: PageSizes.A5,
 };
-
-/**
- * Resolve a file to one of the three supported raster formats, or null.
- * MIME is authoritative; when it is absent or generic (some OS drag-drop and
- * file-picker paths report `""` or `application/octet-stream`), fall back to the
- * extension. A file that explicitly declares an UNSUPPORTED image MIME (e.g.
- * `image/gif`, `image/svg+xml`) is rejected even if its extension lies.
- */
-export function classifyImageFormat(file: File): "png" | "jpeg" | "webp" | null {
-  switch (file.type) {
-    case "image/png":
-      return "png";
-    case "image/jpeg":
-    case "image/jpg": // non-standard but emitted by some browsers/OS paths
-      return "jpeg";
-    case "image/webp":
-      return "webp";
-  }
-  if (file.type === "" || file.type === "application/octet-stream") {
-    const name = file.name.toLowerCase();
-    if (name.endsWith(".png")) return "png";
-    if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "jpeg";
-    if (name.endsWith(".webp")) return "webp";
-  }
-  return null;
-}
-
-/**
- * Sniff the actual raster format from the leading magic bytes — the only
- * authority on what `embedPng`/`embedJpg` / the canvas will truly accept. MIME
- * and extension can lie (a GIF renamed `logo.png` with an empty MIME classifies
- * as PNG and the browser canvas still decodes it), so confirm the bytes really
- * are PNG/JPG/WebP before handing them on.
- */
-export function sniffRasterFormat(bytes: Uint8Array): "png" | "jpeg" | "webp" | null {
-  if (
-    bytes.length >= 8 &&
-    bytes[0] === 0x89 &&
-    bytes[1] === 0x50 &&
-    bytes[2] === 0x4e &&
-    bytes[3] === 0x47 &&
-    bytes[4] === 0x0d &&
-    bytes[5] === 0x0a &&
-    bytes[6] === 0x1a &&
-    bytes[7] === 0x0a
-  ) {
-    return "png";
-  }
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-    return "jpeg";
-  }
-  if (
-    bytes.length >= 12 &&
-    bytes[0] === 0x52 &&
-    bytes[1] === 0x49 &&
-    bytes[2] === 0x46 &&
-    bytes[3] === 0x46 && // "RIFF"
-    bytes[8] === 0x57 &&
-    bytes[9] === 0x45 &&
-    bytes[10] === 0x42 &&
-    bytes[11] === 0x50 // "WEBP"
-  ) {
-    return "webp";
-  }
-  return null;
-}
-
-/**
- * Validate an uploaded image. Reject unsupported types (incl. extension
- * fallback + non-standard `image/jpg`), 0-byte files, and files over the size
- * cap; warn (don't reject) on large-but-valid files. Intentionally stricter
- * than image-metadata-removal's validateFile (adds 0-byte + ext fallback).
- */
-export function validateImageFile(file: File): ValidationResult {
-  if (classifyImageFormat(file) === null) {
-    return { valid: false, error: "Invalid file type. Use PNG, JPG, or WebP." };
-  }
-  if (file.size === 0) {
-    return { valid: false, error: "Empty file. The selected image has no content." };
-  }
-  if (file.size > MAX_IMAGE_SIZE) {
-    const capMb = Math.round(MAX_IMAGE_SIZE / (1024 * 1024));
-    return { valid: false, error: `Image too large. Maximum size is ${capMb}MB.` };
-  }
-  if (file.size > WARN_IMAGE_SIZE) {
-    return {
-      valid: true,
-      warning: "Large image detected. Processing may be slow on some devices.",
-    };
-  }
-  return { valid: true };
-}
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
