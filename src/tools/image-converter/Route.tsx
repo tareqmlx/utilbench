@@ -81,17 +81,29 @@ const FORMAT_LABELS: Record<OutputFormat, string> = {
   webp: "WebP",
 };
 
+// Display labels for the detected input format badge. Keeps the source-format chip in lockstep with
+// the rest of the UI (the output dropdown, button, toast, and .jpg extension all say "JPG", never
+// "JPEG"); without this the raw sniffed "jpeg" rendered as a mismatched "JPEG" badge.
+const INPUT_FORMAT_LABELS: Record<ImageMeta["format"], string> = {
+  png: "PNG",
+  jpeg: "JPG",
+  webp: "WebP",
+  gif: "GIF",
+  bmp: "BMP",
+  avif: "AVIF",
+};
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function sizeDelta(input: number, output: number): { label: string; grew: boolean } {
+function sizeDelta(input: number, output: number): { label: string; grew: boolean; pct: number } {
   const grew = output > input;
   const diff = Math.abs(output - input);
   const pct = input > 0 ? Math.round((diff / input) * 100) : 0;
-  return { label: `${grew ? "+" : "−"}${formatBytes(diff)} (${pct}%)`, grew };
+  return { label: `${grew ? "+" : "−"}${formatBytes(diff)} (${pct}%)`, grew, pct };
 }
 
 export default function ImageConverterRoute() {
@@ -426,11 +438,11 @@ export default function ImageConverterRoute() {
             <p className="font-display text-[22px] font-bold leading-tight tracking-tight text-ink">
               Drop images here or click to browse
             </p>
-            <p className="wb-fade-in text-sm text-ink-2">
+            <p className="text-sm text-ink-2">
               PNG, JPG, WebP, GIF, BMP{avifSupported ? ", AVIF" : ""}. Conversion happens in your
               browser — nothing is uploaded.
             </p>
-            <p className="text-[12px] text-ink-3">
+            <p className="text-[12px] text-ink-2">
               Animated GIF/WebP convert the first frame only. EXIF/GPS metadata is removed.
             </p>
           </div>
@@ -512,7 +524,10 @@ export default function ImageConverterRoute() {
                           tone="neutral"
                           label={`${entry.meta.width}×${entry.meta.height}`}
                         />
-                        <StatusBadge tone="neutral" label={entry.meta.format} />
+                        <StatusBadge
+                          tone="neutral"
+                          label={INPUT_FORMAT_LABELS[entry.meta.format]}
+                        />
                       </>
                     )}
                     {entry.status === "converting" && (
@@ -529,21 +544,28 @@ export default function ImageConverterRoute() {
                     )}
                     <span className="font-mono text-[11px] text-ink-3 tabular-nums">
                       {formatBytes(entry.file.size)}
-                      {entry.status === "done" && entry.outputSize !== undefined && (
-                        <>
-                          {" → "}
-                          <span
-                            className={cn(
-                              "font-semibold",
-                              sizeDelta(entry.file.size, entry.outputSize).grew
-                                ? "text-tomato"
-                                : "text-grass",
-                            )}
-                          >
-                            {formatBytes(entry.outputSize)}
-                          </span>
-                        </>
-                      )}
+                      {entry.status === "done" &&
+                        entry.outputSize !== undefined &&
+                        (() => {
+                          // Output value is text-ink (16.25:1) — the tomato/grass tint that used to
+                          // carry grew-vs-shrank failed AA on cream (2.67:1 / 3.91:1). Direction now
+                          // reads from the signed % (and the input→output numbers), not color alone.
+                          // wb-svg-done-meta slides the result in on completion (sibling SVG-optimizer
+                          // cue; reduced-motion handled in index.css).
+                          const delta = sizeDelta(entry.file.size, entry.outputSize);
+                          return (
+                            <span className="wb-svg-done-meta ml-1 inline-flex items-baseline gap-1 align-baseline">
+                              <span aria-hidden="true">→</span>
+                              <span className="font-semibold text-ink">
+                                {formatBytes(entry.outputSize)}
+                              </span>
+                              <span className="text-ink-2">
+                                {delta.grew ? "+" : "−"}
+                                {delta.pct}%
+                              </span>
+                            </span>
+                          );
+                        })()}
                     </span>
                   </div>
                 </div>
@@ -608,7 +630,7 @@ export default function ImageConverterRoute() {
               <Label htmlFor="convert-quality" className="text-ink-2">
                 Quality
               </Label>
-              <span className="font-mono text-[12px] font-bold tabular-nums text-tomato">
+              <span className="font-mono text-[12px] font-bold tabular-nums text-ink">
                 {prefs.quality}%
               </span>
             </div>
@@ -644,7 +666,7 @@ export default function ImageConverterRoute() {
               <span className="font-mono text-[12px] text-ink-2 tabular-nums">{prefs.bgColor}</span>
             </div>
             <p className="text-[12px] text-ink-3">
-              JPEG has no transparency; transparent areas use this color.
+              JPG has no transparency; transparent areas use this color.
             </p>
           </div>
         )}
@@ -684,9 +706,11 @@ export default function ImageConverterRoute() {
             </IconSwap>
           </button>
           {isConverting && progress.total > 0 && (
+            // Shared progress primitive (lemon fill) — same component the sibling pdf tools use, so the
+            // affordance reads identically across the workbench. Reduced-motion handled in index.css.
             // biome-ignore lint/a11y/useFocusableInteractive: progressbar is a status role, not an operable widget
             <div
-              className="wb-fade-in h-3 w-full overflow-hidden rounded-full border-2 border-ink bg-paper-2"
+              className="wb-progress-track"
               role="progressbar"
               aria-valuemin={0}
               aria-valuemax={progress.total}
@@ -694,7 +718,7 @@ export default function ImageConverterRoute() {
               aria-label={`Converting, ${progress.done} of ${progress.total} done`}
             >
               <div
-                className="h-full origin-left bg-tomato transition-transform duration-200 ease-out motion-reduce:transition-none"
+                className="wb-progress-fill"
                 style={{ transform: `scaleX(${progress.done / progress.total})` }}
               />
             </div>
