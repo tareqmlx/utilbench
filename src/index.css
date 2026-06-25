@@ -1156,6 +1156,11 @@ button[role="switch"] [data-state] {
 .wb-plate-tilt {
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* Active drag tilts the plate too, so the drop target reacts the same way it
+   does on hover (the hover rotation is a Tailwind group-hover utility). */
+.wb-plate-tilt[data-dragging="true"] {
+  transform: rotate(-4deg);
+}
 
 /* ── PDF→Image: render progress bar (conveys per-page render state) ─
    Determinate fill grows via scaleX (no layout reflow). When the page
@@ -1242,7 +1247,8 @@ button[role="switch"] [data-state] {
   .wb-plate-tilt {
     transition: none !important;
   }
-  .group:hover .wb-plate-tilt {
+  .group:hover .wb-plate-tilt,
+  .wb-plate-tilt[data-dragging="true"] {
     transform: none !important;
   }
   /* Progress fill still reflects done/total state — just without the tween.
