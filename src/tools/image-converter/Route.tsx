@@ -111,6 +111,12 @@ export default function ImageConverterRoute() {
 
   const webpSupported = useMemo(() => canEncode("image/webp"), []);
 
+  // Coerce an unsupported persisted format (e.g. "webp" on a browser that can't encode it) back to a
+  // safe default — otherwise the format Select renders blank and every convert fails the blob.type check.
+  useEffect(() => {
+    if (!webpSupported && prefs.format === "webp") setPrefs({ format: "png" });
+  }, [webpSupported, prefs.format, setPrefs]);
+
   useEffect(() => {
     let active = true;
     canDecodeAvif().then((supported) => {
@@ -247,14 +253,14 @@ export default function ImageConverterRoute() {
   );
 
   const handleRemove = useCallback((id: string) => {
-    setEntries((prev) => {
-      const item = prev.find((e) => e.id === id);
-      if (item) {
-        URL.revokeObjectURL(item.previewUrl);
-        setStatusMessage(`Removed ${item.file.name}.`);
-      }
-      return prev.filter((e) => e.id !== id);
-    });
+    // Side effects run in the handler body (not inside the setEntries updater, which must stay pure —
+    // React double-invokes updaters under StrictMode). filesRef mirrors the committed entries.
+    const item = filesRef.current.find((e) => e.id === id);
+    if (item) {
+      URL.revokeObjectURL(item.previewUrl);
+      setStatusMessage(`Removed ${item.file.name}.`);
+    }
+    setEntries((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
   const isLoadingAny = useMemo(() => entries.some((e) => e.status === "loading"), [entries]);
@@ -293,17 +299,24 @@ export default function ImageConverterRoute() {
     setProgress({ done: 0, total: ready.length });
     setStatusMessage(`Converting ${ready.length} image${ready.length === 1 ? "" : "s"}.`);
 
-    const succeeded: { blob: Blob; filename: string }[] = [];
+    const succeeded: { id: string; blob: Blob; filename: string }[] = [];
     const failedNames: string[] = [];
     let downscaledCount = 0;
 
     for (let i = 0; i < ready.length; i++) {
       const e = ready[i];
       if (!e) continue;
+      // Skip rows removed from the queue after the snapshot was taken — a mid-convert removal must not
+      // land the removed file in the downloaded zip.
+      if (!filesRef.current.some((x) => x.id === e.id)) continue;
       setEntryStatus(e.id, "converting");
       try {
         const r = await convertImage(e.file, opts);
-        succeeded.push({ blob: r.blob, filename: buildOutputFilename(e.file.name, opts.format) });
+        succeeded.push({
+          id: e.id,
+          blob: r.blob,
+          filename: buildOutputFilename(e.file.name, opts.format),
+        });
         if (r.downscaled) downscaledCount++;
         setEntry(e.id, {
           status: "done",
@@ -324,7 +337,11 @@ export default function ImageConverterRoute() {
 
     setIsConverting(false);
 
-    if (succeeded.length === 0) {
+    // Drop any row removed from the queue mid-run (even after it converted) so it isn't packaged.
+    const present = new Set(filesRef.current.map((x) => x.id));
+    const finalOutputs = succeeded.filter((s) => present.has(s.id));
+
+    if (finalOutputs.length === 0) {
       setError("No images could be converted.");
       setStatusMessage("Conversion failed.");
       return;
@@ -332,12 +349,12 @@ export default function ImageConverterRoute() {
 
     // Download policy keyed on SUCCESS count: 1 → single file, >1 → zip.
     try {
-      if (succeeded.length === 1) {
-        const only = succeeded[0];
+      if (finalOutputs.length === 1) {
+        const only = finalOutputs[0];
         if (only) downloadBlob(only.blob, only.filename);
       } else {
-        const zip = await createBatchZip(succeeded);
-        downloadBlob(zip, buildZipName(succeeded.length));
+        const zip = await createBatchZip(finalOutputs);
+        downloadBlob(zip, buildZipName(finalOutputs.length));
       }
     } catch {
       setError("Could not package the converted images.");
@@ -346,9 +363,11 @@ export default function ImageConverterRoute() {
 
     const label = FORMAT_LABELS[opts.format];
     toast.success(
-      `Converted ${succeeded.length} image${succeeded.length === 1 ? "" : "s"} to ${label}`,
+      `Converted ${finalOutputs.length} image${finalOutputs.length === 1 ? "" : "s"} to ${label}`,
     );
-    setStatusMessage(`Converted ${succeeded.length} image${succeeded.length === 1 ? "" : "s"}.`);
+    setStatusMessage(
+      `Converted ${finalOutputs.length} image${finalOutputs.length === 1 ? "" : "s"}.`,
+    );
 
     const warnings: string[] = [];
     if (failedNames.length > 0) {
@@ -359,7 +378,7 @@ export default function ImageConverterRoute() {
         `${downscaledCount} image${downscaledCount === 1 ? " was" : "s were"} downscaled to fit canvas limits.`,
       );
     }
-    const totalOutput = succeeded.reduce((sum, s) => sum + s.blob.size, 0);
+    const totalOutput = finalOutputs.reduce((sum, s) => sum + s.blob.size, 0);
     if (totalOutput > LARGE_OUTPUT_WARN_SIZE) {
       warnings.push(`Converted images total ~${formatBytes(totalOutput)}.`);
     }
@@ -412,7 +431,7 @@ export default function ImageConverterRoute() {
               browser — nothing is uploaded.
             </p>
             <p className="text-[12px] text-ink-3">
-              Animated GIF/WebP convert the first frame only.
+              Animated GIF/WebP convert the first frame only. EXIF/GPS metadata is removed.
             </p>
           </div>
           <span

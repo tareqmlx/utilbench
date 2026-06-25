@@ -271,6 +271,84 @@ describe("ImageConverterRoute", () => {
     await waitFor(() => expect(mockConverter.convertImage).toHaveBeenCalledTimes(2));
   });
 
+  it("coerces a persisted unsupported format (webp) back to PNG when encode is unavailable", async () => {
+    localStorage.setItem(
+      "utilbench:prefs:image-converter",
+      JSON.stringify({ format: "webp", quality: 92, bgColor: "#ffffff" }),
+    );
+    mockConverter.canEncode.mockReturnValue(false);
+    render(<ImageConverterRoute />);
+
+    // Without coercion the Select would render blank (no matching item) and every convert would fail.
+    await waitFor(() => {
+      expect(screen.getByTestId("format-trigger")).toHaveTextContent("PNG");
+    });
+    const trigger = screen.getByTestId("format-trigger");
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    await screen.findByRole("option", { name: "PNG" });
+    expect(screen.queryByRole("option", { name: "WebP" })).not.toBeInTheDocument();
+  });
+
+  it("excludes a row removed after it already converted (mid-batch) from the zip", async () => {
+    mockConverter.convertImage.mockImplementation(async (file: File) => {
+      // a.png has already converted; remove it while b.png is converting.
+      if (file.name === "b.png") {
+        fireEvent.click(screen.getByLabelText("Remove a.png"));
+      }
+      return {
+        blob: new Blob(["out"], { type: "image/png" }),
+        type: "image/png",
+        width: 100,
+        height: 100,
+        downscaled: false,
+      };
+    });
+    render(<ImageConverterRoute />);
+    await uploadFiles([pngFile("a.png"), pngFile("b.png"), pngFile("c.png")]);
+    await waitFor(() => expect(screen.getByText("c.png")).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("convert-button"));
+    });
+
+    await waitFor(() => expect(mockConverter.createBatchZip).toHaveBeenCalledTimes(1));
+    const zipItems = mockConverter.createBatchZip.mock.calls[0]?.[0] ?? [];
+    const names = zipItems.map((z) => z.filename);
+    expect(names).toEqual(["b.png", "c.png"]);
+    expect(names).not.toContain("a.png");
+  });
+
+  it("excludes a row removed before it converts (mid-batch) from the zip", async () => {
+    let removed = false;
+    mockConverter.convertImage.mockImplementation(async (file: File) => {
+      // While the first image is converting, the user removes the second row.
+      if (file.name === "a.png" && !removed) {
+        removed = true;
+        fireEvent.click(screen.getByLabelText("Remove b.png"));
+      }
+      return {
+        blob: new Blob(["out"], { type: "image/png" }),
+        type: "image/png",
+        width: 100,
+        height: 100,
+        downscaled: false,
+      };
+    });
+    render(<ImageConverterRoute />);
+    await uploadFiles([pngFile("a.png"), pngFile("b.png"), pngFile("c.png")]);
+    await waitFor(() => expect(screen.getByText("c.png")).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("convert-button"));
+    });
+
+    await waitFor(() => expect(mockConverter.createBatchZip).toHaveBeenCalledTimes(1));
+    const zipItems = mockConverter.createBatchZip.mock.calls[0]?.[0] ?? [];
+    const names = zipItems.map((z) => z.filename);
+    expect(names).toEqual(["a.png", "c.png"]);
+    expect(names).not.toContain("b.png");
+  });
+
   it("removes an image and revokes its object URL", async () => {
     const { revokeObjectURL } = setupAllMocks();
     render(<ImageConverterRoute />);
