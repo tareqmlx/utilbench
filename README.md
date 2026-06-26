@@ -6,7 +6,7 @@ Utilbench is a client-side utility tools SPA where every tool runs entirely in t
 
 ## Features
 
-- **17 tools** across data, text, and media categories
+- **27 tools** across data, text, and media categories
 - **100% client-side** — no backend, no analytics, no network requests after page load
 - **Off-main-thread compute** via a managed Web Worker pool with task queue and timeouts
 - **Cached WASM loader** with streaming compilation and ArrayBuffer fallback
@@ -19,7 +19,7 @@ Utilbench is a client-side utility tools SPA where every tool runs entirely in t
 
 ## Tools
 
-### Data & JSON
+### Data & Documents
 
 | Tool | Description |
 |------|-------------|
@@ -29,6 +29,12 @@ Utilbench is a client-side utility tools SPA where every tool runs entirely in t
 | CSV to JSON | Convert CSV files to JSON with customizable options |
 | JSON Schema Generator | Generate JSON Schema from sample JSON data |
 | YAML to JSON | Convert YAML data to JSON format |
+| Merge PDF | Combine multiple PDF files into one, in any order |
+| Split PDF | Split a PDF by page range, every N pages, or one per page |
+| Compress PDF | Shrink a PDF — lossless restructure or strong image compression |
+| Watermark PDF | Add a text or image watermark — opacity, rotation, tiling, page targeting |
+| PDF Metadata Remover | Strip title, author, dates, XMP, and producer fingerprints from a PDF |
+| Images to PDF | Convert JPG, PNG, and WebP images into a single PDF with reorder and fit options |
 
 ### Text & Code
 
@@ -37,7 +43,8 @@ Utilbench is a client-side utility tools SPA where every tool runs entirely in t
 | Cron Parser | Parse and explain cron expressions in plain English |
 | Diff Checker | Compare two texts and highlight differences |
 | Case Converter | Convert text between camelCase, snake_case, and more |
-| Markdown Preview | Preview Markdown with live rendering and syntax highlighting |
+| Markdown Preview | Render Markdown to clean HTML, live, in your browser |
+| Markdown to PDF | Convert Markdown into a print-ready PDF — choose page size, margins, and fonts |
 | Lorem Ipsum | Generate placeholder text for designs and mockups |
 
 ### Media & Assets
@@ -46,10 +53,13 @@ Utilbench is a client-side utility tools SPA where every tool runs entirely in t
 |------|-------------|
 | QR Generator | Generate QR codes from text, URLs, or structured data |
 | Image Resizer | Resize and crop images directly in the browser |
+| Image Compressor | Shrink images with real JPEG, WebP, AVIF, and PNG codecs without changing dimensions |
+| Image Format Converter | Convert PNG, JPG, WebP, GIF, BMP, and AVIF to PNG, JPG, or WebP |
+| Image Metadata Remover | Remove EXIF, GPS, and camera metadata from images locally |
+| PDF to Image | Convert each PDF page to a PNG or JPEG — choose DPI, format, and pages |
 | SVG Optimizer | Optimize and minify SVG files while preserving visual quality |
 | Favicon Generator | Generate favicons in all required sizes from a single image |
 | Lottie Previewer | Preview and inspect Lottie animation files |
-| Image Metadata Remover | Remove EXIF, GPS, and camera metadata from images locally |
 
 ## Tech Stack
 
