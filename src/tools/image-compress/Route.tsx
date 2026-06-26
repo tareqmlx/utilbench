@@ -138,7 +138,14 @@ export default function ImageCompressRoute() {
     [items, selectedId],
   );
 
-  const effFormat = selectedItem ? effectiveFormat(prefs.format, selectedItem.format) : "jpeg";
+  // Before any image is selected, mirror the active format button so the mode
+  // controls below never disagree with it ("keep" has no concrete controls yet,
+  // so it previews the jpeg knobs).
+  const effFormat: NormFormat = selectedItem
+    ? effectiveFormat(prefs.format, selectedItem.format)
+    : prefs.format === "keep"
+      ? "jpeg"
+      : prefs.format;
   const isPng = effFormat === "png";
 
   useEffect(() => {
@@ -566,68 +573,62 @@ export default function ImageCompressRoute() {
                     <div
                       key={item.id}
                       className={cn(
-                        "flex cursor-pointer items-center gap-3 rounded-md border-2 border-ink p-2.5 transition-[background,box-shadow,transform] duration-200",
+                        "wb-item-enter flex items-center gap-3 rounded-md border-2 border-ink p-2.5 transition-[background,box-shadow,transform] duration-200",
                         selected
                           ? "-translate-x-px -translate-y-px bg-lemon shadow-pop-2"
                           : "bg-paper shadow-pop-1 hover:-translate-x-px hover:-translate-y-px hover:shadow-pop-2",
                       )}
-                      // biome-ignore lint/a11y/noNoninteractiveTabindex: queue items are keyboard-selectable
-                      tabIndex={0}
-                      aria-current={selected || undefined}
-                      onClick={() => selectItem(item.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          selectItem(item.id);
-                        }
-                      }}
                     >
-                      <div className="size-11 shrink-0 overflow-hidden rounded-sm border-2 border-ink bg-paper">
-                        <img
-                          className="h-full w-full object-cover"
-                          src={item.beforeUrl}
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13.5px] font-semibold text-ink">
-                          {item.file.name}
-                        </p>
-                        <p className="font-mono text-[11px] text-ink-3 tabular-nums">
-                          {formatBytes(item.file.size)}
-                          {item.status === "done" && r && (
-                            <span className="inline-flex items-center gap-1">
-                              <span aria-hidden="true"> → </span>
-                              <span
-                                className={cn(
-                                  "font-semibold",
-                                  r.keptOriginal
-                                    ? "text-ink-2"
-                                    : r.ratio < 0
-                                      ? "text-tomato"
-                                      : "text-grass",
-                                )}
-                              >
-                                {r.keptOriginal ? "already optimized" : formatBytes(r.outputSize)}
+                      <button
+                        type="button"
+                        aria-current={selected || undefined}
+                        onClick={() => selectItem(item.id)}
+                        className="-m-1 flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-sm p-1 text-left"
+                      >
+                        <span className="size-11 shrink-0 overflow-hidden rounded-sm border-2 border-ink bg-paper">
+                          <img
+                            className="h-full w-full object-cover"
+                            src={item.beforeUrl}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13.5px] font-semibold text-ink">
+                            {item.file.name}
+                          </span>
+                          <span className="block font-mono text-[11px] text-ink-3 tabular-nums">
+                            {formatBytes(item.file.size)}
+                            {item.status === "done" && r && (
+                              <span className="inline-flex items-center gap-1">
+                                <span aria-hidden="true"> → </span>
+                                <span
+                                  className={cn(
+                                    "font-semibold",
+                                    r.keptOriginal
+                                      ? "text-ink-2"
+                                      : r.ratio < 0
+                                        ? "text-tomato"
+                                        : "text-grass",
+                                  )}
+                                >
+                                  {r.keptOriginal ? "already optimized" : formatBytes(r.outputSize)}
+                                </span>
                               </span>
-                            </span>
-                          )}
-                          {item.status === "compressing" && " · compressing…"}
-                          {item.status === "error" && (
-                            <span className="font-semibold text-tomato"> · {item.error}</span>
-                          )}
-                        </p>
-                      </div>
+                            )}
+                            {item.status === "compressing" && " · compressing…"}
+                            {item.status === "error" && (
+                              <span className="font-semibold text-tomato"> · {item.error}</span>
+                            )}
+                          </span>
+                        </span>
+                      </button>
                       {item.status === "done" && (
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            downloadItem(item);
-                          }}
-                          className="grid size-9 shrink-0 place-items-center rounded-md border-2 border-ink bg-paper text-ink shadow-pop-1 hover:bg-mint"
+                          onClick={() => downloadItem(item)}
+                          className="wb-fade-in grid size-9 shrink-0 place-items-center rounded-md border-2 border-ink bg-paper text-ink shadow-pop-1 transition-colors hover:bg-mint pointer-coarse:size-11"
                           aria-label={`Download ${item.file.name}`}
                         >
                           <Download className="size-4" aria-hidden="true" />
@@ -635,12 +636,9 @@ export default function ImageCompressRoute() {
                       )}
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeItem(item.id);
-                        }}
+                        onClick={() => removeItem(item.id)}
                         disabled={isBusy}
-                        className="grid size-9 shrink-0 place-items-center rounded-md text-ink-3 hover:text-tomato disabled:opacity-40"
+                        className="grid size-9 shrink-0 place-items-center rounded-md text-ink-3 hover:text-tomato disabled:opacity-40 pointer-coarse:size-11"
                         aria-label={`Remove ${item.file.name}`}
                       >
                         <X className="size-4" strokeWidth={2.5} aria-hidden="true" />
@@ -672,7 +670,7 @@ export default function ImageCompressRoute() {
                         onClick={() => setPrefs({ format: opt.value })}
                         aria-pressed={active}
                         className={cn(
-                          "rounded-md border-2 border-ink py-2 text-[13px] font-bold transition-[background,transform] duration-150 disabled:opacity-50",
+                          "inline-flex items-center justify-center rounded-md border-2 border-ink py-2 text-[13px] font-bold transition-[background,transform] duration-150 disabled:opacity-50 pointer-coarse:min-h-11",
                           active
                             ? "-translate-y-px bg-ink text-paper shadow-pop-1"
                             : "bg-paper text-ink hover:bg-lemon",
@@ -708,6 +706,7 @@ export default function ImageCompressRoute() {
                         </span>
                       </div>
                       <Slider
+                        aria-label="Quality"
                         min={1}
                         max={100}
                         step={1}
@@ -734,6 +733,7 @@ export default function ImageCompressRoute() {
                         </span>
                       </div>
                       <Slider
+                        aria-label="Speed"
                         min={0}
                         max={10}
                         step={1}
@@ -768,6 +768,7 @@ export default function ImageCompressRoute() {
                         </span>
                       </div>
                       <Slider
+                        aria-label="Effort"
                         min={0}
                         max={6}
                         step={1}
@@ -790,9 +791,9 @@ export default function ImageCompressRoute() {
                             onClick={() => setPrefs({ pngMode: m })}
                             aria-pressed={prefs.pngMode === m}
                             className={cn(
-                              "inline-flex items-center justify-center gap-1.5 rounded-md border-2 border-ink py-2 text-[13px] font-bold disabled:opacity-50",
+                              "inline-flex items-center justify-center gap-1.5 rounded-md border-2 border-ink py-2 text-[13px] font-bold transition-[background,transform] duration-150 disabled:opacity-50 pointer-coarse:min-h-11",
                               prefs.pngMode === m
-                                ? "bg-ink text-paper"
+                                ? "-translate-y-px bg-ink text-paper shadow-pop-1"
                                 : "bg-paper text-ink hover:bg-lemon",
                             )}
                           >
@@ -814,6 +815,7 @@ export default function ImageCompressRoute() {
                             </span>
                           </div>
                           <Slider
+                            aria-label="OxiPNG level"
                             min={1}
                             max={6}
                             step={1}
@@ -833,6 +835,7 @@ export default function ImageCompressRoute() {
                             </span>
                           </div>
                           <Slider
+                            aria-label="Palette colors"
                             min={2}
                             max={256}
                             step={1}
@@ -857,11 +860,18 @@ export default function ImageCompressRoute() {
                 actions={
                   ratioInfo && !preview?.keptOriginal ? (
                     <StatusBadge
+                      key={ratioInfo.larger ? "larger" : "smaller"}
+                      className="wb-success-pop"
                       tone={ratioInfo.larger ? "invalid" : "valid"}
                       label={ratioInfo.label}
                     />
                   ) : preview?.keptOriginal ? (
-                    <StatusBadge tone="neutral" label="already optimized" />
+                    <StatusBadge
+                      key="kept"
+                      className="wb-success-pop"
+                      tone="neutral"
+                      label="already optimized"
+                    />
                   ) : undefined
                 }
               />
@@ -876,7 +886,7 @@ export default function ImageCompressRoute() {
                 ) : (
                   <div className="space-y-4">
                     {/* Reveal slider over display-scaled images (NOT full-res — plan §6.6) */}
-                    <div className="relative mx-auto max-h-[420px] w-full overflow-hidden rounded-md border-2 border-ink bg-[repeating-conic-gradient(#e9e9e9_0_25%,#fff_0_50%)] bg-[length:20px_20px]">
+                    <div className="relative mx-auto max-h-[420px] w-full overflow-hidden rounded-md border-2 border-ink bg-[repeating-conic-gradient(var(--bg-3)_0_25%,var(--bg)_0_50%)] bg-[length:20px_20px]">
                       <img
                         src={selectedItem.beforeUrl}
                         alt="Original"
@@ -891,6 +901,28 @@ export default function ImageCompressRoute() {
                           style={{ clipPath: `inset(0 0 0 ${reveal}%)` }}
                           decoding="async"
                         />
+                      )}
+                      {previewUrl && (
+                        <>
+                          {/* Wipe boundary — outlined so it reads on dark and light pixels. */}
+                          <div
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-y-0 z-10 w-[2px] -translate-x-1/2 bg-ink outline outline-1 outline-paper"
+                            style={{ left: `${reveal}%` }}
+                          />
+                          <span
+                            aria-hidden="true"
+                            className="pointer-events-none absolute bottom-2 left-2 z-10 rounded-full border-2 border-ink bg-paper px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-ink shadow-pop-1"
+                          >
+                            Original
+                          </span>
+                          <span
+                            aria-hidden="true"
+                            className="pointer-events-none absolute bottom-2 right-2 z-10 rounded-full border-2 border-ink bg-mint px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-ink shadow-pop-1"
+                          >
+                            Compressed
+                          </span>
+                        </>
                       )}
                       {isPreviewing && (
                         <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border-2 border-ink bg-paper px-2 py-0.5 text-[11px] font-bold shadow-pop-1">
