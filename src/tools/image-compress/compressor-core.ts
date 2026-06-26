@@ -239,7 +239,11 @@ export function shouldKeepOriginal(
   inputFormat: NormFormat,
   opts: Pick<CompressOptions, "lossless">,
 ): boolean {
-  if (opts.lossless) return false; // WebP lossless is exempt from the auto-revert.
+  // The lossless exemption is the WebP-lossless toggle ONLY (plan §5.4). `lossless`
+  // can leak true into a non-WebP encode (toggle it on WebP, switch to JPEG/PNG/Keep —
+  // those codecs ignore it), so gate on the OUTPUT format or the guard wrongly skips a
+  // legitimate "already optimized" revert for a lossy/keep target.
+  if (opts.lossless && outFormat === "webp") return false;
   const sameFormat = normalizeFormat(outFormat) === normalizeFormat(inputFormat);
   if (!sameFormat) return false; // deliberate transcode — keep the real (larger) output.
   return outputSize >= inputSize;

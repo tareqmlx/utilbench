@@ -32,6 +32,7 @@ import {
   MAX_QUEUE_SIZE,
   MAX_TOTAL_SIZE,
   buildCompressedFilename,
+  clampToCanvasLimits,
   compressViaWorker,
   createBatchZip,
   downloadBlob,
@@ -52,8 +53,6 @@ import {
   type PngMode,
   resolveOptions,
 } from "./compressor-types";
-
-const MAX_AREA = 16_777_216; // ~16.7 MP — reject above this (geometry never downscales).
 
 const FORMAT_OPTIONS: Array<{ value: OutputFormat; label: string; note?: string }> = [
   { value: "keep", label: "Keep" },
@@ -218,6 +217,7 @@ export default function ImageCompressRoute() {
       const incoming = Array.from(fileList);
 
       const accepted: QueueItem[] = [];
+      const rejected: string[] = [];
       let runningTotal = items.reduce((s, i) => s + i.file.size, 0);
 
       for (const file of incoming) {
@@ -227,20 +227,25 @@ export default function ImageCompressRoute() {
         }
         const validation = validateImageFile(file, ["png", "jpeg", "webp", "avif"]);
         if (!validation.valid) {
-          setError(validation.error ?? "Unsupported file.");
+          rejected.push(validation.error ?? `Unsupported file: "${file.name}".`);
           continue;
         }
         if (validation.warning) setWarning(validation.warning);
         if (runningTotal + file.size > MAX_TOTAL_SIZE) {
-          setWarning("Total queue size would exceed the limit. Some files were skipped.");
-          break;
+          // Skip just this file — don't abort the rest of the drop (smaller files may fit).
+          rejected.push(
+            `"${file.name}" skipped — would exceed the ${Math.round(
+              MAX_TOTAL_SIZE / (1024 * 1024),
+            )} MB total queue limit.`,
+          );
+          continue;
         }
 
         try {
           const head = new Uint8Array(await file.slice(0, 65536).arrayBuffer());
           const meta = sniffImageMeta(head);
           if (!meta.format) {
-            setError(`Couldn't read "${file.name}".`);
+            rejected.push(`Couldn't read "${file.name}".`);
             continue;
           }
           let dims: { width: number; height: number };
@@ -249,8 +254,13 @@ export default function ImageCompressRoute() {
           } catch {
             dims = await imgDims(file);
           }
-          if (dims.width * dims.height > MAX_AREA) {
-            setError(`"${file.name}" is too large to compress in your browser (over ~16 MP).`);
+          // Reject over BOTH caps: >16.7 MP area OR any side over the per-side canvas
+          // limit (8192 px) — a 20000×1 strip is under the area cap but fails to decode
+          // on 8192-capped canvases (iOS Safari). `clampToCanvasLimits` checks both.
+          if (clampToCanvasLimits(dims.width, dims.height).downscaled) {
+            rejected.push(
+              `"${file.name}" exceeds your browser's canvas limit (max ~16 MP, 8192 px per side).`,
+            );
             continue;
           }
           runningTotal += file.size;
@@ -265,8 +275,16 @@ export default function ImageCompressRoute() {
             beforeUrl: URL.createObjectURL(file),
           });
         } catch {
-          setError(`Couldn't read "${file.name}" — it may be corrupt.`);
+          rejected.push(`Couldn't read "${file.name}" — it may be corrupt.`);
         }
+      }
+
+      if (rejected.length > 0) {
+        setError(
+          rejected.length === 1
+            ? (rejected[0] ?? "Some files were skipped.")
+            : `${rejected.length} files were skipped — ${rejected.join(" ")}`,
+        );
       }
 
       if (accepted.length === 0) return;
@@ -301,6 +319,10 @@ export default function ImageCompressRoute() {
       if (selectedId === id) {
         setSelectedId(null);
         setPreview(null);
+        setPreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return null;
+        });
       }
     },
     [selectedId],
@@ -317,16 +339,19 @@ export default function ImageCompressRoute() {
   }, []);
 
   const compressAll = useCallback(async () => {
-    const ready = items.filter((i) => i.status !== "compressing");
-    if (ready.length === 0) return;
+    // Re-applies the CURRENT settings to every queued item — including ones already
+    // "done" — so changing format/quality then re-clicking re-compresses with the new
+    // settings (the only way to update finished items). Only skips an in-flight item.
+    const toCompress = items.filter((i) => i.status !== "compressing");
+    if (toCompress.length === 0) return;
     setIsBusy(true);
     setError(null);
     batchCancelledRef.current = false;
-    setProgress({ done: 0, total: ready.length });
+    setProgress({ done: 0, total: toCompress.length });
 
     let done = 0;
     let savedBytes = 0;
-    for (const item of ready) {
+    for (const item of toCompress) {
       if (batchCancelledRef.current) break;
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, status: "compressing" as const } : i)),
@@ -347,21 +372,21 @@ export default function ImageCompressRoute() {
         setItems((prev) =>
           prev.map((i) => (i.id === item.id ? { ...i, status: "done" as const, result } : i)),
         );
-      } catch (e) {
+      } catch {
         setItems((prev) =>
           prev.map((i) =>
             i.id === item.id
               ? {
                   ...i,
                   status: "error" as const,
-                  error: e instanceof Error ? e.message : "Compression failed.",
+                  error: "couldn't compress — it may be corrupt or unsupported",
                 }
               : i,
           ),
         );
       }
       done += 1;
-      setProgress({ done, total: ready.length });
+      setProgress({ done, total: toCompress.length });
     }
 
     // Items left untouched after a cancel return to "ready".
@@ -658,9 +683,17 @@ export default function ImageCompressRoute() {
                     );
                   })}
                 </div>
+                {prefs.format === "keep" && (
+                  <p className="text-[12.5px] text-ink-2">Optimize in the same format.</p>
+                )}
                 {prefs.format === "avif" && (
                   <p className="text-[12.5px] text-ink-2">
                     Best compression, slower to encode, ~2 MB one-time codec download.
+                  </p>
+                )}
+                {effFormat === "jpeg" && selectedItem && selectedItem.format !== "jpeg" && (
+                  <p className="text-[12.5px] text-tomato">
+                    JPEG has no transparency — any transparent areas will be filled with white.
                   </p>
                 )}
 
@@ -692,6 +725,26 @@ export default function ImageCompressRoute() {
                     </div>
                   )}
 
+                  {effFormat === "avif" && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-ink-2">Speed</Label>
+                        <span className="font-mono text-[12px] font-bold tabular-nums text-tomato">
+                          {prefs.avifSpeed}
+                        </span>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={10}
+                        step={1}
+                        disabled={isBusy}
+                        value={[prefs.avifSpeed]}
+                        onValueChange={([v]) => setPrefs({ avifSpeed: v ?? 6 })}
+                      />
+                      <p className="text-[11.5px] text-ink-3">Lower is smaller but much slower.</p>
+                    </div>
+                  )}
+
                   {effFormat === "webp" && (
                     <div className="flex items-center justify-between">
                       <Label htmlFor="webp-lossless" className="text-ink-2">
@@ -703,6 +756,26 @@ export default function ImageCompressRoute() {
                         checked={prefs.lossless}
                         onCheckedChange={(v) => setPrefs({ lossless: v })}
                       />
+                    </div>
+                  )}
+
+                  {effFormat === "webp" && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-ink-2">Effort</Label>
+                        <span className="font-mono text-[12px] font-bold tabular-nums text-tomato">
+                          {prefs.webpMethod}
+                        </span>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={6}
+                        step={1}
+                        disabled={isBusy}
+                        value={[prefs.webpMethod]}
+                        onValueChange={([v]) => setPrefs({ webpMethod: v ?? 4 })}
+                      />
+                      <p className="text-[11.5px] text-ink-3">Higher is smaller but slower.</p>
                     </div>
                   )}
 
@@ -732,6 +805,25 @@ export default function ImageCompressRoute() {
                           </button>
                         ))}
                       </div>
+                      {prefs.pngMode === "oxipng" && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-ink-2">OxiPNG level</Label>
+                            <span className="font-mono text-[12px] font-bold tabular-nums text-tomato">
+                              {prefs.pngLevel}
+                            </span>
+                          </div>
+                          <Slider
+                            min={1}
+                            max={6}
+                            step={1}
+                            disabled={isBusy}
+                            value={[prefs.pngLevel]}
+                            onValueChange={([v]) => setPrefs({ pngLevel: v ?? 2 })}
+                          />
+                          <p className="text-[11.5px] text-ink-3">Higher is smaller but slower.</p>
+                        </div>
+                      )}
                       {prefs.pngMode === "palette" && (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">

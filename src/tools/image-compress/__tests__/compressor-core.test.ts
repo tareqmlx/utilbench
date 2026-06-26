@@ -187,6 +187,13 @@ describe("shouldKeepOriginal", () => {
   it("webp lossless larger → NOT kept (exempt from auto-revert)", () => {
     expect(shouldKeepOriginal(120, 100, "webp", "webp", { lossless: true })).toBe(false);
   });
+
+  it("lossless leaked into a non-webp target is still guarded (exemption is webp-only)", () => {
+    // Toggle Lossless on WebP, then switch to JPEG/Keep: `lossless` stays true but the
+    // JPEG encode ignores it — the larger output must still revert to the original.
+    expect(shouldKeepOriginal(120, 100, "jpeg", "jpeg", { lossless: true })).toBe(true);
+    expect(shouldKeepOriginal(120, 100, "png", "png", { lossless: true })).toBe(true);
+  });
 });
 
 // ── compressImageData orchestration (injected decode + load) ──────────────────

@@ -187,7 +187,7 @@ describe("ImageCompressRoute", () => {
 
     // The failing row surfaces its error; the others reach "done" (downloadable).
     await waitFor(() => {
-      expect(screen.getByText(/Compression failed\./)).toBeInTheDocument();
+      expect(screen.getByText(/couldn't compress/i)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Download good.png" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Download good2.png" })).toBeInTheDocument();
     });
@@ -216,7 +216,7 @@ describe("ImageCompressRoute", () => {
     await uploadFiles([pngFile("huge.png")]);
 
     await waitFor(() => {
-      expect(screen.getByText(/too large to compress/)).toBeInTheDocument();
+      expect(screen.getByText(/exceeds your browser's canvas limit/)).toBeInTheDocument();
     });
     expect(screen.queryByText("huge.png")).not.toBeInTheDocument();
     expect(screen.getByText("0 Files")).toBeInTheDocument();

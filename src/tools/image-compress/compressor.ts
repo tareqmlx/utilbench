@@ -17,6 +17,8 @@ export {
   MAX_IMAGE_SIZE,
   WARN_IMAGE_SIZE,
   MAX_TOTAL_SIZE,
+  MAX_CANVAS_AREA,
+  clampToCanvasLimits,
 } from "@/lib/image";
 export type { NormFormat } from "@/lib/image";
 export { MAX_QUEUE_SIZE } from "../constants";
@@ -29,10 +31,20 @@ export * from "./compressor-types";
 
 // ── Worker client ─────────────────────────────────────────────────────────────
 
+// Per-dispatch safety-net timeout. Plan §7.1 deliberately dropped the workerPool's
+// 30 s timeout (it would fire mid-AVIF), but left NO recovery — a hung/pathological
+// WASM encode would wedge the batch await forever. This generous ceiling rejects so
+// the item errors and the batch/preview can proceed (the worker may finish unseen).
+const ENCODE_TIMEOUT_MS = 120_000;
+
 let worker: Worker | null = null;
 const pending = new Map<
   number,
-  { resolve: (r: CompressResult) => void; reject: (e: Error) => void }
+  {
+    resolve: (r: CompressResult) => void;
+    reject: (e: Error) => void;
+    timer: ReturnType<typeof setTimeout>;
+  }
 >();
 
 /** Lazily construct the worker (module-scope `new Worker` breaks jsdom tests — §7.1). */
@@ -43,6 +55,7 @@ function ensureWorker(): Worker {
       const msg = e.data;
       const entry = pending.get(msg.requestId);
       if (!entry) return; // stale / already-settled request
+      clearTimeout(entry.timer);
       pending.delete(msg.requestId);
       if (msg.ok) entry.resolve(msg.result);
       else entry.reject(new Error(msg.error));
@@ -50,7 +63,10 @@ function ensureWorker(): Worker {
     worker.onerror = (e) => {
       // Unrecoverable worker error: reject everything in flight and force respawn.
       const err = new Error(e.message || "Compression worker crashed.");
-      for (const [, entry] of pending) entry.reject(err);
+      for (const [, entry] of pending) {
+        clearTimeout(entry.timer);
+        entry.reject(err);
+      }
       pending.clear();
       terminateCompressWorker();
     };
@@ -73,7 +89,16 @@ export function compressViaWorker(args: {
   const w = ensureWorker();
   const copy = args.input.slice();
   return new Promise<CompressResult>((resolve, reject) => {
-    pending.set(args.requestId, { resolve, reject });
+    const timer = setTimeout(() => {
+      if (pending.delete(args.requestId)) {
+        reject(new Error("Compression timed out — the image may be too large or complex."));
+        // The worker's onmessage is serial: a never-returning WASM encode would block
+        // every later dispatch behind it (each then burning the full timeout). Recycle
+        // the (possibly wedged) worker so the next dispatch spawns a fresh one.
+        terminateCompressWorker();
+      }
+    }, ENCODE_TIMEOUT_MS);
+    pending.set(args.requestId, { resolve, reject, timer });
     const req: WorkerRequest = {
       input: copy,
       inputFormat: args.inputFormat,
@@ -90,6 +115,11 @@ export function terminateCompressWorker(): void {
     worker.terminate();
     worker = null;
   }
+  for (const [, entry] of pending) {
+    clearTimeout(entry.timer);
+    entry.reject(new Error("Compression worker stopped."));
+  }
+  pending.clear();
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

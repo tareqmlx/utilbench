@@ -62,16 +62,29 @@ export interface CompressResult {
   outputFormat: NormFormat; // resolved concrete format
 }
 
-/** Resolve persisted prefs + the effective format into a single CompressOptions. */
+/** Clamp to an inclusive range, coercing NaN to the lower bound. */
+function clamp(n: number, lo: number, hi: number): number {
+  return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : lo;
+}
+
+/**
+ * Resolve persisted prefs + the effective format into a single CompressOptions.
+ * Numeric knobs are CLAMPED to each codec's valid range — persisted localStorage
+ * could hold out-of-range/tampered values that would otherwise reach jSquash.
+ */
 export function resolveOptions(prefs: CompressPrefs, effectiveFormat: NormFormat): CompressOptions {
   return {
     format: prefs.format,
-    quality: prefs.qualityByFormat[effectiveFormat as "jpeg" | "webp" | "avif"] ?? 75,
+    quality: clamp(
+      prefs.qualityByFormat[effectiveFormat as "jpeg" | "webp" | "avif"] ?? 75,
+      1,
+      100,
+    ),
     lossless: prefs.lossless,
     pngMode: prefs.pngMode,
-    paletteColors: prefs.paletteColors,
-    pngLevel: prefs.pngLevel,
-    avifSpeed: prefs.avifSpeed,
-    webpMethod: prefs.webpMethod,
+    paletteColors: clamp(prefs.paletteColors, 2, 256),
+    pngLevel: clamp(prefs.pngLevel, 1, 6),
+    avifSpeed: clamp(prefs.avifSpeed, 0, 10),
+    webpMethod: clamp(prefs.webpMethod, 0, 6),
   };
 }
