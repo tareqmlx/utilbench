@@ -51,6 +51,23 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
+  // jSquash codecs locate their `.wasm` via `new URL("...wasm", import.meta.url)`.
+  // Excluding them from esbuild's dep pre-bundler leaves that reference intact so
+  // Rollup emits the `.wasm` as a hashed asset (see plan §3.4).
+  optimizeDeps: {
+    exclude: [
+      "@jsquash/jpeg",
+      "@jsquash/webp",
+      "@jsquash/avif",
+      "@jsquash/png",
+      "@jsquash/oxipng",
+    ],
+  },
+  // compress.worker.ts dynamically `import()`s codecs (code-splitting), which the
+  // default "iife" worker format rejects. ES module workers support it (plan §3.4).
+  worker: {
+    format: "es",
+  },
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),
@@ -84,6 +101,9 @@ export default defineConfig({
           "vendor-pdf": ["pdf-lib"],
           "vendor-pdfjs": ["pdfjs-dist"],
           "vendor-dnd": ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
+          // Best-effort only: the codecs are dynamically imported inside the worker,
+          // so their chunks attach to the worker bundle, not necessarily here (plan §3.2).
+          "vendor-jsquash": ["upng-js"],
         },
       },
     },

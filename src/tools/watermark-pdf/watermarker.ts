@@ -538,6 +538,9 @@ async function decodeImage(file: File): Promise<HTMLImageElement> {
  * `image/svg+xml`) is rejected even if its extension lies, so the §10.3/§14
  * "PNG/JPG/WebP only — reject the rest" boundary can't be bypassed by renaming.
  */
+// TODO: dedupe with @/lib/image (`classifyImageFormat`). Left in place deliberately
+// — migrating watermark-pdf is out of scope for the image-compress extraction and
+// would risk its suite. The shared copy additionally recognizes AVIF.
 function classifyImageFormat(file: File): "png" | "jpeg" | "webp" | null {
   switch (file.type) {
     case "image/png":
@@ -566,6 +569,9 @@ function classifyImageFormat(file: File): "png" | "jpeg" | "webp" | null {
  * fails deep inside `applyWatermark` and the user sees a misleading
  * "PDF may be corrupt" error for a problem that is entirely the image.
  */
+// TODO: dedupe with @/lib/image (`sniffImageMeta`). Left in place deliberately
+// — migrating watermark-pdf is out of scope for the image-compress extraction and
+// would risk its suite. The shared `sniffImageMeta` returns `{ format, animated }`.
 function sniffRasterFormat(bytes: Uint8Array): "png" | "jpeg" | "webp" | null {
   if (
     bytes.length >= 8 &&

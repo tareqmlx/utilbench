@@ -255,39 +255,49 @@ describe("sniffRasterFormat", () => {
 // ── validateImageFile ──
 
 describe("validateImageFile", () => {
+  const ACCEPT = ["png", "jpeg", "webp"] as const;
+
   it("accepts supported types", () => {
-    expect(validateImageFile(makeFile("a.png", "image/png", PNG_SIG)).valid).toBe(true);
-    expect(validateImageFile(makeFile("a.jpg", "image/jpeg", JPEG_SIG)).valid).toBe(true);
-    expect(validateImageFile(makeFile("a.webp", "image/webp", WEBP_SIG)).valid).toBe(true);
+    expect(validateImageFile(makeFile("a.png", "image/png", PNG_SIG), [...ACCEPT]).valid).toBe(
+      true,
+    );
+    expect(validateImageFile(makeFile("a.jpg", "image/jpeg", JPEG_SIG), [...ACCEPT]).valid).toBe(
+      true,
+    );
+    expect(validateImageFile(makeFile("a.webp", "image/webp", WEBP_SIG), [...ACCEPT]).valid).toBe(
+      true,
+    );
   });
 
   it("accepts image/jpg and extension fallback for empty MIME", () => {
-    expect(validateImageFile(makeFile("a.jpg", "image/jpg", JPEG_SIG)).valid).toBe(true);
-    expect(validateImageFile(makeFile("a.png", "", PNG_SIG)).valid).toBe(true);
+    expect(validateImageFile(makeFile("a.jpg", "image/jpg", JPEG_SIG), [...ACCEPT]).valid).toBe(
+      true,
+    );
+    expect(validateImageFile(makeFile("a.png", "", PNG_SIG), [...ACCEPT]).valid).toBe(true);
   });
 
   it("rejects bad types", () => {
-    const r = validateImageFile(makeFile("a.gif", "image/gif", GIF_SIG));
+    const r = validateImageFile(makeFile("a.gif", "image/gif", GIF_SIG), [...ACCEPT]);
     expect(r.valid).toBe(false);
     expect(r.error).toBeTruthy();
   });
 
   it("rejects 0-byte files", () => {
-    const r = validateImageFile(new File([], "a.png", { type: "image/png" }));
+    const r = validateImageFile(new File([], "a.png", { type: "image/png" }), [...ACCEPT]);
     expect(r.valid).toBe(false);
     expect(r.error).toContain("Empty");
   });
 
   it("rejects files over MAX_IMAGE_SIZE", () => {
     const big = makeFile("a.png", "image/png", PNG_SIG, 51 * 1024 * 1024);
-    const r = validateImageFile(big);
+    const r = validateImageFile(big, [...ACCEPT]);
     expect(r.valid).toBe(false);
     expect(r.error).toContain("too large");
   });
 
   it("warns (but accepts) files over WARN_IMAGE_SIZE", () => {
     const warn = makeFile("a.png", "image/png", PNG_SIG, 26 * 1024 * 1024);
-    const r = validateImageFile(warn);
+    const r = validateImageFile(warn, [...ACCEPT]);
     expect(r.valid).toBe(true);
     expect(r.warning).toBeTruthy();
   });
