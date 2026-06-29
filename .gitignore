@@ -72,6 +72,7 @@ auth.json
 # Debug / scratch files
 inspect-jwt-decoder.mjs
 jwt-decoder-page.html
+.impeccable-audit-*.md
 
 # wrangler files
 .wrangler
@@ -81,3 +82,6 @@ video/
 
 # Local Files
 *-local-*
+
+# pdfjs runtime assets (staged from node_modules, never committed)
+public/pdfjs/

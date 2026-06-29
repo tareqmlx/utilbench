@@ -680,6 +680,59 @@ function ImageResizerSkeleton() {
   );
 }
 
+/* ── Image Compress ──────────────────────────────────────── */
+
+function ImageCompressSkeleton() {
+  return (
+    <ToolShell variant="wide">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="space-y-6">
+          <div className="rounded-[18px] border-2 border-dashed border-border p-10">
+            <div className="flex flex-col items-center gap-3">
+              <SkeletonBlock className="size-14 rounded-[14px]" />
+              <SkeletonLine width="w-56" height="h-5" />
+              <SkeletonLine width="w-64" height="h-4" />
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper-2 shadow-pop-3">
+            <div className="flex items-center justify-between border-b-2 border-ink bg-paper-2 px-[18px] py-[14px]">
+              <SkeletonLine width="w-24" height="h-3" />
+              <SkeletonLine width="w-16" height="h-3" />
+            </div>
+            <div className="space-y-2 p-3 sm:p-4">
+              {sk(3).map((key) => (
+                <SkeletonBlock key={key} className="h-14 rounded-md" />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+          <div className="flex items-center border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+            <SkeletonLine width="w-24" height="h-3" />
+          </div>
+          <div className="space-y-6 p-5 sm:p-6">
+            <div className="grid grid-cols-5 gap-2">
+              {sk(5).map((key) => (
+                <SkeletonBlock key={key} className="h-10 rounded-md" />
+              ))}
+            </div>
+            <div className="space-y-2">
+              <SkeletonLine width="w-16" height="h-4" />
+              <SkeletonBlock className="h-2 rounded-full" />
+            </div>
+            <SkeletonBlock className="aspect-video rounded-lg" />
+            <div className="flex justify-between">
+              <SkeletonLine width="w-24" height="h-4" />
+              <SkeletonLine width="w-24" height="h-4" />
+            </div>
+            <SkeletonButton width="w-full" />
+          </div>
+        </div>
+      </div>
+    </ToolShell>
+  );
+}
+
 /* ── 18. Merge PDF ───────────────────────────────────────── */
 
 function MergePdfSkeleton() {
@@ -772,6 +825,361 @@ function SplitPdfSkeleton() {
   );
 }
 
+/* ── 20. Watermark PDF ───────────────────────────────────── */
+
+function WatermarkPdfSkeleton() {
+  return (
+    <ToolShell>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="space-y-6">
+          <div className="rounded-[18px] border-2 border-dashed border-border p-10">
+            <div className="flex flex-col items-center gap-3">
+              <SkeletonBlock className="size-14 rounded-[14px]" />
+              <SkeletonLine width="w-56" height="h-5" />
+              <SkeletonLine width="w-64" height="h-4" />
+            </div>
+          </div>
+          <div className="rounded-lg border-2 border-ink bg-paper-2 shadow-pop-3">
+            <div className="p-4">
+              <SkeletonLine width="w-40" height="h-4" />
+              <SkeletonLine width="w-28" height="h-3" />
+            </div>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+          <div className="flex items-center border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+            <SkeletonLine width="w-24" height="h-3" />
+          </div>
+          <div className="space-y-6 p-5 sm:p-6">
+            <div className="grid grid-cols-2 gap-2">
+              <SkeletonButton width="w-full" />
+              <SkeletonButton width="w-full" />
+            </div>
+            <SkeletonTextArea className="h-24" />
+            <div className="space-y-2">
+              <SkeletonLine width="w-24" height="h-4" />
+              <SkeletonBlock className="h-11 rounded-md" />
+            </div>
+            <div className="space-y-2">
+              <SkeletonLine width="w-24" height="h-4" />
+              <SkeletonBlock className="h-11 rounded-md" />
+            </div>
+            <div className="space-y-2">
+              <SkeletonLine width="w-20" height="h-3" />
+              <div className="grid grid-cols-3 gap-2">
+                {sk(9).map((key) => (
+                  <SkeletonBlock key={key} className="h-12 rounded-md" />
+                ))}
+              </div>
+            </div>
+            <SkeletonButton width="w-full" />
+          </div>
+        </div>
+      </div>
+    </ToolShell>
+  );
+}
+
+/* ── 21. PDF Metadata Removal ────────────────────────────── */
+
+function PdfMetadataRemovalSkeleton() {
+  return (
+    <ToolShell>
+      <div className="space-y-6">
+        <div className="rounded-[18px] border-2 border-dashed border-border p-10">
+          <div className="flex flex-col items-center gap-3">
+            <SkeletonBlock className="size-14 rounded-[14px]" />
+            <SkeletonLine width="w-56" height="h-5" />
+            <SkeletonLine width="w-64" height="h-4" />
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+          <div className="flex items-center justify-between border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+            <SkeletonLine width="w-24" height="h-3" />
+            <SkeletonLine width="w-28" height="h-3" />
+          </div>
+          <div className="space-y-3 p-4 sm:p-5">
+            {sk(3).map((key) => (
+              <div key={key} className="rounded-md border-2 border-ink bg-paper-2 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <SkeletonLine width="w-40" height="h-4" />
+                  <SkeletonLine width="w-16" height="h-3" />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <SkeletonLine width="w-20" height="h-6" className="rounded-full" />
+                  <SkeletonLine width="w-24" height="h-6" className="rounded-full" />
+                  <SkeletonLine width="w-16" height="h-6" className="rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <SkeletonButton width="w-full" />
+      </div>
+    </ToolShell>
+  );
+}
+
+/* ── 22. Images to PDF ───────────────────────────────────── */
+
+function ImagesToPdfSkeleton() {
+  return (
+    <ToolShell>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="space-y-6">
+          <div className="rounded-[18px] border-2 border-dashed border-border p-10">
+            <div className="flex flex-col items-center gap-3">
+              <SkeletonBlock className="size-14 rounded-[14px]" />
+              <SkeletonLine width="w-56" height="h-5" />
+              <SkeletonLine width="w-64" height="h-4" />
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper-2 shadow-pop-3">
+            <div className="flex items-center justify-between border-b-2 border-ink bg-paper-2 px-[18px] py-[14px]">
+              <SkeletonLine width="w-16" height="h-3" />
+              <SkeletonLine width="w-16" height="h-3" />
+            </div>
+            <div className="space-y-2 p-3 sm:p-4">
+              {sk(3).map((key) => (
+                <SkeletonBlock key={key} className="h-16 rounded-md" />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+          <div className="flex items-center border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+            <SkeletonLine width="w-24" height="h-3" />
+          </div>
+          <div className="space-y-6 p-5 sm:p-6">
+            <div className="space-y-2">
+              <SkeletonLine width="w-24" height="h-4" />
+              <SkeletonBlock className="h-11 rounded-md" />
+            </div>
+            <div className="space-y-2">
+              <SkeletonLine width="w-28" height="h-4" />
+              <SkeletonBlock className="h-11 rounded-md" />
+            </div>
+            <div className="space-y-2">
+              <SkeletonLine width="w-20" height="h-4" />
+              <SkeletonBlock className="h-2 rounded-full" />
+            </div>
+            <div className="space-y-2">
+              <SkeletonLine width="w-16" height="h-4" />
+              <SkeletonBlock className="h-11 rounded-md" />
+            </div>
+            <SkeletonButton width="w-full" />
+          </div>
+        </div>
+      </div>
+    </ToolShell>
+  );
+}
+
+/* ── 23. PDF to Image ────────────────────────────────────── */
+
+function PdfToImageSkeleton() {
+  return (
+    <ToolShell>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="space-y-6">
+          <div className="rounded-[18px] border-2 border-dashed border-border p-10">
+            <div className="flex flex-col items-center gap-3">
+              <SkeletonBlock className="size-14 rounded-[14px]" />
+              <SkeletonLine width="w-56" height="h-5" />
+              <SkeletonLine width="w-64" height="h-4" />
+            </div>
+          </div>
+          <div className="rounded-lg border-2 border-ink bg-paper-2 shadow-pop-3">
+            <div className="p-4">
+              <SkeletonLine width="w-40" height="h-4" />
+              <SkeletonLine width="w-28" height="h-3" />
+            </div>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+          <div className="flex items-center border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+            <SkeletonLine width="w-24" height="h-3" />
+          </div>
+          <div className="space-y-6 p-5 sm:p-6">
+            <div className="space-y-2">
+              <SkeletonLine width="w-16" height="h-4" />
+              <div className="grid grid-cols-4 gap-2">
+                <SkeletonBlock className="h-11 rounded-md" />
+                <SkeletonBlock className="h-11 rounded-md" />
+                <SkeletonBlock className="h-11 rounded-md" />
+                <SkeletonBlock className="h-11 rounded-md" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <SkeletonLine width="w-20" height="h-4" />
+              <div className="grid grid-cols-2 gap-2">
+                <SkeletonBlock className="h-11 rounded-md" />
+                <SkeletonBlock className="h-11 rounded-md" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <SkeletonLine width="w-24" height="h-4" />
+              <SkeletonBlock className="h-2 rounded-full" />
+            </div>
+            <div className="space-y-2">
+              <SkeletonLine width="w-28" height="h-4" />
+              <SkeletonBlock className="h-11 rounded-md" />
+            </div>
+            <SkeletonButton width="w-full" />
+          </div>
+        </div>
+      </div>
+    </ToolShell>
+  );
+}
+
+/* ── 24. Markdown to PDF ─────────────────────────────────── */
+
+function MarkdownToPdfSkeleton() {
+  return (
+    <ToolShell>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        {/* Editor pane — matches the real rounded/bordered/shadow-pop chrome (plan §8) */}
+        <div className="flex flex-col rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+          <div className="flex items-center justify-between border-b-2 border-ink bg-paper-2 px-[18px] py-[14px]">
+            <SkeletonLine width="w-24" height="h-3" />
+            <div className="flex gap-2">
+              <SkeletonButton width="w-20" />
+              <SkeletonButton width="w-28" />
+              <SkeletonButton width="w-16" />
+            </div>
+          </div>
+          <div className="p-6">
+            <SkeletonTextArea className="min-h-[480px]" />
+          </div>
+        </div>
+        {/* Preview + page setup */}
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+            <div className="flex items-center border-b-2 border-ink bg-paper-2 px-[18px] py-[14px]">
+              <SkeletonLine width="w-24" height="h-3" />
+            </div>
+            <div className="p-6">
+              <SkeletonBlock className="min-h-[320px] rounded-md bg-paper-2" />
+            </div>
+          </div>
+          <div className="flex flex-col gap-5 rounded-lg border-2 border-ink bg-paper p-5 shadow-pop-2 sm:p-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <SkeletonBlock className="h-11 rounded-md" />
+              <SkeletonBlock className="h-11 rounded-md" />
+              <SkeletonBlock className="h-11 rounded-md" />
+              <SkeletonBlock className="h-11 rounded-md" />
+            </div>
+            <SkeletonBlock className="h-11 rounded-md" />
+            <SkeletonButton width="w-full" />
+          </div>
+        </div>
+      </div>
+    </ToolShell>
+  );
+}
+
+/* ── 25. Compress PDF ────────────────────────────────────── */
+
+function CompressPdfSkeleton() {
+  return (
+    <ToolShell>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="space-y-6">
+          <div className="rounded-[18px] border-2 border-dashed border-border p-10">
+            <div className="flex flex-col items-center gap-3">
+              <SkeletonBlock className="size-14 rounded-[14px]" />
+              <SkeletonLine width="w-56" height="h-5" />
+              <SkeletonLine width="w-64" height="h-4" />
+            </div>
+          </div>
+          <div className="rounded-lg border-2 border-ink bg-paper-2 shadow-pop-3">
+            <div className="p-4">
+              <SkeletonLine width="w-40" height="h-4" />
+              <SkeletonLine width="w-28" height="h-3" />
+            </div>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-pop-3">
+          <div className="flex items-center border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+            <SkeletonLine width="w-24" height="h-3" />
+          </div>
+          <div className="space-y-6 p-5 sm:p-6">
+            <div className="space-y-2">
+              <SkeletonLine width="w-16" height="h-4" />
+              <div className="grid grid-cols-2 gap-2">
+                <SkeletonBlock className="h-11 rounded-md" />
+                <SkeletonBlock className="h-11 rounded-md" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <SkeletonLine width="w-24" height="h-4" />
+              <div className="grid grid-cols-3 gap-2">
+                <SkeletonBlock className="h-11 rounded-md" />
+                <SkeletonBlock className="h-11 rounded-md" />
+                <SkeletonBlock className="h-11 rounded-md" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <SkeletonLine width="w-28" height="h-4" />
+              <SkeletonBlock className="h-2 rounded-full" />
+            </div>
+            <SkeletonBlock className="h-16 rounded-md" />
+            <SkeletonButton width="w-full" />
+          </div>
+        </div>
+      </div>
+    </ToolShell>
+  );
+}
+
+/* ── 26. Image Format Converter ──────────────────────────── */
+
+function ImageConverterSkeleton() {
+  return (
+    <ToolShell>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="space-y-6">
+          <div className="rounded-xl border-2 border-dashed border-border p-10">
+            <div className="flex flex-col items-center gap-3">
+              <SkeletonBlock className="size-12 rounded-full" />
+              <SkeletonLine width="w-48" height="h-5" />
+              <SkeletonLine width="w-56" height="h-4" />
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-lg border-2 border-ink bg-paper-2 shadow-pop-3">
+            <div className="flex items-center justify-between border-b-2 border-ink bg-paper-2 px-[18px] py-[14px]">
+              <SkeletonLine width="w-16" height="h-3" />
+              <SkeletonLine width="w-16" height="h-3" />
+            </div>
+            <div className="space-y-2 p-3 sm:p-4">
+              {sk(3).map((key) => (
+                <SkeletonBlock key={key} className="h-16 rounded-md" />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="wb-panel">
+          <div className="flex items-center border-b-2 border-ink bg-paper px-[18px] py-[14px]">
+            <SkeletonLine width="w-24" height="h-3" />
+          </div>
+          <div className="space-y-6 p-5 sm:p-6">
+            <div className="space-y-2">
+              <SkeletonLine width="w-28" height="h-4" />
+              <SkeletonBlock className="h-11 rounded-md" />
+            </div>
+            <div className="space-y-2">
+              <SkeletonLine width="w-20" height="h-4" />
+              <SkeletonBlock className="h-2 rounded-full" />
+            </div>
+            <SkeletonButton width="w-full" />
+          </div>
+        </div>
+      </div>
+    </ToolShell>
+  );
+}
+
 /* ── Registry ────────────────────────────────────────────── */
 
 const skeletonMap: Record<string, ComponentType<SkeletonProps>> = {
@@ -794,6 +1202,14 @@ const skeletonMap: Record<string, ComponentType<SkeletonProps>> = {
   "image-resizer": ImageResizerSkeleton,
   "merge-pdf": MergePdfSkeleton,
   "split-pdf": SplitPdfSkeleton,
+  "watermark-pdf": WatermarkPdfSkeleton,
+  "pdf-metadata-removal": PdfMetadataRemovalSkeleton,
+  "images-to-pdf": ImagesToPdfSkeleton,
+  "pdf-to-image": PdfToImageSkeleton,
+  "markdown-to-pdf": MarkdownToPdfSkeleton,
+  "compress-pdf": CompressPdfSkeleton,
+  "image-converter": ImageConverterSkeleton,
+  "image-compress": ImageCompressSkeleton,
 };
 
 export function getSkeletonForSlug(slug: string): ComponentType<SkeletonProps> | null {

@@ -56,9 +56,22 @@ export function setupCanvasMock() {
   return { ctx };
 }
 
-export function setupImageMock(dims: { width?: number; height?: number } = {}) {
+export function setupImageMock(dims: { width?: number; height?: number; fail?: boolean } = {}) {
   const w = dims.width ?? 100;
   const h = dims.height ?? 100;
+  const fail = dims.fail ?? false;
+
+  // convertImage decode-validates with createImageBitmap before drawing (it rejects on
+  // truncated/corrupt input where <img> would silently load a blank). Mirror the Image mock:
+  // resolve a closeable fake bitmap on success, reject when `fail` is set.
+  vi.stubGlobal(
+    "createImageBitmap",
+    vi.fn(() =>
+      fail
+        ? Promise.reject(new Error("The source image could not be decoded."))
+        : Promise.resolve({ width: w, height: h, close: vi.fn() } as unknown as ImageBitmap),
+    ),
+  );
 
   vi.stubGlobal(
     "Image",
@@ -77,7 +90,9 @@ export function setupImageMock(dims: { width?: number; height?: number } = {}) {
       set src(value: string) {
         this._src = value;
         if (value) {
-          queueMicrotask(() => this.onload?.());
+          queueMicrotask(() =>
+            fail ? this.onerror?.(new Error("decode failed")) : this.onload?.(),
+          );
         }
       }
     },
