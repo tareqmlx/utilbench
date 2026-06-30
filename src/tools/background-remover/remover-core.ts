@@ -401,8 +401,15 @@ export async function compositeFromMask(
     return { bytes: await canvasEncode(composite, "image/png"), mime: "image/png", ext: "png" };
   }
 
-  // webp (alpha-preserving) via convertToBlob.
-  return { bytes: await canvasEncode(composite, "image/webp"), mime: "image/webp", ext: "webp" };
+  // webp (alpha-preserving). Encode via @jsquash/webp — real VP8/VP8L bytes on EVERY engine. Do NOT
+  // use canvas.convertToBlob({type:"image/webp"}): on WebKit/WKWebView that type is unsupported and the
+  // spec mandates a silent fallback to image/png, so we'd ship a `.webp` file holding a PNG payload
+  // (cursor r3 #1). jSquash's encoder keeps the alpha channel, which the cutout depends on.
+  const encodeWebp = (await import("@jsquash/webp/encode")).default as (
+    data: ImageData,
+  ) => Promise<ArrayBuffer>;
+  const webp = await encodeWebp(composite);
+  return { bytes: new Uint8Array(webp), mime: "image/webp", ext: "webp" };
 }
 
 // ── Orchestration (the EXPENSIVE half — decode + infer + upscale) ────────────

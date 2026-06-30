@@ -51,6 +51,13 @@ const pending = new Map<
   }
 >();
 
+// Serialize every worker dispatch FIFO. The worker's `onmessage` is async, so two overlapping posts
+// would run two `session.run`/composite handlers concurrently — ORT forbids concurrent `run` on one
+// session, and the single cache slot would race. A preview re-infer (gated on `previewBusy`) and a
+// per-row download (gated on `isBusy`) could otherwise post at the same time (cursor r3 #3). Chaining
+// here makes session.run strictly one-at-a-time regardless of which UI flag each caller checked.
+let dispatchChain: Promise<unknown> = Promise.resolve();
+
 /** Lazily construct the worker (module-scope `new Worker` breaks jsdom tests — plan §7.1). */
 function ensureWorker(): Worker {
   if (!worker) {
@@ -89,25 +96,37 @@ function dispatch(
   transfer: Transferable[],
   onProgress?: ProgressCb,
 ): Promise<RemoveResult> {
-  const w = ensureWorker();
-  return new Promise<RemoveResult>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      // No-op if the request already settled (e.g. onerror got there first).
-      if (pending.delete(req.requestId)) {
-        reject(
-          new Error(
-            req.type === "prefetch"
-              ? "Loading the AI model timed out — check your connection and retry."
-              : "Background removal timed out.",
-          ),
-        );
-        // A never-returning run blocks every later dispatch behind it; recycle the worker.
-        terminateRemoveWorker();
-      }
-    }, REMOVE_TIMEOUT_MS);
-    pending.set(req.requestId, { resolve, reject, timer, onProgress });
-    w.postMessage(req, transfer);
-  });
+  // The actual post — runs only once the previous dispatch settles (see `dispatchChain`). `ensureWorker`
+  // and the timeout are evaluated HERE, at post time, so a queued request gets a fresh worker after a
+  // respawn and its 180s window starts when it really posts, not when it was enqueued.
+  const run = () =>
+    new Promise<RemoveResult>((resolve, reject) => {
+      const w = ensureWorker();
+      const timer = setTimeout(() => {
+        // No-op if the request already settled (e.g. onerror got there first).
+        if (pending.delete(req.requestId)) {
+          reject(
+            new Error(
+              req.type === "prefetch"
+                ? "Loading the AI model timed out — check your connection and retry."
+                : "Background removal timed out.",
+            ),
+          );
+          // A never-returning run blocks every later dispatch behind it; recycle the worker.
+          terminateRemoveWorker();
+        }
+      }, REMOVE_TIMEOUT_MS);
+      pending.set(req.requestId, { resolve, reject, timer, onProgress });
+      w.postMessage(req, transfer);
+    });
+  // Tack onto the chain whether the prior dispatch resolved OR rejected (a failed run must not wedge
+  // the queue), but hand the caller the real result promise.
+  const result = dispatchChain.then(run, run);
+  dispatchChain = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
 }
 
 /**

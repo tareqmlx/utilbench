@@ -78,8 +78,21 @@ interface QueueItem {
   animated: boolean;
   status: ItemStatus;
   result?: RemoveResult;
+  // What `result` reflects, so previews/downloads can detect when it drifts from the current
+  // controls (the source of the old "only the selected item updates" bug). `resultSig` captures the
+  // PIXEL-affecting prefs (encode intent doesn't change the visible image), `resultIntent` the
+  // encoder used (preview = fast convertToBlob, download = small oxipng) for the zip/download path.
+  resultSig?: string;
+  resultIntent?: "preview" | "download";
   error?: string;
   previewUrl: string; // object URL from the File — queue thumbnail only (revoke on remove)
+}
+
+// The prefs that change the composited PIXELS — two results with the same signature look identical
+// on screen (regardless of encode intent), so a preview can reuse a download-encoded result and vice
+// versa. Used to decide when a stored result is stale vs the current controls.
+function compositeSig(p: Prefs): string {
+  return `${p.outputMode}|${p.backgroundColor}|${p.format}|${p.alphaThreshold}`;
 }
 
 let nextId = 0;
@@ -124,17 +137,31 @@ export default function BackgroundRemoverRoute() {
   // is the queue thumbnail; this is the rendered cutout, plan §6.5 / advisor).
   const [previewResult, setPreviewResult] = useState<RemoveResult | null>(null);
   const [cutoutUrl, setCutoutUrl] = useState<string | null>(null);
-  const [isPreviewing, setIsPreviewing] = useState(false);
+  // What the preview pane is computing, for an honest badge: a fresh inference ("removing") vs a
+  // cheap recomposite of an existing mask ("updating"). null = idle (plan §6.5 / cursor #4).
+  const [previewBusy, setPreviewBusy] = useState<"infer" | "recomposite" | null>(null);
+  // True while a Download-ZIP re-encode is in flight — keeps the preview effect from fighting it and
+  // disables the button (the zip path may re-derive stale items through the same single worker).
+  const [isZipping, setIsZipping] = useState(false);
+  // The id of the item whose per-item Download is preparing (recomposite/oxipng, or a cold-slot
+  // re-infer). A per-item download IS a multi-second worker run, so — like isZipping for the batch —
+  // it feeds `workerLocked` and drives a row spinner, instead of running invisibly with controls live.
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const reqIdRef = useRef(0);
   const batchCancelledRef = useRef(false);
+  // Synchronous guard against re-entering downloadItem before its state flip lands (a fast double-click).
+  const downloadingIdRef = useRef<string | null>(null);
   // Mirror state into refs so worker handlers / effects read the latest without re-subscribing.
   const itemsRef = useRef<QueueItem[]>([]);
   const selectedIdRef = useRef<string | null>(null);
   const modelStateRef = useRef(modelState);
   const cutoutUrlRef = useRef<string | null>(null);
+  // The result object currently painted in the preview pane, so the preview effect can skip
+  // redundant object-URL churn when the on-screen cutout is already the correct one.
+  const displayedResultRef = useRef<RemoveResult | null>(null);
 
   useEffect(() => {
     itemsRef.current = items;
@@ -166,6 +193,7 @@ export default function BackgroundRemoverRoute() {
 
   // Replace the on-screen cutout (revoking the previous object URL).
   const replaceCutout = useCallback((result: RemoveResult | null) => {
+    displayedResultRef.current = result;
     setPreviewResult(result);
     setCutoutUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
@@ -175,13 +203,27 @@ export default function BackgroundRemoverRoute() {
     });
   }, []);
 
-  const applyResult = useCallback((id: string, result: RemoveResult) => {
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === id ? { ...i, status: "done" as const, result, error: undefined } : i,
-      ),
-    );
-  }, []);
+  // Store a freshly produced result on its item, tagged with the controls it was composited under
+  // (`sig`) and the encoder used (`intent`) so previews/downloads can tell when it goes stale.
+  const applyResult = useCallback(
+    (id: string, result: RemoveResult, sig: string, intent: "preview" | "download") => {
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === id
+            ? {
+                ...i,
+                status: "done" as const,
+                result,
+                resultSig: sig,
+                resultIntent: intent,
+                error: undefined,
+              }
+            : i,
+        ),
+      );
+    },
+    [],
+  );
 
   const markItemError = useCallback((id: string, message: string) => {
     setItems((prev) =>
@@ -189,31 +231,43 @@ export default function BackgroundRemoverRoute() {
     );
   }, []);
 
-  // ── Selection effect: rebuild the displayed cutout from the selected item's STORED result.
-  // No worker call (advisor). Switching selection never triggers inference.
+  // ── Preview effect: keep the on-screen cutout in sync with the SELECTED item under the CURRENT
+  // controls. An up-to-date result paints instantly (no worker). A stale one — different mode/format,
+  // or a different item selected after the controls changed — re-derives: a cheap recomposite of the
+  // warm mask, or a re-infer if the slot is cold. This is what makes a pref change apply to whichever
+  // item you view next, not only the one selected when you turned the knob (cursor #2 drift bug).
+  // Fires on both selection and pref changes (reading `prefs` directly), so the two are unified.
   useEffect(() => {
+    if (isBusy || isZipping) return; // batch / zip owns the worker — don't fight it
     const item = itemsRef.current.find((i) => i.id === selectedId);
-    if (item && item.status === "done" && item.result) {
-      replaceCutout(item.result);
-    } else {
+    if (!item || item.status !== "done" || !item.result) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       replaceCutout(null);
+      setPreviewBusy(null);
+      return;
     }
-    setIsPreviewing(false);
-  }, [selectedId, replaceCutout]);
 
-  // ── Prefs effect: a knob tweak re-composites the warm slot (cheap), NOT a fresh infer (plan §6.5).
-  // Reads the selected item via refs so SELECTION changes don't fire this — only pref changes do.
-  useEffect(() => {
-    if (isBusy) return;
-    const id = selectedIdRef.current;
-    if (!id) return;
-    const item = itemsRef.current.find((i) => i.id === id);
-    if (!item || item.status !== "done" || !item.result) return;
+    const sig = compositeSig(prefs);
+    if (item.resultSig === sig) {
+      // Already correct for these controls — paint instantly, no worker round-trip.
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (displayedResultRef.current !== item.result) replaceCutout(item.result);
+      setPreviewBusy(null);
+      return;
+    }
+
+    // Stale. If we just switched to a DIFFERENT item, paint its stored cutout immediately as a
+    // placeholder (right subject, maybe old mode) so the pane never blanks; the debounced re-derive
+    // then corrects it under the current controls. A same-item knob tweak leaves the cutout in place.
+    const id = item.id;
+    const file = item.file;
+    const format = item.format;
+    if (displayedResultRef.current !== item.result) replaceCutout(item.result);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       const requestId = ++reqIdRef.current;
-      setIsPreviewing(true);
+      setPreviewBusy("recomposite");
       try {
         let result: RemoveResult;
         try {
@@ -224,31 +278,32 @@ export default function BackgroundRemoverRoute() {
             encodeIntent: "preview",
           });
         } catch {
-          // Stale/empty cache slot (item switch or timeout-respawn) → silently re-infer (plan §6.5).
-          const bytes = await readFileBytes(item.file);
+          // Cold/stale cache slot (item switch or timeout-respawn) → re-infer from source bytes.
+          setPreviewBusy("infer");
+          const bytes = await readFileBytes(file);
           result = await removeViaWorker({
             input: bytes,
-            inputFormat: item.format,
+            inputFormat: format,
             options: prefs,
             requestId,
             itemKey: id,
             encodeIntent: "preview",
           });
         }
-        if (requestId !== reqIdRef.current) return; // stale — discard
-        applyResult(id, result);
+        if (requestId !== reqIdRef.current) return; // superseded — discard
+        applyResult(id, result, sig, "preview");
         replaceCutout(result);
       } catch {
         // Preview failure is non-fatal — leave the last good cutout in place.
       } finally {
-        if (requestId === reqIdRef.current) setIsPreviewing(false);
+        if (requestId === reqIdRef.current) setPreviewBusy(null);
       }
     }, 300);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [prefs, isBusy, applyResult, replaceCutout]);
+  }, [selectedId, prefs, isBusy, isZipping, applyResult, replaceCutout]);
 
   // Warm the model (downloads weights once, with byte progress). Returns success.
   const ensureModelLoaded = useCallback(async (): Promise<boolean> => {
@@ -385,12 +440,24 @@ export default function BackgroundRemoverRoute() {
   // Run the selected item (interactive single infer — fast preview encode, plan §6.6).
   const removeSelected = useCallback(async () => {
     const item = itemsRef.current.find((i) => i.id === selectedIdRef.current);
-    if (!item || isBusy) return;
+    if (!item || isBusy || isZipping) return;
     setIsBusy(true);
     setError(null);
     setProgress({ done: 0, total: 1 });
+    // Claim the requestId BEFORE the (possibly slow) model load. Cancel is already on screen during
+    // "Downloading the AI model…", and cancelBatch bumps reqIdRef — so claiming it up front means a
+    // cancel during the load supersedes this run, instead of being absorbed by a later ++ (cursor r4 #1;
+    // removeAll bails on batchCancelledRef right after the load for the same reason).
+    const requestId = ++reqIdRef.current;
     const ok = await ensureModelLoaded();
     if (!ok) {
+      setIsBusy(false);
+      setProgress({ done: 0, total: 0 });
+      return;
+    }
+    if (requestId !== reqIdRef.current) {
+      // Cancelled while the model was still loading — before this item ever moved to "processing".
+      // Stand down; the item keeps the status it had (ready, or done from a prior cutout).
       setIsBusy(false);
       setProgress({ done: 0, total: 0 });
       return;
@@ -400,8 +467,7 @@ export default function BackgroundRemoverRoute() {
         i.id === item.id ? { ...i, status: "processing" as const, error: undefined } : i,
       ),
     );
-    const requestId = ++reqIdRef.current;
-    setIsPreviewing(true);
+    setPreviewBusy("infer");
     try {
       const bytes = await readFileBytes(item.file);
       const result = await removeViaWorker({
@@ -412,7 +478,21 @@ export default function BackgroundRemoverRoute() {
         itemKey: item.id,
         encodeIntent: "preview",
       });
-      applyResult(item.id, result);
+      if (requestId !== reqIdRef.current) {
+        // Cancelled mid-run (Cancel bumps reqIdRef) or otherwise superseded — don't apply the result
+        // or toast. Revert the item OFF "processing": restore "done" if it still carries a prior cutout
+        // (a re-run), else "ready" for a first run. A bare return would strand it on "processing" and
+        // the preview effect would blank the cutout. Mirrors removeAll's post-cancel cleanup (r3 #2).
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === item.id && i.status === "processing"
+              ? { ...i, status: i.result ? ("done" as const) : ("ready" as const) }
+              : i,
+          ),
+        );
+        return;
+      }
+      applyResult(item.id, result, compositeSig(prefs), "preview");
       replaceCutout(result);
       toast.success("Removed the background");
     } catch {
@@ -422,15 +502,26 @@ export default function BackgroundRemoverRoute() {
       );
     } finally {
       setIsBusy(false);
-      setIsPreviewing(false);
+      setPreviewBusy(null);
       setProgress({ done: 0, total: 0 });
     }
-  }, [isBusy, prefs, ensureModelLoaded, applyResult, markItemError, replaceCutout]);
+  }, [isBusy, isZipping, prefs, ensureModelLoaded, applyResult, markItemError, replaceCutout]);
 
   // Batch: sequential, each item encodes for download (small oxipng bytes for the zip — plan §6.6).
   const removeAll = useCallback(async () => {
-    const toRun = itemsRef.current.filter((i) => i.status !== "processing");
-    if (toRun.length === 0 || isBusy) return;
+    if (isBusy || isZipping) return;
+    // Skip items already done AND current under these controls AND download-encoded — re-running them
+    // wastes minutes for no change (cursor #5). A pref change re-stales them, so they re-run then.
+    const sig = compositeSig(prefs);
+    const toRun = itemsRef.current.filter(
+      (i) =>
+        i.status !== "processing" &&
+        !(i.status === "done" && i.resultSig === sig && i.resultIntent === "download"),
+    );
+    if (toRun.length === 0) {
+      if (itemsRef.current.length > 0) toast.success("All cutouts are already up to date");
+      return;
+    }
     setIsBusy(true);
     setError(null);
     batchCancelledRef.current = false;
@@ -462,7 +553,7 @@ export default function BackgroundRemoverRoute() {
           encodeIntent: "download",
         });
         if (batchCancelledRef.current) break;
-        applyResult(item.id, result);
+        applyResult(item.id, result, sig, "download");
         if (item.id === selectedIdRef.current) replaceCutout(result);
       } catch {
         markItemError(
@@ -474,15 +565,21 @@ export default function BackgroundRemoverRoute() {
       setProgress({ done, total: toRun.length });
     }
 
-    // Items left untouched after a cancel return to "ready".
+    // A cancelled in-flight item drops back — but if it was a RE-RUN of an already-done item it still
+    // carries its prior result, so restore "done" (the signature machinery re-derives it on demand)
+    // rather than wiping its cutout. Only never-run items go to "ready" (cursor round-2 #2).
     setItems((prev) =>
-      prev.map((i) => (i.status === "processing" ? { ...i, status: "ready" as const } : i)),
+      prev.map((i) =>
+        i.status === "processing"
+          ? { ...i, status: i.result ? ("done" as const) : ("ready" as const) }
+          : i,
+      ),
     );
     setIsBusy(false);
     if (!batchCancelledRef.current && done > 0) {
       toast.success(`Removed the background from ${done} image${done === 1 ? "" : "s"}`);
     }
-  }, [isBusy, prefs, ensureModelLoaded, applyResult, markItemError, replaceCutout]);
+  }, [isBusy, isZipping, prefs, ensureModelLoaded, applyResult, markItemError, replaceCutout]);
 
   const cancelBatch = useCallback(() => {
     batchCancelledRef.current = true;
@@ -492,7 +589,10 @@ export default function BackgroundRemoverRoute() {
   // One-shot download encode (small oxipng) from the warm slot, or a re-infer if it's cold (plan §6.6).
   const downloadItem = useCallback(
     async (item: QueueItem) => {
-      if (!item.result || isBusy) return;
+      if (!item.result || isBusy || isZipping || downloadingIdRef.current) return;
+      // Flip the busy state up front (ref synchronously, so a double-click bails) — this run isn't free.
+      downloadingIdRef.current = item.id;
+      setDownloadingId(item.id);
       try {
         let result: RemoveResult;
         try {
@@ -513,38 +613,79 @@ export default function BackgroundRemoverRoute() {
             encodeIntent: "download",
           });
         }
+        // Cache the download-encoded bytes so a later Download ZIP reuses them (no re-encode).
+        applyResult(item.id, result, compositeSig(prefs), "download");
         downloadBlob(
           new Blob([result.bytes as BlobPart], { type: result.mime }),
           buildCutoutFilename(item.file.name, result.ext),
         );
       } catch {
         setError("Couldn't prepare the download — try removing the background again.");
+      } finally {
+        // Always release the lock — a cold-slot re-infer can throw, and a missed clear would wedge
+        // `workerLocked` true and freeze every control.
+        downloadingIdRef.current = null;
+        setDownloadingId(null);
       }
     },
-    [isBusy, prefs],
+    [isBusy, isZipping, prefs, applyResult],
   );
 
+  // Zip every done cutout under the CURRENT controls. Reuse an item's stored bytes only when they
+  // already match the controls AND were download-encoded (small oxipng); otherwise re-derive so the
+  // zip is consistent and optimized — fixes the old "ZIP ships stale / preview-fat bytes" bug
+  // (cursor #1). The common path (Remove all → Download ZIP, no change) re-derives nothing.
   const downloadAll = useCallback(async () => {
     const doneItems = itemsRef.current.filter((i) => i.status === "done" && i.result);
-    if (doneItems.length === 0) return;
-    const zipItems = doneItems.map((i) => {
-      const result = i.result as RemoveResult;
-      return {
-        blob: new Blob([result.bytes as BlobPart], { type: result.mime }),
-        filename: buildCutoutFilename(i.file.name, result.ext),
-      };
-    });
+    if (doneItems.length === 0 || isZipping) return;
+    const sig = compositeSig(prefs);
+    setIsZipping(true);
     try {
+      const zipItems: { blob: Blob; filename: string }[] = [];
+      for (const item of doneItems) {
+        let result = item.result as RemoveResult;
+        if (!(item.resultSig === sig && item.resultIntent === "download")) {
+          try {
+            result = await recompositeViaWorker({
+              options: prefs,
+              requestId: ++reqIdRef.current,
+              itemKey: item.id,
+              encodeIntent: "download",
+            });
+          } catch {
+            const bytes = await readFileBytes(item.file);
+            result = await removeViaWorker({
+              input: bytes,
+              inputFormat: item.format,
+              options: prefs,
+              requestId: ++reqIdRef.current,
+              itemKey: item.id,
+              encodeIntent: "download",
+            });
+          }
+          applyResult(item.id, result, sig, "download");
+        }
+        zipItems.push({
+          blob: new Blob([result.bytes as BlobPart], { type: result.mime }),
+          filename: buildCutoutFilename(item.file.name, result.ext),
+        });
+      }
       const zip = await createBatchZip(zipItems);
       downloadBlob(zip, "cutouts.zip");
     } catch {
       setError("Failed to create ZIP file.");
+    } finally {
+      setIsZipping(false);
     }
-  }, []);
+  }, [prefs, isZipping, applyResult]);
 
   const doneCount = items.filter((i) => i.status === "done").length;
   const hasQueue = items.length > 0;
   const hasSelected = Boolean(selectedItem);
+  // The singleton worker (and the prefs that drive it) is busy whenever a batch/single run OR a
+  // Download-ZIP re-encode is in flight — gate every worker-touching action and pref control on this
+  // so they can't race the same worker or change the signature mid-zip (cursor round-2 #1/#3).
+  const workerLocked = isBusy || isZipping || downloadingId !== null;
 
   useKeyboardShortcut(
     useMemo(
@@ -553,10 +694,10 @@ export default function BackgroundRemoverRoute() {
           key: "Enter",
           meta: true,
           handler: () => removeAll(),
-          enabled: hasQueue && !isBusy,
+          enabled: hasQueue && !workerLocked,
         },
       ],
-      [hasQueue, isBusy, removeAll],
+      [hasQueue, workerLocked, removeAll],
     ),
   );
 
@@ -654,17 +795,24 @@ export default function BackgroundRemoverRoute() {
                 actions={
                   <>
                     <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-ink-3 tabular-nums">
-                      {isBusy ? `${progress.done} of ${progress.total}` : `${items.length} Files`}
+                      {isBusy
+                        ? `${progress.done} of ${progress.total}`
+                        : `${items.length} ${items.length === 1 ? "File" : "Files"}`}
                     </span>
                     {doneCount > 1 && (
                       <button
                         type="button"
                         onClick={downloadAll}
-                        className="wb-btn wb-btn--sm wb-btn--ghost"
+                        disabled={isZipping || isBusy}
+                        className="wb-btn wb-btn--sm wb-btn--ghost disabled:opacity-50"
                         aria-label="Download all cutouts as ZIP"
                       >
-                        <Download className="size-3.5" aria-hidden="true" />
-                        <span>Download ZIP</span>
+                        {isZipping ? (
+                          <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Download className="size-3.5" aria-hidden="true" />
+                        )}
+                        <span>{isZipping ? "Preparing…" : "Download ZIP"}</span>
                       </button>
                     )}
                   </>
@@ -726,17 +874,25 @@ export default function BackgroundRemoverRoute() {
                         <button
                           type="button"
                           onClick={() => downloadItem(item)}
-                          disabled={isBusy}
+                          disabled={workerLocked}
                           className="wb-fade-in grid size-9 shrink-0 place-items-center rounded-md border-2 border-ink bg-paper text-ink shadow-pop-1 transition-colors hover:bg-mint disabled:opacity-40 pointer-coarse:size-11"
-                          aria-label={`Download ${item.file.name}`}
+                          aria-label={
+                            downloadingId === item.id
+                              ? `Preparing download of ${item.file.name}`
+                              : `Download ${item.file.name}`
+                          }
                         >
-                          <Download className="size-4" aria-hidden="true" />
+                          {downloadingId === item.id ? (
+                            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                          ) : (
+                            <Download className="size-4" aria-hidden="true" />
+                          )}
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => removeItem(item.id)}
-                        disabled={isBusy}
+                        disabled={workerLocked}
                         className="grid size-9 shrink-0 place-items-center rounded-md text-ink-3 hover:text-tomato disabled:opacity-40 pointer-coarse:size-11"
                         aria-label={`Remove ${item.file.name}`}
                       >
@@ -770,8 +926,13 @@ export default function BackgroundRemoverRoute() {
                     </p>
                     <div className="h-3 w-full overflow-hidden rounded-full border-2 border-ink bg-paper">
                       <div
-                        className="h-full bg-lemon transition-[width] duration-200"
-                        style={{ width: dlPercent === null ? "100%" : `${dlPercent}%` }}
+                        className={cn(
+                          "h-full bg-lemon transition-[width] duration-200",
+                          // Unknown total (no Content-Length yet) → an indeterminate pulsing sliver,
+                          // not a full bar that falsely reads as "done" (cursor #3).
+                          dlPercent === null && "animate-pulse",
+                        )}
+                        style={{ width: dlPercent === null ? "40%" : `${dlPercent}%` }}
                       />
                     </div>
                     <p className="text-[12.5px] text-ink-2">
@@ -825,7 +986,7 @@ export default function BackgroundRemoverRoute() {
                         <button
                           key={opt.value}
                           type="button"
-                          disabled={isBusy}
+                          disabled={workerLocked}
                           onClick={() => setPrefs({ outputMode: opt.value })}
                           aria-pressed={active}
                           className={cn(
@@ -855,7 +1016,7 @@ export default function BackgroundRemoverRoute() {
                       <input
                         id="bg-color"
                         type="color"
-                        disabled={isBusy}
+                        disabled={workerLocked}
                         value={prefs.backgroundColor}
                         onChange={(e) => setPrefs({ backgroundColor: e.target.value })}
                         className="size-9 shrink-0 cursor-pointer rounded-md border-2 border-ink bg-paper p-0.5 disabled:opacity-50"
@@ -874,7 +1035,7 @@ export default function BackgroundRemoverRoute() {
                         <button
                           key={opt.value}
                           type="button"
-                          disabled={isBusy}
+                          disabled={workerLocked}
                           onClick={() => setPrefs({ format: opt.value })}
                           aria-pressed={active}
                           className={cn(
@@ -921,7 +1082,7 @@ export default function BackgroundRemoverRoute() {
                         min={0}
                         max={255}
                         step={1}
-                        disabled={isBusy}
+                        disabled={workerLocked}
                         value={[prefs.alphaThreshold]}
                         onValueChange={([v]) => setPrefs({ alphaThreshold: v ?? 0 })}
                       />
@@ -982,10 +1143,10 @@ export default function BackgroundRemoverRoute() {
                               Click “Remove background” to see the cutout.
                             </div>
                           )}
-                          {isPreviewing && (
+                          {previewBusy && (
                             <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border-2 border-ink bg-paper px-2 py-0.5 text-[11px] font-bold shadow-pop-1">
                               <Loader2 className="size-3 animate-spin" aria-hidden="true" />{" "}
-                              removing
+                              {previewBusy === "infer" ? "removing" : "updating"}
                             </span>
                           )}
                         </div>
@@ -1017,7 +1178,7 @@ export default function BackgroundRemoverRoute() {
                 <button
                   type="button"
                   onClick={removeSelected}
-                  disabled={!hasSelected || isBusy}
+                  disabled={!hasSelected || workerLocked}
                   className="wb-btn wb-btn--ghost flex-1 justify-center py-3.5"
                 >
                   <Scissors className="size-4" aria-hidden="true" />
@@ -1026,7 +1187,7 @@ export default function BackgroundRemoverRoute() {
                 <button
                   type="button"
                   onClick={removeAll}
-                  disabled={!hasQueue || isBusy}
+                  disabled={!hasQueue || workerLocked}
                   className="wb-btn flex-1 justify-center py-3.5 text-[15px]"
                 >
                   <IconSwap swapKey={isBusy}>

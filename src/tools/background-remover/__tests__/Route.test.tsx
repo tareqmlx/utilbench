@@ -307,6 +307,269 @@ describe("BackgroundRemoverRoute", () => {
     expect(screen.queryByText("big.png")).not.toBeInTheDocument();
   });
 
+  it("re-derives a non-selected done item under the current controls when selected (no stale drift)", async () => {
+    render(<BackgroundRemoverRoute />);
+    await uploadFiles([pngFile("a.png"), pngFile("b.png")]);
+    await waitFor(() => expect(screen.getByText("b.png")).toBeInTheDocument());
+
+    // Process both, then change the output mode (recomposites only the selected item, a.png).
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Remove all/ }));
+    });
+    await waitFor(() => expect(screen.getAllByText("cutout ready")).toHaveLength(2));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Color" }));
+    });
+    await waitFor(() => expect(mock.recompositeViaWorker).toHaveBeenCalled(), { timeout: 2000 });
+
+    // Selecting b.png (still in the old mode) must re-derive it under the CURRENT controls, not show
+    // its stale cutout — the core of cursor #2.
+    mock.recompositeViaWorker.mockClear();
+    mock.removeViaWorker.mockClear();
+    await act(async () => {
+      fireEvent.click(screen.getByText("b.png"));
+    });
+    await waitFor(
+      () =>
+        expect(
+          mock.recompositeViaWorker.mock.calls.length + mock.removeViaWorker.mock.calls.length,
+        ).toBeGreaterThan(0),
+      { timeout: 2000 },
+    );
+  });
+
+  it("Download ZIP reuses the stored download bytes when nothing changed (no re-encode)", async () => {
+    render(<BackgroundRemoverRoute />);
+    await uploadFiles([pngFile("a.png"), pngFile("b.png")]);
+    await waitFor(() => expect(screen.getByText("b.png")).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Remove all/ }));
+    });
+    const zipBtn = await screen.findByRole("button", { name: "Download all cutouts as ZIP" });
+
+    mock.recompositeViaWorker.mockClear();
+    mock.removeViaWorker.mockClear();
+    await act(async () => {
+      fireEvent.click(zipBtn);
+    });
+
+    await waitFor(() => expect(mock.createBatchZip).toHaveBeenCalledTimes(1));
+    // Both items are already current + download-encoded → zero re-derivation.
+    expect(mock.recompositeViaWorker).not.toHaveBeenCalled();
+    expect(mock.removeViaWorker).not.toHaveBeenCalled();
+  });
+
+  it("Download ZIP re-derives items left stale by a pref change (consistent, optimized zip)", async () => {
+    render(<BackgroundRemoverRoute />);
+    await uploadFiles([pngFile("a.png"), pngFile("b.png")]);
+    await waitFor(() => expect(screen.getByText("b.png")).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Remove all/ }));
+    });
+    const zipBtn = await screen.findByRole("button", { name: "Download all cutouts as ZIP" });
+
+    // Change the controls AFTER the batch — now the stored bytes no longer match.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Color" }));
+    });
+    await waitFor(() => expect(mock.recompositeViaWorker).toHaveBeenCalled(), { timeout: 2000 });
+
+    mock.recompositeViaWorker.mockClear();
+    mock.removeViaWorker.mockClear();
+    await act(async () => {
+      fireEvent.click(zipBtn);
+    });
+
+    await waitFor(() => expect(mock.createBatchZip).toHaveBeenCalledTimes(1));
+    // The zip path re-encodes the stale items for download under the new controls.
+    expect(
+      mock.recompositeViaWorker.mock.calls.length + mock.removeViaWorker.mock.calls.length,
+    ).toBeGreaterThan(0);
+    for (const call of mock.recompositeViaWorker.mock.calls) {
+      expect(call[0]).toMatchObject({ encodeIntent: "download" });
+    }
+  });
+
+  it("Remove all skips items already done under the current controls (no wasted re-infer)", async () => {
+    const { toast } = await import("sonner");
+    render(<BackgroundRemoverRoute />);
+    await uploadFiles([pngFile("a.png"), pngFile("b.png")]);
+    await waitFor(() => expect(screen.getByText("b.png")).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Remove all/ }));
+    });
+    await waitFor(() => expect(mock.removeViaWorker).toHaveBeenCalledTimes(2));
+
+    // Re-clicking with nothing changed must NOT re-infer — it reports everything is up to date.
+    mock.removeViaWorker.mockClear();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Remove all/ }));
+    });
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith("All cutouts are already up to date"),
+    );
+    expect(mock.removeViaWorker).not.toHaveBeenCalled();
+  });
+
+  it("preserves an already-done item's cutout when its re-run is cancelled (no demote to ready)", async () => {
+    render(<BackgroundRemoverRoute />);
+    await uploadFiles([pngFile("photo.png")]);
+    await waitFor(() => expect(screen.getByText("photo.png")).toBeInTheDocument());
+
+    // Process once → the item has a stored result.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Remove background/ }));
+    });
+    await waitFor(() => expect(screen.getByText("cutout ready")).toBeInTheDocument());
+
+    // A mode change re-stales it; the next infer (the re-run) hangs so we can cancel mid-flight.
+    const d = deferred<RemoveResult>();
+    mock.removeViaWorker.mockImplementation(() => d.promise);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Color" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Remove all/ }));
+    });
+    const cancelBtn = await screen.findByRole("button", { name: "Cancel" });
+    await act(async () => {
+      fireEvent.click(cancelBtn);
+    });
+    await act(async () => {
+      d.resolve(result());
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument(),
+    );
+    // The cancelled re-run keeps the item's prior cutout instead of wiping it back to "ready".
+    expect(screen.getByText("cutout ready")).toBeInTheDocument();
+  });
+
+  it("discards a cancelled single-item Remove background and doesn't strand it on processing (r3 #2)", async () => {
+    render(<BackgroundRemoverRoute />);
+    await uploadFiles([pngFile("solo.png")]);
+    await waitFor(() => expect(screen.getByText("solo.png")).toBeInTheDocument());
+
+    // First run, no prior cutout: hang the infer so we can cancel it mid-flight.
+    const d = deferred<RemoveResult>();
+    mock.removeViaWorker.mockImplementation(() => d.promise);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Remove background/ }));
+    });
+    const cancelBtn = await screen.findByRole("button", { name: "Cancel" });
+    await act(async () => {
+      fireEvent.click(cancelBtn);
+    });
+    // The in-flight infer now completes — but it was cancelled, so the result must NOT be applied.
+    await act(async () => {
+      d.resolve(result());
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument(),
+    );
+    // No cutout from the cancelled run, and the item is back to ready — not stranded on "processing".
+    expect(screen.queryByText("cutout ready")).not.toBeInTheDocument();
+    expect(screen.queryByText(/removing…/)).not.toBeInTheDocument();
+  });
+
+  it("aborts a single-item run when Cancel is clicked during model load, before inference (r4 #1)", async () => {
+    // Hang the model download so the run sits in the load phase with Cancel on screen.
+    const load = deferred<void>();
+    mock.prefetchModel.mockImplementation(() => load.promise);
+    render(<BackgroundRemoverRoute />);
+    await uploadFiles([pngFile("solo.png")]);
+    await waitFor(() => expect(screen.getByText("solo.png")).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Remove background/ }));
+    });
+    const cancelBtn = await screen.findByRole("button", { name: "Cancel" });
+    // Cancel DURING the model-load phase (inference hasn't started — removeViaWorker not yet called).
+    await act(async () => {
+      fireEvent.click(cancelBtn);
+    });
+    // The model finishes downloading after the cancel; the run must NOT proceed to inference.
+    await act(async () => {
+      load.resolve();
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument(),
+    );
+    expect(mock.removeViaWorker).not.toHaveBeenCalled();
+    expect(screen.queryByText("cutout ready")).not.toBeInTheDocument();
+  });
+
+  it("locks controls + shows a row spinner while a per-item Download prepares, and releases on error (opencode r1)", async () => {
+    render(<BackgroundRemoverRoute />);
+    await uploadFiles([pngFile("solo.png")]);
+    await waitFor(() => expect(screen.getByText("solo.png")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Remove background/ }));
+    });
+    await waitFor(() => expect(screen.getByText("cutout ready")).toBeInTheDocument());
+
+    // Cold-slot per-item download: recomposite rejects, the re-infer hangs so we can inspect the lock.
+    mock.recompositeViaWorker.mockRejectedValue(new Error("cold slot"));
+    const d = deferred<RemoveResult>();
+    mock.removeViaWorker.mockImplementation(() => d.promise);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Download solo.png" }));
+    });
+
+    // Engaged: the row button flips to a preparing spinner and every worker-touching control is locked.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Preparing download of solo.png" }),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByRole("button", { name: /Remove all/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Remove background/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Color" })).toBeDisabled();
+
+    // The prepare fails — the lock MUST release in `finally`, not wedge the whole UI.
+    await act(async () => {
+      d.reject(new Error("encode failed"));
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Download solo.png" })).toBeInTheDocument(),
+    );
+    expect(screen.getByRole("button", { name: /Remove all/ })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Color" })).not.toBeDisabled();
+  });
+
+  it("locks worker-touching controls while a ZIP is preparing", async () => {
+    const d = deferred<Blob>();
+    mock.createBatchZip.mockImplementation(() => d.promise);
+    render(<BackgroundRemoverRoute />);
+    await uploadFiles([pngFile("a.png"), pngFile("b.png")]);
+    await waitFor(() => expect(screen.getByText("b.png")).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Remove all/ }));
+    });
+    const zipBtn = await screen.findByRole("button", { name: "Download all cutouts as ZIP" });
+    await act(async () => {
+      fireEvent.click(zipBtn);
+    });
+
+    // While the (hung) zip prepares, no other action can race the singleton worker or change prefs.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Color" })).toBeDisabled());
+    expect(screen.getByRole("button", { name: /Remove all/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Remove background/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "PNG" })).toBeDisabled();
+
+    await act(async () => {
+      d.resolve(new Blob(["zip"], { type: "application/zip" }));
+    });
+  });
+
   it("cancels a batch and returns the remaining items to ready", async () => {
     const d = deferred<RemoveResult>();
     let calls = 0;

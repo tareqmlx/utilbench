@@ -40,6 +40,16 @@ vi.mock("@jsquash/oxipng/optimise", () => ({
   default: vi.fn(async (img: { data: Uint8ClampedArray }) => img.data.buffer.slice(0)),
 }));
 
+// @jsquash/webp/encode: return a minimal RIFF/WEBP-headed buffer so the webp path is verifiable as
+// REAL webp bytes, not a convertToBlob PNG fallback (cursor r3 #1). Mirrors the oxipng mock.
+vi.mock("@jsquash/webp/encode", () => ({
+  default: vi.fn(
+    async () =>
+      // "RIFF" + 4 size bytes + "WEBP"
+      new Uint8Array([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50]).buffer,
+  ),
+}));
+
 // ── Environment obstacle B: OffscreenCanvas / ImageData (absent in jsdom) ────
 // A faithful-ENOUGH 2D mock: stores an RGBA buffer, copies on putImageData, NEAREST-NEIGHBOR
 // resamples on the 9-arg drawImage (real code uses high-quality smoothing — irrelevant for these
@@ -354,7 +364,7 @@ describe("compositeFromMask", () => {
     expect(out.mime).toBe("image/png");
   });
 
-  it("format webp ⇒ ext 'webp' / mime 'image/webp'", async () => {
+  it("format webp ⇒ real webp bytes via jSquash, not a convertToBlob PNG fallback (r3 #1)", async () => {
     const out = await compositeFromMask(
       makeImageData(1, 1, [0, 0, 0, 255]),
       new Float32Array([1]),
@@ -363,6 +373,10 @@ describe("compositeFromMask", () => {
     );
     expect(out.ext).toBe("webp");
     expect(out.mime).toBe("image/webp");
+    // RIFF....WEBP magic — proves @jsquash/webp encoded it. On WebKit, convertToBlob({type:"image/webp"})
+    // silently returns PNG bytes (magic 89 50 4E 47), which this guards against.
+    expect(Array.from(out.bytes.slice(0, 4))).toEqual([0x52, 0x49, 0x46, 0x46]);
+    expect(Array.from(out.bytes.slice(8, 12))).toEqual([0x57, 0x45, 0x42, 0x50]);
   });
 });
 
