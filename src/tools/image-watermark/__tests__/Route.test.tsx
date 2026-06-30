@@ -374,7 +374,7 @@ describe("ImageWatermarkRoute", () => {
     await uploadFiles([pngFile("huge.png")]);
     // The file STAYS in the queue (mirrors compress §6.7) with a disabled/error thumb.
     await waitFor(() => expect(screen.getByText("huge.png")).toBeInTheDocument());
-    expect(screen.getByText("1 Files")).toBeInTheDocument();
+    expect(screen.getByText("1 File")).toBeInTheDocument();
     expect(screen.getAllByText(/too large to watermark/i).length).toBeGreaterThanOrEqual(1);
   });
 

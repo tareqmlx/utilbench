@@ -75,8 +75,13 @@ interface QueueItem {
   width: number;
   height: number;
   beforeUrl: string;
+  /** Batch-local index (capped) so newly-added rows stagger their entrance, not re-animate old rows. */
+  enterIndex: number;
   error?: string;
 }
+
+// Cap the stagger so a 50-file drop doesn't tail off over 2s+ (animate.md: bound total stagger).
+const MAX_STAGGER = 8;
 
 let nextId = 0;
 function uid(): string {
@@ -430,6 +435,7 @@ export default function ImageWatermarkRoute() {
             width: dims.width,
             height: dims.height,
             beforeUrl: URL.createObjectURL(file),
+            enterIndex: Math.min(accepted.length, MAX_STAGGER),
           });
         } catch {
           rejected.push(`Couldn't read "${file.name}" — it may be corrupt.`);
@@ -766,7 +772,7 @@ export default function ImageWatermarkRoute() {
               </p>
             </div>
           ) : (
-            <div className="mx-auto max-h-[460px] w-full overflow-hidden rounded-md border-2 border-ink bg-[repeating-conic-gradient(var(--bg-3)_0_25%,var(--bg)_0_50%)] bg-[length:20px_20px]">
+            <div className="wb-cutout-in mx-auto max-h-[460px] w-full overflow-hidden rounded-md border-2 border-ink bg-[repeating-conic-gradient(var(--bg-3)_0_25%,var(--bg)_0_50%)] bg-[length:20px_20px]">
               <canvas
                 ref={previewRef}
                 data-testid="preview-canvas"
@@ -788,7 +794,7 @@ export default function ImageWatermarkRoute() {
             <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-ink-3 tabular-nums">
               {isExporting && progress
                 ? `${progress.done} of ${progress.total}`
-                : `${queue.length} Files`}
+                : `${queue.length} ${queue.length === 1 ? "File" : "Files"}`}
             </span>
           }
         />
@@ -803,8 +809,9 @@ export default function ImageWatermarkRoute() {
             return (
               <div
                 key={item.id}
+                style={{ "--enter-i": item.enterIndex } as React.CSSProperties}
                 className={cn(
-                  "wb-item-enter flex items-center gap-3 rounded-md border-2 border-ink p-2.5 transition-[background,box-shadow,transform] duration-200",
+                  "wb-item-enter wb-stagger flex items-center gap-3 rounded-md border-2 border-ink p-2.5 transition-[background,box-shadow,transform] duration-200",
                   item.error
                     ? "bg-paper opacity-60 shadow-pop-1"
                     : selected
@@ -834,7 +841,14 @@ export default function ImageWatermarkRoute() {
                     <span className="block truncate text-[13.5px] font-semibold text-ink">
                       {item.fileName}
                     </span>
-                    <span className="block font-mono text-[11px] text-ink-3 tabular-nums">
+                    <span
+                      className={cn(
+                        "block font-mono text-[11px] tabular-nums",
+                        // ink-3 on the selected (lemon) row = 4.29:1, under AA 4.5 (DESIGN.md flags
+                        // ink-3 on lemon/lilac). ink-2 on lemon = 8.26:1 and stays clearly secondary.
+                        selected ? "text-ink-2" : "text-ink-3",
+                      )}
+                    >
                       {formatBytes(item.file.size)}
                       {item.error && (
                         <span className="font-semibold text-tomato"> · {item.error}</span>
@@ -909,7 +923,7 @@ export default function ImageWatermarkRoute() {
                   value={prefs.text}
                   onChange={(e) => setPrefs({ text: e.target.value })}
                   placeholder="© Your Name"
-                  className="h-11 border-2 border-ink bg-paper text-[14px] sm:h-10"
+                  className="h-11 border-2 border-ink bg-paper text-[14px] shadow-pop-1 sm:h-10"
                   data-testid="text-input"
                 />
                 {prefs.text.trim() === "" && (
@@ -1257,7 +1271,7 @@ export default function ImageWatermarkRoute() {
                   onClick={() => setPrefs({ rotationDeg: deg })}
                   data-testid={`rotate-snap-${deg}`}
                   className={cn(
-                    "rounded-md border-2 border-ink px-2.5 py-1 text-[12px] font-semibold transition-colors",
+                    "rounded-md border-2 border-ink px-2.5 py-1 text-[12px] font-semibold transition-colors pointer-coarse:min-h-11",
                     prefs.rotationDeg === deg
                       ? "bg-ink text-paper"
                       : "bg-paper text-ink-2 hover:bg-lemon",
@@ -1434,6 +1448,7 @@ export default function ImageWatermarkRoute() {
             className="wb-btn wb-btn--ghost justify-center px-5"
             data-testid="reset-button"
             aria-label="Reset watermark settings"
+            title="Reset settings"
           >
             <RotateCcw className="size-4" aria-hidden="true" />
           </button>
