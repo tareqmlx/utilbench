@@ -208,6 +208,90 @@ describe("ImageWatermarkRoute", () => {
     expect(screen.queryByTestId("jpeg-bg-input")).not.toBeInTheDocument();
   });
 
+  it("flattens the preview onto jpegBackground for JPEG (WYSIWYG) and not for PNG", async () => {
+    render(<ImageWatermarkRoute />);
+    await uploadFiles([pngFile("photo.png")]);
+    await waitFor(() => expect(mock.renderWatermark).toHaveBeenCalled());
+
+    // JPEG selected → drawPreview must pass jpegBackground as the flatten arg so a transparent
+    // base previews exactly as it exports (the §6.3 WYSIWYG invariant).
+    mock.renderWatermark.mockClear();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("format-jpeg"));
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    await waitFor(() => expect(mock.renderWatermark).toHaveBeenCalled());
+    expect(mock.renderWatermark.mock.calls.at(-1)?.[6]).toBe("#ffffff");
+
+    // PNG selected → no flatten (transparency preserved).
+    mock.renderWatermark.mockClear();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("format-png"));
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    await waitFor(() => expect(mock.renderWatermark).toHaveBeenCalled());
+    expect(mock.renderWatermark.mock.calls.at(-1)?.[6]).toBeUndefined();
+  });
+
+  it("drops the stale preview when the newly-selected item fails to decode", async () => {
+    render(<ImageWatermarkRoute />);
+    await uploadFiles([pngFile("good.png")]);
+    await waitFor(() => expect(mock.renderWatermark).toHaveBeenCalled());
+
+    // A second item that passes enqueue but throws during full-res decode.
+    mock.loadOrientedImage.mockRejectedValueOnce(
+      new Error("Couldn't read this image — it may be corrupt."),
+    );
+    await uploadFiles([pngFile("broken.png")]);
+    await waitFor(() => expect(screen.getByText("broken.png")).toBeInTheDocument());
+
+    mock.renderWatermark.mockClear();
+    fireEvent.click(screen.getByText("broken.png"));
+    // Decode rejects → error surfaced AND the previous item's preview is dropped, so the canvas
+    // never re-composites the stale base (no renderWatermark after the clear).
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("Couldn't read this image"),
+    );
+    await new Promise((r) => setTimeout(r, 60));
+    expect(mock.renderWatermark).not.toHaveBeenCalled();
+  });
+
+  it("locks queue select + logo controls during export (mid-export bitmap-close races)", async () => {
+    // Hold watermarkToBlob open so isExporting stays true while we assert.
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    mock.watermarkToBlob.mockImplementationOnce(async () => {
+      await gate;
+      return {
+        blob: new Blob(["out"], { type: "image/png" }),
+        mime: "image/png",
+        ext: "png",
+        width: 100,
+        height: 100,
+      };
+    });
+    render(<ImageWatermarkRoute />);
+    await uploadFiles([pngFile("photo.png")]);
+    await waitFor(() => expect(screen.getByText("photo.png")).toBeInTheDocument());
+    // Logo mode + a logo so the logo controls render.
+    fireEvent.click(screen.getByTestId("kind-image"));
+    await uploadFiles([pngFile("logo.png")], "logo-input");
+    await waitFor(() => expect(screen.getByTestId("logo-remove")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId("apply-button"));
+    // While the export is in flight, the queue select button AND the logo controls must be
+    // disabled — otherwise a mid-export click closes a bitmap the export loop is still drawing.
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /^photo\.png/ })).toBeDisabled();
+    });
+    expect(screen.getByTestId("logo-remove")).toBeDisabled();
+
+    release();
+    await waitFor(() => expect(mock.downloadBlob).toHaveBeenCalled());
+  });
+
   it("hides the WebP format when the encoder is unsupported", async () => {
     mock.canEncode.mockReturnValue(false);
     render(<ImageWatermarkRoute />);

@@ -263,6 +263,13 @@ export default function ImageWatermarkRoute() {
         const msg = err instanceof CapError ? CAP_MSG : (err as Error).message || ANIMATED_MSG;
         setError(msg);
         setQueue((prev) => prev.map((q) => (q.id === selectedId ? { ...q, error: msg } : q)));
+        // Decode failed for the newly-selected item — drop the previous item's preview so the
+        // canvas can't keep showing a different image than the one that's selected + errored.
+        previewForIdRef.current = null;
+        setPreview((prev) => {
+          prev?.bitmap.close();
+          return null;
+        });
       });
     return () => {
       cancelled = true;
@@ -294,6 +301,10 @@ export default function ImageWatermarkRoute() {
       if (previewRef.current !== canvas || previewBitmapRef.current !== base) return;
     }
 
+    // Match the JPEG export's transparency flatten (watermarker.ts:545) so the preview is true
+    // WYSIWYG for a transparent base exported as JPEG (§5.6/§6.3/§11.4). Without this, a transparent
+    // PNG previews as checkerboard but exports white-backed — preview and export disagree.
+    const flattenBackground = effFormat === "jpeg" ? prefs.jpegBackground : undefined;
     renderWatermark(
       ctx,
       base.bitmap,
@@ -301,8 +312,9 @@ export default function ImageWatermarkRoute() {
       config,
       canvas.width,
       canvas.height,
+      flattenBackground,
     );
-  }, [preview, config, logo]);
+  }, [preview, config, logo, effFormat, prefs.jpegBackground]);
 
   // The rAF callback must run the LATEST drawPreview, not the one captured when it was
   // scheduled — otherwise a config/preview change that lands while a frame is already pending
@@ -340,7 +352,7 @@ export default function ImageWatermarkRoute() {
     return () => {
       if (redrawTimerRef.current) clearTimeout(redrawTimerRef.current);
     };
-  }, [config, preview, logo, scheduleRedraw]);
+  }, [config, preview, logo, effFormat, prefs.jpegBackground, scheduleRedraw]);
 
   // Cleanup on unmount: close live bitmaps + revoke every object URL (§11.5).
   useEffect(() => {
@@ -731,7 +743,7 @@ export default function ImageWatermarkRoute() {
           icon={<Stamp className="size-4" aria-hidden="true" />}
           className="bg-paper-2"
           actions={
-            selectedItem ? (
+            selectedItem && !selectedItem.error ? (
               <StatusBadge
                 tone="neutral"
                 label={`${selectedItem.width} × ${selectedItem.height}`}
@@ -740,12 +752,18 @@ export default function ImageWatermarkRoute() {
           }
         />
         <div className="p-5 sm:p-6">
-          {!selectedItem ? (
+          {!selectedItem || selectedItem.error ? (
+            // No selection, OR the selected item failed to decode — never leave the prior image's
+            // pixels on the canvas under a different selection (the stale-preview defect).
             <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-ink-3">
               <span className="grid size-14 place-items-center rounded-[14px] border-2 border-ink-3 bg-paper">
                 <Stamp className="size-6" aria-hidden="true" />
               </span>
-              <p className="text-sm">Upload and select an image to watermark.</p>
+              <p className="text-sm">
+                {selectedItem?.error
+                  ? "This image couldn't be loaded. Remove it and try another."
+                  : "Upload and select an image to watermark."}
+              </p>
             </div>
           ) : (
             <div className="mx-auto max-h-[460px] w-full overflow-hidden rounded-md border-2 border-ink bg-[repeating-conic-gradient(var(--bg-3)_0_25%,var(--bg)_0_50%)] bg-[length:20px_20px]">
@@ -798,7 +816,9 @@ export default function ImageWatermarkRoute() {
                   type="button"
                   aria-current={selected || undefined}
                   onClick={() => selectItem(item.id)}
-                  disabled={Boolean(item.error)}
+                  // Locked during export: switching selection mid-batch would close the reused
+                  // preview bitmap the export loop is still drawing from (InvalidStateError).
+                  disabled={isExporting || Boolean(item.error)}
                   className="-m-1 flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-sm p-1 text-left disabled:cursor-not-allowed"
                 >
                   <span className="size-11 shrink-0 overflow-hidden rounded-sm border-2 border-ink bg-paper">
@@ -1021,8 +1041,11 @@ export default function ImageWatermarkRoute() {
               <button
                 type="button"
                 onClick={() => logoInputRef.current?.click()}
+                // Locked during export: swapping the logo mid-batch would close the logo bitmap the
+                // export loop is still drawing from (silent unwatermarked output in WKWebView).
+                disabled={isExporting}
                 aria-label="Add a logo: click to browse"
-                className="wb-lift-hover block w-full rounded-[14px] border-2 border-ink bg-paper p-5 text-center shadow-pop-2 transition-[background,box-shadow,transform] duration-200 hover:bg-lemon"
+                className="wb-lift-hover block w-full rounded-[14px] border-2 border-ink bg-paper p-5 text-center shadow-pop-2 transition-[background,box-shadow,transform] duration-200 hover:bg-lemon disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-paper"
               >
                 {logo ? (
                   <div className="flex items-center gap-3 text-left">
@@ -1062,6 +1085,7 @@ export default function ImageWatermarkRoute() {
                   <button
                     type="button"
                     onClick={() => logoInputRef.current?.click()}
+                    disabled={isExporting}
                     className="wb-btn wb-btn--sm wb-btn--ghost flex-1 justify-center"
                   >
                     Replace
@@ -1069,6 +1093,7 @@ export default function ImageWatermarkRoute() {
                   <button
                     type="button"
                     onClick={removeLogo}
+                    disabled={isExporting}
                     className="wb-btn wb-btn--sm wb-btn--ghost flex-1 justify-center"
                     data-testid="logo-remove"
                   >
