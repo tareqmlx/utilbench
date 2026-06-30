@@ -122,6 +122,9 @@ export default function BackgroundRemoverRoute() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [prefs, setPrefs] = useToolPreferences<Prefs>("background-remover", DEFAULT_PREFS);
   const [isBusy, setIsBusy] = useState(false);
+  // Which run owns the busy state, so loading feedback lands on the button the user actually
+  // clicked: a single "Remove background" must not animate the sibling "Remove all" as "Processing".
+  const [runMode, setRunMode] = useState<"single" | "batch" | null>(null);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -468,6 +471,7 @@ export default function BackgroundRemoverRoute() {
       ),
     );
     setPreviewBusy("infer");
+    setRunMode("single");
     try {
       const bytes = await readFileBytes(item.file);
       const result = await removeViaWorker({
@@ -502,6 +506,7 @@ export default function BackgroundRemoverRoute() {
       );
     } finally {
       setIsBusy(false);
+      setRunMode(null);
       setPreviewBusy(null);
       setProgress({ done: 0, total: 0 });
     }
@@ -533,7 +538,9 @@ export default function BackgroundRemoverRoute() {
       return;
     }
 
-    let done = 0;
+    setRunMode("batch");
+    let done = 0; // attempted (success + fail) — drives the progress bar
+    let succeeded = 0; // only items that actually produced a cutout — drives the success toast
     for (const item of toRun) {
       if (batchCancelledRef.current) break;
       setItems((prev) =>
@@ -554,6 +561,7 @@ export default function BackgroundRemoverRoute() {
         });
         if (batchCancelledRef.current) break;
         applyResult(item.id, result, sig, "download");
+        succeeded += 1;
         if (item.id === selectedIdRef.current) replaceCutout(result);
       } catch {
         markItemError(
@@ -576,8 +584,22 @@ export default function BackgroundRemoverRoute() {
       ),
     );
     setIsBusy(false);
+    setRunMode(null);
     if (!batchCancelledRef.current && done > 0) {
-      toast.success(`Removed the background from ${done} image${done === 1 ? "" : "s"}`);
+      const failed = done - succeeded;
+      if (succeeded > 0) {
+        const noun = `image${succeeded === 1 ? "" : "s"}`;
+        // Only count cutouts actually produced — an errored item must not inflate the tally
+        // (was the source of "Removed 3 images" when one of three failed).
+        toast.success(
+          failed > 0
+            ? `Removed the background from ${succeeded} ${noun} · ${failed} failed`
+            : `Removed the background from ${succeeded} ${noun}`,
+        );
+      } else {
+        // Every attempted item failed — don't fire a green success toast for zero cutouts.
+        toast.error("Couldn't remove the background from any image.");
+      }
     }
   }, [isBusy, isZipping, prefs, ensureModelLoaded, applyResult, markItemError, replaceCutout]);
 
@@ -855,7 +877,14 @@ export default function BackgroundRemoverRoute() {
                           <span className="block truncate text-[13.5px] font-semibold text-ink">
                             {item.file.name}
                           </span>
-                          <span className="block font-mono text-[11px] text-ink-3 tabular-nums">
+                          <span
+                            className={cn(
+                              "block font-mono text-[11px] tabular-nums",
+                              // ink-3 fails AA on the lemon selected fill (4.29:1) — ink-2 clears it
+                              // (8.26:1), matching the `.wb-tile .pin` precedent for meta on tile fills.
+                              selected ? "text-ink-2" : "text-ink-3",
+                            )}
+                          >
                             {formatBytes(item.file.size)}
                             {item.status === "done" && item.result && (
                               <span className="inline-flex items-center gap-1">
@@ -910,7 +939,8 @@ export default function BackgroundRemoverRoute() {
             {/* Model load status */}
             <section className="wb-panel">
               <PaneHeader label="AI model" icon={<Wand2 className="size-4" aria-hidden="true" />} />
-              <div className="space-y-4 p-5 sm:p-6">
+              {/* Announce model download → ready state transitions to screen readers. */}
+              <div className="space-y-4 p-5 sm:p-6" aria-live="polite">
                 {modelState === "ready" ? (
                   <p className="flex items-center gap-2 text-[13px] font-semibold text-ink">
                     <span className="grid size-6 place-items-center rounded-full border-2 border-ink bg-mint shadow-pop-1">
@@ -924,7 +954,17 @@ export default function BackgroundRemoverRoute() {
                       <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                       Downloading the AI model…
                     </p>
-                    <div className="h-3 w-full overflow-hidden rounded-full border-2 border-ink bg-paper">
+                    {/* Indeterminate while the total is unknown — valuenow is omitted so AT reads
+                        "busy" rather than a misleading number. */}
+                    {/* biome-ignore lint/a11y/useFocusableInteractive: progressbar is a status role, must not be focusable */}
+                    <div
+                      className="h-3 w-full overflow-hidden rounded-full border-2 border-ink bg-paper"
+                      role="progressbar"
+                      aria-label="AI model download progress"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={dlPercent ?? undefined}
+                    >
                       <div
                         className={cn(
                           "h-full bg-lemon transition-[width] duration-200",
@@ -936,8 +976,7 @@ export default function BackgroundRemoverRoute() {
                       />
                     </div>
                     <p className="text-[12.5px] text-ink-2">
-                      Downloading the AI model (~5 MB) — one time, then it's cached. Your images
-                      never leave your browser.
+                      Downloading the AI model (~5 MB) — one time, then it's cached.
                     </p>
                   </div>
                 ) : modelState === "error" ? (
@@ -955,7 +994,7 @@ export default function BackgroundRemoverRoute() {
                   <div className="space-y-3">
                     <p className="text-[12.5px] text-ink-2">
                       The model downloads once (~5 MB) the first time you remove a background, then
-                      it's cached. Your images never leave your browser.
+                      it's cached.
                     </p>
                     <button
                       type="button"
@@ -978,8 +1017,13 @@ export default function BackgroundRemoverRoute() {
               />
               <div className="space-y-5 p-5 sm:p-6">
                 <div className="space-y-2">
-                  <Label className="text-ink-2">Mode</Label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <Label id="mode-label" className="text-ink-2">
+                    Mode
+                  </Label>
+                  <fieldset
+                    className="m-0 grid min-w-0 grid-cols-3 gap-2 border-0 p-0"
+                    aria-labelledby="mode-label"
+                  >
                     {OUTPUT_MODES.map((opt) => {
                       const active = prefs.outputMode === opt.value;
                       return (
@@ -1000,7 +1044,7 @@ export default function BackgroundRemoverRoute() {
                         </button>
                       );
                     })}
-                  </div>
+                  </fieldset>
                 </div>
 
                 {prefs.outputMode === "color" && (
@@ -1019,7 +1063,7 @@ export default function BackgroundRemoverRoute() {
                         disabled={workerLocked}
                         value={prefs.backgroundColor}
                         onChange={(e) => setPrefs({ backgroundColor: e.target.value })}
-                        className="size-9 shrink-0 cursor-pointer rounded-md border-2 border-ink bg-paper p-0.5 disabled:opacity-50"
+                        className="size-9 shrink-0 cursor-pointer rounded-md border-2 border-ink bg-paper p-0.5 disabled:opacity-50 pointer-coarse:size-11"
                         aria-label="Background color"
                       />
                     </div>
@@ -1027,8 +1071,13 @@ export default function BackgroundRemoverRoute() {
                 )}
 
                 <div className="space-y-2">
-                  <Label className="text-ink-2">Format</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <Label id="format-label" className="text-ink-2">
+                    Format
+                  </Label>
+                  <fieldset
+                    className="m-0 grid min-w-0 grid-cols-2 gap-2 border-0 p-0"
+                    aria-labelledby="format-label"
+                  >
                     {FORMAT_OPTIONS.map((opt) => {
                       const active = prefs.format === opt.value;
                       return (
@@ -1049,7 +1098,7 @@ export default function BackgroundRemoverRoute() {
                         </button>
                       );
                     })}
-                  </div>
+                  </fieldset>
                 </div>
 
                 {/* Advanced (collapsible) */}
@@ -1058,7 +1107,7 @@ export default function BackgroundRemoverRoute() {
                     type="button"
                     onClick={() => setShowAdvanced((v) => !v)}
                     aria-expanded={showAdvanced}
-                    className="flex w-full items-center justify-between text-[13px] font-bold text-ink"
+                    className="flex w-full items-center justify-between text-[13px] font-bold text-ink pointer-coarse:min-h-11"
                   >
                     <span>Advanced</span>
                     <ChevronDown
@@ -1070,15 +1119,19 @@ export default function BackgroundRemoverRoute() {
                     />
                   </button>
                   {showAdvanced && (
-                    <div className="mt-4 space-y-2">
+                    <div className="wb-fade-in mt-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <Label className="text-ink-2">Alpha threshold</Label>
-                        <span className="font-mono text-[12px] font-bold tabular-nums text-tomato">
+                        {/* Neutral parameter readout — ink, not the reserved tomato voice/accent. */}
+                        <span className="font-mono text-[12px] font-bold tabular-nums text-ink">
                           {prefs.alphaThreshold === 0 ? "soft" : prefs.alphaThreshold}
                         </span>
                       </div>
                       <Slider
                         aria-label="Alpha threshold"
+                        aria-valuetext={
+                          prefs.alphaThreshold === 0 ? "soft" : String(prefs.alphaThreshold)
+                        }
                         min={0}
                         max={255}
                         step={1}
@@ -1133,13 +1186,15 @@ export default function BackgroundRemoverRoute() {
                         <div className="relative overflow-hidden rounded-md border-2 border-ink bg-[repeating-conic-gradient(var(--bg-3)_0_25%,var(--bg)_0_50%)] bg-[length:20px_20px]">
                           {cutoutUrl ? (
                             <img
+                              // Remount per cutout so the reveal re-fires when a fresh result lands.
+                              key={cutoutUrl}
                               src={cutoutUrl}
                               alt="Cutout"
-                              className="block max-h-[360px] w-full object-contain"
+                              className="wb-cutout-in block max-h-[360px] w-full object-contain"
                               decoding="async"
                             />
                           ) : (
-                            <div className="flex min-h-[200px] items-center justify-center px-4 text-center text-[12.5px] text-ink-3">
+                            <div className="flex min-h-[200px] items-center justify-center px-4 text-center text-[12.5px] text-ink-2">
                               Click “Remove background” to see the cutout.
                             </div>
                           )}
@@ -1174,15 +1229,28 @@ export default function BackgroundRemoverRoute() {
 
             {/* Actions */}
             <div className="flex flex-col gap-3">
-              <div className="flex gap-3">
+              {/* Wrap so the third (Cancel) button drops to its own line on the narrowest phones
+                  instead of crushing the two primary actions. */}
+              <div className="flex flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={removeSelected}
                   disabled={!hasSelected || workerLocked}
                   className="wb-btn wb-btn--ghost flex-1 justify-center py-3.5"
                 >
-                  <Scissors className="size-4" aria-hidden="true" />
-                  <span>Remove background</span>
+                  <IconSwap swapKey={runMode === "single"}>
+                    {runMode === "single" ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                        <span>Removing…</span>
+                      </>
+                    ) : (
+                      <>
+                        <Scissors className="size-4" aria-hidden="true" />
+                        <span>Remove background</span>
+                      </>
+                    )}
+                  </IconSwap>
                 </button>
                 <button
                   type="button"
@@ -1190,8 +1258,8 @@ export default function BackgroundRemoverRoute() {
                   disabled={!hasQueue || workerLocked}
                   className="wb-btn flex-1 justify-center py-3.5 text-[15px]"
                 >
-                  <IconSwap swapKey={isBusy}>
-                    {isBusy ? (
+                  <IconSwap swapKey={isBusy && runMode === "batch"}>
+                    {isBusy && runMode === "batch" ? (
                       <>
                         <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                         <span>

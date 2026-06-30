@@ -1197,6 +1197,25 @@ button[role="switch"] [data-state] {
   }
 }
 
+/* ── Background remover: cutout reveal — the "your result is ready" moment.
+   Deliberately NO animation-fill-mode: a paused or headless/backgrounded tab
+   (where the entrance never fires) then renders the cutout at its normal
+   visible rest state, never stranded on the 0-opacity from-frame. The motion
+   only enhances an already-visible image; it never gates its visibility. */
+@keyframes wb-cutout-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.wb-cutout-in {
+  animation: wb-cutout-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   html {
@@ -1212,6 +1231,7 @@ button[role="switch"] [data-state] {
   }
   .wb-item-enter,
   .wb-fade-in,
+  .wb-cutout-in,
   .wb-diff-row,
   .wb-success-pop,
   .wb-page,

@@ -258,6 +258,7 @@ describe("BackgroundRemoverRoute", () => {
   });
 
   it("marks a failed item as error and still finishes the rest of the batch", async () => {
+    const { toast } = await import("sonner");
     render(<BackgroundRemoverRoute />);
     await uploadFiles([pngFile("good.png"), pngFile("bad.png"), pngFile("good2.png")]);
     await waitFor(() => expect(screen.getByText("good2.png")).toBeInTheDocument());
@@ -273,6 +274,24 @@ describe("BackgroundRemoverRoute", () => {
     });
     // "bad.png" never produced a result → no per-row download button for it.
     expect(screen.queryByRole("button", { name: "Download bad.png" })).not.toBeInTheDocument();
+    // The success toast counts only the 2 produced cutouts — not the failed item.
+    expect(toast.success).toHaveBeenCalledWith("Removed the background from 2 images · 1 failed");
+  });
+
+  it("reports an error (not a success toast) when every batch item fails", async () => {
+    const { toast } = await import("sonner");
+    render(<BackgroundRemoverRoute />);
+    await uploadFiles([pngFile("bad.png"), pngFile("bad2-bad.png")]);
+    await waitFor(() => expect(screen.getByText("bad.png")).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Remove all/ }));
+    });
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Couldn't remove the background from any image."),
+    );
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("warns when the upload exceeds the queue-size cap and keeps only the allowed files", async () => {

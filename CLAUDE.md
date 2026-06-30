@@ -92,7 +92,7 @@ A custom Vite plugin in `vite.config.ts` auto-generates `sitemap.xml` during bui
 
 Composable layout components in `src/components/tool-layout/` that every tool `Route.tsx` file uses. Barrel-exported from `index.ts`. Import via relative path from Route files (`../../components/tool-layout`).
 
-- **`ToolShell`** — section wrapper used by every tool. Two variants: `variant="default"` (1320 px `wb-shell`) or `variant="wide"` (1900 px `max-w-300`, reserved for tools that legitimately need a larger work surface — currently `diff-checker` and `jwt-decoder`). Renders a `<section>`, never a `<main>` (the global `<main>` lives in `Layout.tsx`).
+- **`ToolShell`** — section wrapper used by every tool. Two variants: `variant="default"` (1320 px `wb-shell`) or `variant="wide"` (1900 px `max-w-300`, reserved for tools that legitimately need a larger work surface — currently `diff-checker`, `jwt-decoder`, and `background-remover` (side-by-side original/cutout previews)). Renders a `<section>`, never a `<main>` (the global `<main>` lives in `Layout.tsx`).
 - **`PaneHeader`** — label (renders `<label>` when `htmlFor` is set, `<span>` otherwise) + icon + actions slot, used for input/output pane headers
 - **`TwoPane`** — responsive two-column grid (`grid-cols-1 lg:grid-cols-2`) with configurable gap
 - **`ErrorAlert`** — null-safe destructive alert; renders nothing when `error` is `null`
