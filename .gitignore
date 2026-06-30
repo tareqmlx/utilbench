@@ -85,3 +85,6 @@ video/
 
 # pdfjs runtime assets (staged from node_modules, never committed)
 public/pdfjs/
+
+# onnxruntime-web runtime assets (staged from node_modules, never committed)
+public/ort/

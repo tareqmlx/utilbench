@@ -1,0 +1,23 @@
+Utilbench
+Copyright (c) Utilbench contributors
+
+This product includes third-party software and assets. Attributions below.
+
+-------------------------------------------------------------------------------
+onnxruntime-web
+-------------------------------------------------------------------------------
+License: Apache-2.0
+Project: https://github.com/microsoft/onnxruntime
+Used as the in-browser inference runtime for the background-remover tool.
+Runtime WASM/MJS assets are staged into public/ort/ at build time.
+
+-------------------------------------------------------------------------------
+u2netp.onnx (U^2-Net / U2Netp salient object detection model)
+-------------------------------------------------------------------------------
+License: Apache-2.0 (model weights)
+Packaging: sourced via the rembg project (https://github.com/danielgatis/rembg),
+           which is licensed MIT and redistributes the upstream Apache-2.0 weights.
+Upstream: U^2-Net (https://github.com/xuebinqin/U-2-Net)
+File: public/models/background-remover/u2netp.onnx
+SHA-256: 309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8
+MD5: 8e83ca70e441ab06c318d82300c84806

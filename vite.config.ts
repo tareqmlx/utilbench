@@ -61,6 +61,7 @@ export default defineConfig({
       "@jsquash/avif",
       "@jsquash/png",
       "@jsquash/oxipng",
+      "onnxruntime-web",
     ],
   },
   // compress.worker.ts dynamically `import()`s codecs (code-splitting), which the
@@ -100,6 +101,10 @@ export default defineConfig({
           "vendor-dompurify": ["dompurify"],
           "vendor-pdf": ["pdf-lib"],
           "vendor-pdfjs": ["pdfjs-dist"],
+          // NO vendor-ort seed: the main app never imports onnxruntime-web (only the dedicated
+          // remove.worker.ts does, which Vite bundles as its own entry). Seeding the bare package
+          // here dragged the FULL `/webgpu` bundle — incl. the 25.58 MiB jsep wasm, over the
+          // Cloudflare 25 MiB cap — into dist/assets as dead weight. Omitting it keeps deploy green.
           "vendor-dnd": ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
           // Best-effort only: the codecs are dynamically imported inside the worker,
           // so their chunks attach to the worker bundle, not necessarily here (plan §3.2).

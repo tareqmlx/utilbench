@@ -14,6 +14,9 @@ const Slider = React.forwardRef<
   // slider element. Forward them to the Thumb so screen readers announce the name.
   const ariaLabel = props["aria-label"];
   const ariaLabelledby = props["aria-labelledby"];
+  // Radix doesn't derive aria-valuetext; forward a caller-supplied one to the Thumb so a
+  // value with a non-numeric meaning (e.g. 0 = "soft") is announced as that, not the raw number.
+  const ariaValueText = props["aria-valuetext"];
   return (
     <SliderPrimitive.Root
       ref={ref}
@@ -26,6 +29,7 @@ const Slider = React.forwardRef<
       <SliderPrimitive.Thumb
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledby}
+        aria-valuetext={ariaValueText}
         className="block h-5 w-5 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
       />
     </SliderPrimitive.Root>
