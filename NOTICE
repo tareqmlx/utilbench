@@ -21,3 +21,24 @@ Upstream: U^2-Net (https://github.com/xuebinqin/U-2-Net)
 File: public/models/background-remover/u2netp.onnx
 SHA-256: 309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8
 MD5: 8e83ca70e441ab06c318d82300c84806
+
+-------------------------------------------------------------------------------
+UpscalerJS (upscaler, @upscalerjs/esrgan-slim)
+-------------------------------------------------------------------------------
+License: MIT
+Copyright: (c) 2022 Kevin Scott
+Project: https://github.com/thekevinscott/upscaler
+Used as the in-browser super-resolution engine (TF.js) for the image-upscaler tool.
+
+-------------------------------------------------------------------------------
+ESRGAN-slim model weights (2x, 4x)
+-------------------------------------------------------------------------------
+License: Apache-2.0 (model weights)
+Upstream: idealo/image-super-resolution (https://github.com/idealo/image-super-resolution)
+Packaging: distributed via @upscalerjs/esrgan-slim (MIT wrapper) in TF.js layers format.
+Staged same-origin into public/models/image-upscaler/x{2,4}/ at build time by
+scripts/copy-upscaler-models.ts, which also stages the Apache-2.0 LICENSE text.
+Files: public/models/image-upscaler/x2/group1-shard1of1.bin
+       public/models/image-upscaler/x4/group1-shard1of1.bin
+SHA-256 (x2): 5cb464ae4d390ce0a771afd5feaf60fbfcdb18ab48a56db98cdf6b88202369de
+SHA-256 (x4): 82637daaf3ba024df5e9da2389e8992e7a6e8a992ba6268ce6bc490c92e9516e

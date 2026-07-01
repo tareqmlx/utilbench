@@ -88,3 +88,6 @@ public/pdfjs/
 
 # onnxruntime-web runtime assets (staged from node_modules, never committed)
 public/ort/
+
+# upscaler model weights (staged from node_modules by copy:upscaler-models, never committed)
+public/models/image-upscaler/
