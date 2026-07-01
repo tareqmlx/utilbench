@@ -328,7 +328,12 @@ async function preflightDims(
 }
 
 function outputCapMessage(scale: ScaleFactor): string {
-  return `This image is too large to upscale ${scale}× (the result would exceed the in-browser canvas limit — 8192px/side or 16.7 MP). Try 2× or shrink the source in image-resizer first.`;
+  // At 2× there's no smaller scale to suggest — only "Try 2×" when the user picked 4×.
+  const remedy =
+    scale === 2
+      ? "Shrink the source in image-resizer first."
+      : "Try 2× or shrink the source in image-resizer first.";
+  return `This image is too large to upscale ${scale}× (the result would exceed the in-browser canvas limit — 8192px/side or 16.7 MP). ${remedy}`;
 }
 
 // ── Decode (full-res → srcRGBA) ──────────────────────────────────────────────
@@ -359,7 +364,15 @@ async function decodeToImageData(input: Uint8Array, inputFormat: NormFormat): Pr
         input.byteOffset,
         input.byteOffset + input.byteLength,
       ) as ArrayBuffer;
-      return decode(buffer);
+      try {
+        return await decode(buffer);
+      } catch {
+        // Native decode failed AND the @jsquash/avif fallback failed → a friendly, surfaced message
+        // (plan §10.1). `await` above so a rejected decode is caught here, not by the caller.
+        throw new Error(
+          "Couldn't read this AVIF — it may be corrupt or use an unsupported feature.",
+        );
+      }
     }
     throw err;
   }
@@ -382,15 +395,23 @@ export async function inferUpscaledRGBA(
   const load = deps.loadUpscaler ?? loadUpscaler;
 
   // 1. PREFLIGHT + OUTPUT-CAP GATE (both ≤8192 px/side AND ≤16.7 MP area — the canvas ceiling; §10.2).
+  // Gate on preflight (header) dims: max-side and area are orientation-invariant, so the verdict holds
+  // regardless of EXIF rotation and the gate stays BEFORE decode (no OOM on oversized inputs).
   const { width: w, height: h } = await preflightDims(input, inputFormat);
   if (clampToCanvasLimits(w * scale, h * scale).downscaled) {
     throw new Error(outputCapMessage(scale));
   }
-  const outW = w * scale;
-  const outH = h * scale;
 
   // 2. DECODE full-res → srcRGBA (EXIF-oriented, non-premultiplied).
   const srcRGBA = await decodeToImageData(input, inputFormat);
+
+  // Output geometry derives from the DECODED (oriented) dims, not preflight: readAvifDims/readImageDims
+  // report non-oriented dims for WebP/AVIF, so a rotated non-square source would otherwise trip the
+  // geometry invariant below. The alpha plane is upscaled from these same dims for the same reason.
+  const dw = srcRGBA.width;
+  const dh = srcRGBA.height;
+  const outW = dw * scale;
+  const outH = dh * scale;
 
   // 3. SPLIT ALPHA (ESRGAN is RGB-only).
   const { rgb, alpha } = splitAlpha(srcRGBA);
@@ -406,7 +427,7 @@ export async function inferUpscaledRGBA(
   const rgbUp = await outputToRgb(output);
 
   // 5. UPSCALE ALPHA separately (bicubic) when present.
-  const alphaUp = alpha ? upscaleAlphaPlane(alpha, w, h, scale) : null;
+  const alphaUp = alpha ? upscaleAlphaPlane(alpha, dw, dh, scale) : null;
 
   // 6. RECOMBINE → outW×outH RGBA.
   const combined = recombine(rgbUp, alphaUp);
@@ -464,9 +485,9 @@ export async function encodeUpscaled(
 
 // ── End-to-end convenience (infer + encode — plan §5.3 steps 1–8) ────────────
 /**
- * Full pipeline: {@link inferUpscaledRGBA} + {@link encodeUpscaled}. Asserts the geometry invariant —
- * output dims === input dims × scale (the DEFINING property of this tool; §5.3 step 8) — and stamps the
- * applied `scale` onto the result.
+ * Full pipeline: {@link inferUpscaledRGBA} + {@link encodeUpscaled}. The geometry invariant — output
+ * dims === decoded-input dims × scale (the DEFINING property of this tool; §5.3 step 8) — is enforced
+ * inside {@link inferUpscaledRGBA}; this wrapper encodes and stamps the applied `scale` onto the result.
  */
 export async function upscaleImageData(
   input: Uint8Array,
@@ -475,14 +496,10 @@ export async function upscaleImageData(
   onProgress?: (p: StageProgress) => void,
   deps: { loadUpscaler?: typeof loadUpscaler } = {},
 ): Promise<UpscaleResult> {
-  const { width: inW, height: inH } = await preflightDims(input, inputFormat);
+  // The geometry invariant (output === decoded-input × scale) is enforced INSIDE inferUpscaledRGBA
+  // against the decoded dims. A second assertion here against preflight dims would false-throw on a
+  // rotated non-square source (preflight is non-oriented for WebP/AVIF), so it's dropped.
   const upscaledRGBA = await inferUpscaledRGBA(input, inputFormat, opts.scale, onProgress, deps);
-
-  if (upscaledRGBA.width !== inW * opts.scale || upscaledRGBA.height !== inH * opts.scale) {
-    throw new Error(
-      `Geometry invariant violated: ${upscaledRGBA.width}×${upscaledRGBA.height} !== ${inW * opts.scale}×${inH * opts.scale}.`,
-    );
-  }
 
   const encoded = await encodeUpscaled(
     upscaledRGBA,

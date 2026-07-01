@@ -374,6 +374,31 @@ describe("inferUpscaledRGBA / upscaleImageData", () => {
     expect(result.outputSize).toBe(result.bytes.length);
   });
 
+  it("orientation mismatch: output tracks DECODED dims, not preflight (rotated-AVIF guard, opencode r1 #2)", async () => {
+    // Preflight (header) reports 10×8, but the decode yields 8×10 — the shape a rotated non-square
+    // AVIF/WebP produces (readAvifDims/readImageDims report NON-oriented dims for those formats, while
+    // the createImageBitmap decode is EXIF-oriented). Output geometry must follow the DECODED basis, so
+    // the geometry invariant must NOT trip. (Cap gate stays on preflight — area/max-side are invariant.)
+    nextBitmap = { width: 8, height: 10 };
+    const input = pngWithDims(10, 8);
+    const rgba = await inferUpscaledRGBA(input, "png", 2, undefined, { loadUpscaler: stubLoad });
+    expect(rgba.width).toBe(16); // decoded 8 × 2
+    expect(rgba.height).toBe(20); // decoded 10 × 2
+  });
+
+  it("upscaleImageData wrapper also tolerates the orientation mismatch (no stale preflight assertion, opencode r2 #1)", async () => {
+    // Same rotated-source shape (preflight 10x8, decode 8x10) driven through the full wrapper: it must
+    // NOT re-throw a geometry-invariant error against preflight dims — the invariant is enforced inside
+    // inferUpscaledRGBA against decoded dims. Result must track the decoded basis.
+    nextBitmap = { width: 8, height: 10 };
+    const input = pngWithDims(10, 8);
+    const result = await upscaleImageData(input, "png", { ...DEFAULT_PREFS, scale: 2 }, undefined, {
+      loadUpscaler: stubLoad,
+    });
+    expect(result.width).toBe(16); // decoded 8 × 2
+    expect(result.height).toBe(20); // decoded 10 × 2
+  });
+
   it("streams upscaling progress via onProgress", async () => {
     nextBitmap = { width: 4, height: 4 };
     const input = pngWithDims(4, 4);

@@ -32,6 +32,7 @@ vi.mock("../upscaler", () => ({
   reencodeViaWorker: vi.fn(),
   prefetchModel: vi.fn(),
   terminateUpscaleWorker: vi.fn(),
+  WORKER_STOPPED_MESSAGE: "Image upscaler worker stopped.",
   downloadBlob: vi.fn(),
   createBatchZip: vi.fn().mockResolvedValue(new Blob(["zip"], { type: "application/zip" })),
   buildUpscaledFilename: vi.fn(
@@ -353,7 +354,7 @@ describe("ImageUpscalerRoute", () => {
       fireEvent.click(screen.getByRole("button", { name: /Upscale all/ }));
     });
 
-    const cancelBtn = await screen.findByRole("button", { name: "Cancel" });
+    const cancelBtn = await screen.findByRole("button", { name: "Skip remaining" });
     await act(async () => {
       fireEvent.click(cancelBtn);
     });
@@ -362,7 +363,7 @@ describe("ImageUpscalerRoute", () => {
     });
 
     await waitFor(() =>
-      expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument(),
+      expect(screen.queryByRole("button", { name: "Skip remaining" })).not.toBeInTheDocument(),
     );
     // Only the first item was ever dispatched; the worker was NOT torn down (soft cancel).
     expect(mock.upscaleViaWorker).toHaveBeenCalledTimes(1);
@@ -392,5 +393,118 @@ describe("ImageUpscalerRoute", () => {
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: "Stop now" })).not.toBeInTheDocument(),
     );
+  });
+
+  it("surfaces a specific worker error (timeout) instead of the generic corrupt/unsupported message", async () => {
+    mock.upscaleViaWorker.mockRejectedValue(new Error("Upscaling timed out."));
+
+    render(<ImageUpscalerRoute />);
+    await uploadFiles([pngFile("a.png")]);
+    await waitFor(() => expect(screen.getByText("a.png")).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Upscale" }));
+    });
+
+    await waitFor(() => expect(screen.getByText(/Upscaling timed out\./)).toBeInTheDocument());
+    expect(screen.queryByText(/may be corrupt or unsupported/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the generic message for an opaque (non-friendly) worker error", async () => {
+    mock.upscaleViaWorker.mockRejectedValue(new Error("TypeError: something internal"));
+
+    render(<ImageUpscalerRoute />);
+    await uploadFiles([pngFile("a.png")]);
+    await waitFor(() => expect(screen.getByText("a.png")).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Upscale" }));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/may be corrupt or unsupported/)).toBeInTheDocument(),
+    );
+  });
+
+  it("shows a per-item cap badge in the queue row (too large / max 2×)", async () => {
+    mock.computeMaxScale.mockReturnValue(0);
+    render(<ImageUpscalerRoute />);
+    await uploadFiles([pngFile("huge.png")]);
+    await waitFor(() => expect(screen.getByText("huge.png")).toBeInTheDocument());
+    // The compact queue-row badge (distinct from the Output-panel "too large" run message).
+    expect(screen.getByText(/· too large/)).toBeInTheDocument();
+
+    cleanup();
+    mock.computeMaxScale.mockReturnValue(2);
+    render(<ImageUpscalerRoute />);
+    await uploadFiles([pngFile("mid.png")]);
+    await waitFor(() => expect(screen.getByText("mid.png")).toBeInTheDocument());
+    expect(screen.getByText(/max 2×/)).toBeInTheDocument();
+  });
+
+  it("does NOT mark an item errored when a Stop-now-aborted run rejects afterwards", async () => {
+    const d = deferred<UpscaleResult>();
+    mock.upscaleViaWorker.mockReturnValue(d.promise);
+
+    render(<ImageUpscalerRoute />);
+    await uploadFiles([pngFile("a.png")]);
+    await waitFor(() => expect(screen.getByText("a.png")).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Upscale" }));
+    });
+    // Hard-stop mid-run: resets the item + terminates the worker (which rejects the in-flight promise).
+    const stopBtn = await screen.findByRole("button", { name: "Stop now" });
+    await act(async () => {
+      fireEvent.click(stopBtn);
+    });
+    await act(async () => {
+      d.reject(new Error("Image upscaler worker stopped."));
+    });
+
+    // The aborted item must NOT flip to a false error — the rejection is discarded (superseded reqId).
+    expect(screen.queryByText(/may be corrupt or unsupported/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Image upscaler worker stopped/)).not.toBeInTheDocument();
+    expect(mock.terminateUpscaleWorker).toHaveBeenCalled();
+  });
+
+  it("a superseded run unwinding after Stop now does NOT clear the NEW run's busy UI", async () => {
+    // Reproduces the run-generation clobber: R1 is parked on a worker promise; Stop now aborts it and
+    // the user immediately starts R2; only THEN does R1 settle. R1's finally must not tear down R2.
+    const d1 = deferred<UpscaleResult>();
+    const d2 = deferred<UpscaleResult>();
+    mock.upscaleViaWorker.mockReturnValueOnce(d1.promise).mockReturnValueOnce(d2.promise);
+
+    render(<ImageUpscalerRoute />);
+    await uploadFiles([pngFile("a.png")]);
+    await waitFor(() => expect(screen.getByText("a.png")).toBeInTheDocument());
+
+    // R1 starts, then Stop now.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Upscale" }));
+    });
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Stop now" }));
+    });
+
+    // R2 starts before R1's promise has settled.
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Upscale" }));
+    });
+    expect(await screen.findByRole("button", { name: "Stop now" })).toBeInTheDocument();
+    // R2's queue row is processing ("· upscaling…" sits in the meta span next to the dims).
+    const meta = screen.getByText("a.png").parentElement;
+    expect(meta?.textContent).toMatch(/upscaling…/);
+
+    // R1 finally lands late — with the run-generation guard it must be a no-op for R2.
+    await act(async () => {
+      d1.reject(new Error("Image upscaler worker stopped."));
+    });
+
+    // R2 still owns the run: its busy UI survives (button would revert to "Upscale" if R1 clobbered it).
+    expect(screen.getByRole("button", { name: "Stop now" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Upscale" })).not.toBeInTheDocument();
+    // …and R1's superseded revert must NOT have knocked R2's row out of "processing".
+    expect(screen.getByText("a.png").parentElement?.textContent).toMatch(/upscaling…/);
   });
 });

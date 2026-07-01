@@ -42,6 +42,11 @@ export * from "./upscaler-types";
 // batch/preview proceeds.
 const UPSCALE_TIMEOUT_MS = 300_000;
 
+// Rejection message for pending dispatches killed by an intentional teardown (Stop now / unmount).
+// Route matches on it to tell a deliberate abort apart from a genuine load/inference failure, so an
+// aborted model prefetch doesn't flip the panel to "error" (plan §6.7).
+export const WORKER_STOPPED_MESSAGE = "Image upscaler worker stopped.";
+
 type ProgressCb = (p: { stage: string; current: number; total: number }) => void;
 
 let worker: Worker | null = null;
@@ -224,7 +229,7 @@ export function terminateUpscaleWorker(): void {
   }
   for (const [, entry] of pending) {
     clearTimeout(entry.timer);
-    entry.reject(new Error("Image upscaler worker stopped."));
+    entry.reject(new Error(WORKER_STOPPED_MESSAGE));
   }
   pending.clear();
   prefetchPromises.clear();

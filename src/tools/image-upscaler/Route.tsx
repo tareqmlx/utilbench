@@ -37,6 +37,7 @@ import {
   type ScaleFactor,
   type UpscalePrefs,
   type UpscaleResult,
+  WORKER_STOPPED_MESSAGE,
   buildUpscaledFilename,
   clampToCanvasLimits,
   computeMaxScale,
@@ -98,6 +99,15 @@ function effectiveScale(maxScale: ScaleFactor | 0, prefsScale: ScaleFactor): Sca
   return Math.min(prefsScale, maxScale) as ScaleFactor;
 }
 
+// Worker/core throws carry a specific user-facing reason for some failures (output-cap re-check,
+// per-dispatch timeout, unreadable AVIF). Surface those verbatim instead of the blanket
+// "corrupt/unsupported" fallback (plan §7.1/§10.1); keep the fallback for opaque internal throws.
+const FRIENDLY_ERROR = /too large to upscale|timed out|Couldn't read this/i;
+function friendlyError(err: unknown, fallback: string): string {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  return FRIENDLY_ERROR.test(msg) ? msg : fallback;
+}
+
 // A tighter output cap for weak devices — TF.js materializes a full float output tensor to stitch,
 // which the 16.7 MP canvas cap does NOT bound (plan §7.2). Route reads navigator.* (the DOM-free
 // `computeMaxScale` can't) and passes a lower `maxArea`. `hardwareConcurrency` is the primary signal;
@@ -109,6 +119,20 @@ function deviceMaxArea(): number | undefined {
   const mem = (navigator as unknown as { deviceMemory?: number }).deviceMemory;
   if (cores <= 4 || (typeof mem === "number" && mem <= 4)) return 8_000_000;
   return undefined;
+}
+
+// Best-effort GPU probe (plan §6.1 CPU-floor disclosure). If the page can't get a WebGL context, the
+// worker's OffscreenCanvas WebGL backend is unavailable too and TF.js falls back to the pure-JS CPU
+// backend — orders of magnitude slower — so we warn up front. A false "no GPU" is harmless (just an
+// extra hint); the rare inverse (worker WebGL lost after a hard-stop) is covered by the timeout.
+function webglUnavailable(): boolean {
+  if (typeof document === "undefined") return false;
+  try {
+    const c = document.createElement("canvas");
+    return !(c.getContext("webgl2") || c.getContext("webgl"));
+  } catch {
+    return true;
+  }
 }
 
 let nextId = 0;
@@ -164,6 +188,11 @@ export default function ImageUpscalerRoute() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const reqIdRef = useRef(0);
+  // Per-top-level-run generation. reqIdRef routes/discards worker RESULTS; runIdRef owns the shared
+  // RUN state (isBusy, runMode, progress, the batch loop). Bumped once per upscaleSelected/upscaleAll
+  // and by stopNow. A superseded run's cleanup/tail bails when runIdRef.current !== its captured myRun,
+  // so a stale async handler unwinding after Stop now can't clobber a newer run's busy UI / progress.
+  const runIdRef = useRef(0);
   const batchCancelledRef = useRef(false);
   // Which scale the model is currently warm for (the model is per-scale — a scale change reloads).
   const loadedScaleRef = useRef<ScaleFactor | null>(null);
@@ -194,6 +223,9 @@ export default function ImageUpscalerRoute() {
     [items, selectedId],
   );
 
+  // Probed once — drives the CPU-floor "may be slow" disclosure (plan §6.1).
+  const noGpu = useMemo(() => webglUnavailable(), []);
+
   // Cleanup on unmount: revoke every live object URL + tear down the worker.
   useEffect(() => {
     return () => {
@@ -208,12 +240,15 @@ export default function ImageUpscalerRoute() {
   const replaceOutput = useCallback((result: UpscaleResult | null) => {
     displayedResultRef.current = result;
     setPreviewResult(result);
-    setOutputUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return result
-        ? URL.createObjectURL(new Blob([result.bytes as BlobPart], { type: result.mime }))
-        : null;
-    });
+    // Revoke the previous URL and mint the new one OUTSIDE the state updater — updaters must be pure
+    // (StrictMode double-invokes them in dev, which would leak/double-revoke). outputUrlRef holds the
+    // last committed URL; keep it in lockstep so this revoke is the authoritative one.
+    const next = result
+      ? URL.createObjectURL(new Blob([result.bytes as BlobPart], { type: result.mime }))
+      : null;
+    if (outputUrlRef.current) URL.revokeObjectURL(outputUrlRef.current);
+    outputUrlRef.current = next;
+    setOutputUrl(next);
   }, []);
 
   // Store a freshly produced result on its item, tagged with the PREFS-DERIVED signatures it was
@@ -254,9 +289,15 @@ export default function ImageUpscalerRoute() {
       loadedScaleRef.current = scale;
       setModelState("ready");
       return true;
-    } catch {
-      setModelState("error");
-      setModelError("Couldn't load the AI model — check your connection and retry.");
+    } catch (err) {
+      // A deliberate teardown (Stop now / unmount terminated the worker) rejects the in-flight prefetch.
+      // That's an abort, not a load failure — stopNow already set modelState to "idle", so leave it be
+      // instead of flipping the panel to a spurious "Couldn't load the AI model." error (plan §6.7).
+      const aborted = err instanceof Error && err.message === WORKER_STOPPED_MESSAGE;
+      if (!aborted) {
+        setModelState("error");
+        setModelError("Couldn't load the AI model — check your connection and retry.");
+      }
       return false;
     }
   }, []);
@@ -394,6 +435,7 @@ export default function ImageUpscalerRoute() {
 
       const accepted: QueueItem[] = [];
       const rejected: string[] = [];
+      const warnings: string[] = [];
       let runningTotal = items.reduce((s, i) => s + i.file.size, 0);
       const maxArea = deviceMaxArea();
 
@@ -407,7 +449,7 @@ export default function ImageUpscalerRoute() {
           rejected.push(validation.error ?? `Unsupported file: "${file.name}".`);
           continue;
         }
-        if (validation.warning) setWarning(validation.warning);
+        if (validation.warning) warnings.push(validation.warning);
         if (runningTotal + file.size > MAX_TOTAL_SIZE) {
           rejected.push(
             `"${file.name}" skipped — would exceed the ${Math.round(
@@ -463,10 +505,11 @@ export default function ImageUpscalerRoute() {
         );
       }
 
-      if (accepted.length === 0) return;
       if (accepted.some((i) => i.animated)) {
-        setWarning("Animated image — only the first frame is upscaled.");
+        warnings.push("Animated image — only the first frame is upscaled.");
       }
+      if (warnings.length > 0) setWarning([...new Set(warnings)].join(" "));
+      if (accepted.length === 0) return;
       setItems((prev) => [...prev, ...accepted]);
       const first = accepted[0];
       if (first && !selectedId) setSelectedId(first.id);
@@ -514,11 +557,16 @@ export default function ImageUpscalerRoute() {
     setProgress({ done: 0, total: 1 });
     // Claim the requestId BEFORE the (possibly slow) model load so a cancel during the load supersedes.
     const requestId = ++reqIdRef.current;
+    const myRun = ++runIdRef.current;
     const ok = await ensureModelLoaded(eff);
     if (!ok || requestId !== reqIdRef.current) {
-      setIsBusy(false);
-      setRunMode(null);
-      setProgress({ done: 0, total: 0 });
+      // Only tear down the busy UI if we still own the run — a Stop now that started a NEW run must
+      // not have this superseded handler clear the new run's busy state.
+      if (runIdRef.current === myRun) {
+        setIsBusy(false);
+        setRunMode(null);
+        setProgress({ done: 0, total: 0 });
+      }
       return;
     }
     setItems((prev) =>
@@ -545,27 +593,55 @@ export default function ImageUpscalerRoute() {
         },
       });
       if (requestId !== reqIdRef.current) {
-        // Cancelled mid-run — revert off "processing" without applying the result.
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === item.id && i.status === "processing"
-              ? { ...i, status: i.result ? ("done" as const) : ("ready" as const) }
-              : i,
-          ),
-        );
+        // Superseded — don't apply the result. Only revert the item off "processing" if THIS run
+        // still owns it (soft cancel in single mode leaves runIdRef untouched). A hard stop or a newer
+        // run has bumped runIdRef and re-owns the item; reverting here would knock the NEW run's item
+        // out of "processing" (mirrors the runIdRef guard on the finally).
+        if (runIdRef.current === myRun) {
+          setItems((prev) =>
+            prev.map((i) =>
+              i.id === item.id && i.status === "processing"
+                ? { ...i, status: i.result ? ("done" as const) : ("ready" as const) }
+                : i,
+            ),
+          );
+        }
         return;
       }
       applyResult(item.id, result, String(eff), encSigOf(prefs));
       replaceOutput(result);
       toast.success("Upscaled the image");
-    } catch {
-      markItemError(item.id, "Couldn't upscale — the image may be corrupt or unsupported.");
+    } catch (err) {
+      if (requestId !== reqIdRef.current) {
+        // Superseded by Stop now / Cancel — a rejected in-flight promise must NOT overwrite the item
+        // with a false "error" (the success path guards the same way). Only revert off "processing" if
+        // THIS run still owns it (soft cancel); a hard stop or newer run re-owns it via runIdRef.
+        if (runIdRef.current === myRun) {
+          setItems((prev) =>
+            prev.map((i) =>
+              i.id === item.id && i.status === "processing"
+                ? { ...i, status: i.result ? ("done" as const) : ("ready" as const) }
+                : i,
+            ),
+          );
+        }
+        return;
+      }
+      markItemError(
+        item.id,
+        friendlyError(err, "Couldn't upscale — the image may be corrupt or unsupported."),
+      );
     } finally {
-      setIsBusy(false);
-      setRunMode(null);
-      setPreviewBusy(null);
-      setProgress({ done: 0, total: 0 });
-      setUpProgress(null);
+      // Only the run that still owns runIdRef clears the shared busy UI. After Stop now (which bumps
+      // runIdRef and does its own teardown) — or a newer run — this superseded handler must NOT reset
+      // isBusy/progress, or it would flip a fresh run's UI back to idle mid-flight.
+      if (runIdRef.current === myRun) {
+        setIsBusy(false);
+        setRunMode(null);
+        setPreviewBusy(null);
+        setProgress({ done: 0, total: 0 });
+        setUpProgress(null);
+      }
     }
   }, [isBusy, prefs, ensureModelLoaded, applyResult, markItemError, replaceOutput]);
 
@@ -623,13 +699,17 @@ export default function ImageUpscalerRoute() {
     setIsBusy(true);
     setError(null);
     batchCancelledRef.current = false;
+    const myRun = ++runIdRef.current;
     setProgress({ done: 0, total: toRun.length });
     setRunMode("batch");
     let done = 0; // attempted (success + fail) — drives the progress bar
     let succeeded = 0; // only items that produced an output — drives the toast
 
     for (const item of toRun) {
-      if (batchCancelledRef.current) break;
+      // Stop cleanly on soft/hard cancel OR when a newer run superseded this loop — batchCancelledRef
+      // alone is insufficient: a new upscaleAll resets it to false, so a stale loop would resume
+      // dispatching. runIdRef.current !== myRun catches that supersession.
+      if (batchCancelledRef.current || runIdRef.current !== myRun) break;
       const eff = effectiveScale(item.maxScale, prefs.scale);
       setItems((prev) =>
         prev.map((i) =>
@@ -639,12 +719,16 @@ export default function ImageUpscalerRoute() {
       const requestId = ++reqIdRef.current;
       const ok = await ensureModelLoaded(eff);
       if (!ok) {
+        // A terminated worker (Stop now) rejects the in-flight prefetch → ok=false. That's an abort,
+        // not a load failure: the abort already restored the item, so bail instead of marking a false
+        // "Couldn't load the AI model." Only a genuine load failure (still the current run) marks it.
+        if (batchCancelledRef.current || runIdRef.current !== myRun) break;
         markItemError(item.id, "Couldn't load the AI model.");
         done += 1;
         setProgress({ done, total: toRun.length });
         continue;
       }
-      if (batchCancelledRef.current) break;
+      if (batchCancelledRef.current || runIdRef.current !== myRun) break;
       try {
         const bytes = await readFileBytes(item.file);
         const result = await upscaleViaWorker({
@@ -663,39 +747,52 @@ export default function ImageUpscalerRoute() {
               setUpProgress({ current: p.current, total: p.total });
           },
         });
-        if (batchCancelledRef.current) break;
+        if (batchCancelledRef.current || runIdRef.current !== myRun) break;
         applyResult(item.id, result, String(eff), encSig);
         succeeded += 1;
         if (item.id === selectedIdRef.current) replaceOutput(result);
-      } catch {
-        markItemError(item.id, "Couldn't upscale — the image may be corrupt or unsupported.");
+      } catch (err) {
+        // Skip a false "error" when the user aborted (Stop now / Skip remaining) or a newer run
+        // superseded this one — the abort/cleanup restores the item's status (mirrors the success guard).
+        if (requestId === reqIdRef.current && !batchCancelledRef.current) {
+          markItemError(
+            item.id,
+            friendlyError(err, "Couldn't upscale — the image may be corrupt or unsupported."),
+          );
+        }
       }
       done += 1;
-      setProgress({ done, total: toRun.length });
+      // Don't paint this run's progress onto a run that superseded us.
+      if (runIdRef.current === myRun) setProgress({ done, total: toRun.length });
     }
 
-    setItems((prev) =>
-      prev.map((i) =>
-        i.status === "processing"
-          ? { ...i, status: i.result ? ("done" as const) : ("ready" as const) }
-          : i,
-      ),
-    );
-    setIsBusy(false);
-    setRunMode(null);
-    setPreviewBusy(null);
-    setUpProgress(null);
-    if (!batchCancelledRef.current && done > 0) {
-      const failed = done - succeeded;
-      if (succeeded > 0) {
-        const noun = `image${succeeded === 1 ? "" : "s"}`;
-        toast.success(
-          failed > 0
-            ? `Upscaled ${succeeded} ${noun} · ${failed} failed`
-            : `Upscaled ${succeeded} ${noun}`,
-        );
-      } else {
-        toast.error("Couldn't upscale any image.");
+    // A superseded loop (Stop now bumped runIdRef, possibly a new run already owns the UI) must not run
+    // its tail: the processing-sweep would knock the new run's live item out of "processing", and the
+    // busy/toast writes would clobber the new run. Stop now does its own teardown, so nothing is lost.
+    if (runIdRef.current === myRun) {
+      setItems((prev) =>
+        prev.map((i) =>
+          i.status === "processing"
+            ? { ...i, status: i.result ? ("done" as const) : ("ready" as const) }
+            : i,
+        ),
+      );
+      setIsBusy(false);
+      setRunMode(null);
+      setPreviewBusy(null);
+      setUpProgress(null);
+      if (!batchCancelledRef.current && done > 0) {
+        const failed = done - succeeded;
+        if (succeeded > 0) {
+          const noun = `image${succeeded === 1 ? "" : "s"}`;
+          toast.success(
+            failed > 0
+              ? `Upscaled ${succeeded} ${noun} · ${failed} failed`
+              : `Upscaled ${succeeded} ${noun}`,
+          );
+        } else {
+          toast.error("Couldn't upscale any image.");
+        }
       }
     }
   }, [isBusy, prefs, ensureModelLoaded, applyResult, markItemError, replaceOutput]);
@@ -712,6 +809,9 @@ export default function ImageUpscalerRoute() {
   const stopNow = useCallback(() => {
     batchCancelledRef.current = true;
     reqIdRef.current += 1;
+    // Own the run: this teardown is authoritative, so any stale in-flight handler that later unwinds
+    // sees runIdRef.current !== its myRun and skips its own cleanup instead of fighting this one.
+    runIdRef.current += 1;
     terminateUpscaleWorker();
     loadedScaleRef.current = null;
     setModelState("idle");
@@ -963,6 +1063,12 @@ export default function ImageUpscalerRoute() {
                               </span>
                             )}
                             {item.status === "processing" && " · upscaling…"}
+                            {item.status === "ready" && item.maxScale === 0 && (
+                              <span className="font-semibold text-tomato"> · too large</span>
+                            )}
+                            {item.status === "ready" && item.maxScale === 2 && (
+                              <span className="font-semibold text-ink-3"> · max 2×</span>
+                            )}
                             {item.status === "error" && (
                               <span className="font-semibold text-tomato"> · {item.error}</span>
                             )}
@@ -1046,6 +1152,15 @@ export default function ImageUpscalerRoute() {
                       <span>Load model</span>
                     </button>
                   </div>
+                )}
+                {noGpu && (
+                  <p className="flex items-start gap-2 text-[12px] font-medium text-ink-3">
+                    <span aria-hidden="true">⚠</span>
+                    <span>
+                      No GPU acceleration detected — upscaling runs on the CPU and may take a while,
+                      especially at 4×.
+                    </span>
+                  </p>
                 )}
               </div>
             </section>
@@ -1363,9 +1478,10 @@ export default function ImageUpscalerRoute() {
                     <button
                       type="button"
                       onClick={cancelBatch}
+                      title="Stop dispatching more items; the current image finishes and the model stays warm."
                       className="wb-btn wb-btn--ghost justify-center px-5"
                     >
-                      Cancel
+                      {runMode === "batch" ? "Skip remaining" : "Cancel"}
                     </button>
                     <button
                       type="button"
