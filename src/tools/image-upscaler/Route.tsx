@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  TriangleAlert,
   Upload,
   Wand2,
   X,
@@ -1110,7 +1111,7 @@ export default function ImageUpscalerRoute() {
               <div className="space-y-4 p-5 sm:p-6" aria-live="polite">
                 {modelState === "ready" ? (
                   <p className="flex items-center gap-2 text-[13px] font-semibold text-ink">
-                    <span className="grid size-6 place-items-center rounded-full border-2 border-ink bg-mint shadow-pop-1">
+                    <span className="wb-success-pop grid size-6 place-items-center rounded-full border-2 border-ink bg-mint shadow-pop-1">
                       <Sparkles className="size-3.5" aria-hidden="true" />
                     </span>
                     AI model ready — runs locally.
@@ -1155,7 +1156,11 @@ export default function ImageUpscalerRoute() {
                 )}
                 {noGpu && (
                   <p className="flex items-start gap-2 text-[12px] font-medium text-ink-3">
-                    <span aria-hidden="true">⚠</span>
+                    <TriangleAlert
+                      className="mt-px size-4 shrink-0"
+                      strokeWidth={2.5}
+                      aria-hidden="true"
+                    />
                     <span>
                       No GPU acceleration detected — upscaling runs on the CPU and may take a while,
                       especially at 4×.
@@ -1208,8 +1213,15 @@ export default function ImageUpscalerRoute() {
                     })}
                   </fieldset>
                   {selectedItem !== null && selectedItem.maxScale === 0 && (
-                    <p className="text-[11.5px] font-semibold text-tomato">
-                      This image is too large to upscale — try image-resizer to shrink it first.
+                    <p className="flex items-start gap-1.5 text-[11.5px] font-semibold text-ink">
+                      <TriangleAlert
+                        className="mt-px size-3.5 shrink-0 text-tomato"
+                        strokeWidth={2.5}
+                        aria-hidden="true"
+                      />
+                      <span>
+                        This image is too large to upscale — try image-resizer to shrink it first.
+                      </span>
                     </p>
                   )}
                 </div>
@@ -1331,7 +1343,7 @@ export default function ImageUpscalerRoute() {
                           key={outputUrl}
                           src={outputUrl}
                           alt="Upscaled"
-                          className="absolute inset-0 block max-h-[420px] w-full object-contain"
+                          className="wb-cutout-in absolute inset-0 block max-h-[420px] w-full object-contain"
                           style={{ clipPath: `inset(0 0 0 ${reveal}%)` }}
                           decoding="async"
                         />
