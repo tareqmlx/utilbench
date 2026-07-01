@@ -31,7 +31,11 @@ export type { NormFormat } from "@/lib/image";
 export { MAX_QUEUE_SIZE } from "../constants";
 export { downloadBlob, readFileBytes } from "@/lib/pdf";
 export type { ValidationResult } from "@/lib/pdf";
-export { createBatchZip } from "../image-resizer/resizer";
+// The canonical batch-zip helper in @/lib/encode de-dupes filename collisions (suffix " (N)"),
+// unlike image-resizer/resizer.ts's object-keyed copy which silently drops same-named entries. The
+// upscaler forces the output extension to the chosen format, so two sources like `a.jpg` + `a.png`
+// both map to `a-2x.png` — a real collision — so it MUST use the deduping helper (plan §6.6 batch).
+export { createBatchZip } from "@/lib/encode";
 export * from "./upscaler-types";
 
 // ── Worker client ─────────────────────────────────────────────────────────────

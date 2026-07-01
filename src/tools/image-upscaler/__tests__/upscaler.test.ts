@@ -1,7 +1,20 @@
+import { createBatchZip as encodeCreateBatchZip } from "@/lib/encode";
 import { describe, expect, it } from "vitest";
+import { createBatchZip as resizerCreateBatchZip } from "../../image-resizer/resizer";
 // Importing the barrel is safe in jsdom: the Worker is only constructed lazily inside `ensureWorker`,
 // never at module load, so no `new Worker` runs here.
-import { buildUpscaledFilename, formatBytes } from "../upscaler";
+import { buildUpscaledFilename, createBatchZip, formatBytes } from "../upscaler";
+
+describe("createBatchZip source (batch download collision fix)", () => {
+  // The upscaler forces the output extension to the chosen format, so two sources like `a.jpg` and
+  // `a.png` both map to `a-2x.png` — a filename COLLISION. It MUST re-export the deduping helper from
+  // @/lib/encode (which suffixes " (N)"), NOT image-resizer/resizer.ts's object-keyed copy that
+  // silently drops same-named entries. Locks the regression found via browser testing.
+  it("re-exports the deduping @/lib/encode helper, not the lossy resizer copy", () => {
+    expect(createBatchZip).toBe(encodeCreateBatchZip);
+    expect(createBatchZip).not.toBe(resizerCreateBatchZip);
+  });
+});
 
 describe("buildUpscaledFilename", () => {
   it("strips the extension and appends the scale + ext (2x)", () => {
