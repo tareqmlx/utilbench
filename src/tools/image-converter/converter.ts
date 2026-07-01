@@ -1,8 +1,11 @@
-// fflate is imported dynamically inside createBatchZip (`await import("fflate")` — like renderer.ts:109),
-// so there is NO top-level fflate import here (a static `import { zipSync }` would be a dead/unused import
-// → fails build under noUnusedLocals).
+import { __resetEncodeProbeCache } from "@/lib/encode"; // encode-only memo reset (shared helpers)
 import { clampToCanvasLimits } from "@/lib/image"; // shared canvas-limit helper (reuse, don't redeclare)
 import { MAX_QUEUE_SIZE } from "../constants"; // shared = 50
+
+// Shared encode helpers now live in @/lib/encode (single source of truth) so pure-canvas
+// tools can reuse them without dragging AVIF_PROBE_DATA_URI into their chunk. Re-exported
+// here so converter.ts (and converter.test.ts) keep importing them from this module.
+export { canEncode, createBatchZip } from "@/lib/encode";
 
 export type OutputFormat = "png" | "jpeg" | "webp";
 export type InputFormat = "png" | "jpeg" | "webp" | "gif" | "bmp" | "avif";
@@ -259,42 +262,11 @@ export async function readImageMeta(file: File): Promise<ImageMeta> {
 
 // ── Feature detection ───────────────────────────────────────────────────────
 
-let webpEncodeCache: boolean | null = null;
-const encodeProbeCache = new Map<string, boolean>();
 let avifDecodeCache: Promise<boolean> | null = null;
 
 // Known-good minimal 1×1 AVIF, produced by avifenc (major brand "avif"); verified decodable.
 const AVIF_PROBE_DATA_URI =
   "data:image/avif;base64,AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZk1BMUEAAAEsbWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAcGljdAAAAAAAAAAAAAAAAAAAAAAOcGl0bQAAAAAAAQAAACxpbG9jAAAAAEQAAAIAAQAAAAEAAAGcAAAAJgACAAAAAQAAAVQAAABIAAAAQWlpbmYAAAAAAAIAAAAaaW5mZQIAAAAAAQAAYXYwMUNvbG9yAAAAABlpbmZlAgAAAAACAABFeGlmRXhpZgAAAAAaaXJlZgAAAAAAAAAOY2RzYwACAAEAAQAAAGppcHJwAAAAS2lwY28AAAAUaXNwZQAAAAAAAAABAAAAAQAAABBwaXhpAAAAAAMICAgAAAAMYXYxQ4EgAAAAAAATY29scm5jbHgAAQANAAaAAAAAF2lwbWEAAAAAAAAAAQABBAECgwQAAAB2bWRhdAAAAABNTQAqAAAACAABh2kABAAAAAEAAAAaAAAAAAADoAEAAwAAAAEAAQAAoAIABAAAAAEAAAABoAMABAAAAAEAAAABAAAAABIACgc4AAaQENBpMhkZQmMEw88880AAAJBAyRxhS40a1hBUsfsg";
-
-/**
- * SYNC, cached. PNG/JPEG → always true. For "image/webp": probe once via
- * toDataURL("image/webp").startsWith("data:image/webp"). Caches the boolean module-side.
- */
-export function canEncode(mime: string): boolean {
-  if (mime === "image/png" || mime === "image/jpeg") return true;
-  if (mime === "image/webp") {
-    if (webpEncodeCache !== null) return webpEncodeCache;
-    webpEncodeCache = probeEncode("image/webp");
-    return webpEncodeCache;
-  }
-  const cached = encodeProbeCache.get(mime);
-  if (cached !== undefined) return cached;
-  const result = probeEncode(mime);
-  encodeProbeCache.set(mime, result);
-  return result;
-}
-
-function probeEncode(mime: string): boolean {
-  try {
-    const canvas = document.createElement("canvas");
-    canvas.width = 1;
-    canvas.height = 1;
-    return canvas.toDataURL(mime).startsWith(`data:${mime}`);
-  } catch {
-    return false;
-  }
-}
 
 /**
  * ASYNC, cached. Decode a 1×1 AVIF data-URI via a probe <img> (onload ⇒ true, onerror ⇒ false).
@@ -311,10 +283,9 @@ export function canDecodeAvif(): Promise<boolean> {
   return avifDecodeCache;
 }
 
-/** Test hook — clears canEncode / canDecodeAvif memo caches. */
+/** Test hook — clears canEncode (via @/lib/encode) / canDecodeAvif memo caches. */
 export function __resetProbeCache(): void {
-  webpEncodeCache = null;
-  encodeProbeCache.clear();
+  __resetEncodeProbeCache();
   avifDecodeCache = null;
 }
 
@@ -417,31 +388,4 @@ export function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-/**
- * Async fflate zip, level 0 (store — images already compressed). De-dupes filename collisions by
- * suffixing " (N)" before the extension so entries don't clobber.
- */
-export async function createBatchZip(
-  items: Array<{ blob: Blob; filename: string }>,
-): Promise<Blob> {
-  const entries: Record<string, Uint8Array> = {};
-  const seen = new Map<string, number>();
-  for (const item of items) {
-    const count = seen.get(item.filename) ?? 0;
-    seen.set(item.filename, count + 1);
-    let name = item.filename;
-    if (count > 0) {
-      const dot = name.lastIndexOf(".");
-      name =
-        dot === -1
-          ? `${name} (${count + 1})`
-          : `${name.slice(0, dot)} (${count + 1})${name.slice(dot)}`;
-    }
-    entries[name] = new Uint8Array(await item.blob.arrayBuffer());
-  }
-  const { zip } = await import("fflate");
-  const bytes: Uint8Array = await new Promise((resolve, reject) =>
-    zip(entries, { level: 0 }, (err, data) => (err ? reject(err) : resolve(data))),
-  );
-  return new Blob([bytes as BlobPart], { type: "application/zip" });
-}
+// createBatchZip now lives in @/lib/encode (re-exported near the top of this module).
